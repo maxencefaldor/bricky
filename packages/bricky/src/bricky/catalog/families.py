@@ -1,8 +1,8 @@
 """Geometry generators for part families.
 
-A family turns a few numbers from the catalog data files into a part's solids and connectors, so
-dozens of parts share one tested definition. Every generator places the part's bounding box with
-its minimum corner at the origin, and works in exact base units (see :mod:`bricky.units`).
+A family turns a part's shape, a few numbers from the catalog, into the part's solids and
+connectors, so many parts share one tested definition. Every generator places the part's bounding
+box with its minimum corner at the origin, and works in exact base units (see :mod:`bricky.units`).
 
 Shapes that are not boxes are convex solids with integer corners. Curved surfaces are drawn as a
 few flat facets, chosen so the corners stay on the grid: close to the real part, and exact.
@@ -14,20 +14,21 @@ from math import cos, pi, sin
 from typing import Final
 
 from bricky.catalog.models import (
-    ArchSpec,
-    BaseplateSpec,
-    BlockSpec,
+    ArchShape,
+    BaseplateShape,
+    BlockShape,
+    CatalogPart,
     Connector,
     ConnectorKind,
-    CurvedSlopeSpec,
+    CurvedSlopeShape,
     Family,
-    InvertedSlopeSpec,
-    JumperSpec,
+    InvertedSlopeShape,
+    JumperShape,
     Part,
-    PartSpec,
-    RoundSpec,
-    SideStudsSpec,
-    SlopeSpec,
+    RoundShape,
+    Shape,
+    SideStudsShape,
+    SlopeShape,
 )
 from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Solid, Vec3
 from bricky.units import PLATE, STUD
@@ -48,52 +49,55 @@ type Profile = list[tuple[int, int]]
 """A polygon in a plane, counter-clockwise, as (a, b) pairs: see :meth:`Convex.prism`."""
 
 
-def build_part(spec: PartSpec) -> Part:  # noqa: PLR0911 - one return per family
-    """Generate a part's solids and connectors from its catalog entry."""
-    match spec:
-        case BlockSpec():
-            return _block(spec)
-        case BaseplateSpec():
-            return _baseplate(spec)
-        case SlopeSpec():
-            return _slope(spec)
-        case InvertedSlopeSpec():
-            return _inverted_slope(spec)
-        case CurvedSlopeSpec():
-            return _curved_slope(spec)
-        case RoundSpec():
-            return _round(spec)
-        case SideStudsSpec():
-            return _side_studs(spec)
-        case JumperSpec():
-            return _jumper(spec)
-        case ArchSpec():
-            return _arch(spec)
-
-
-def _part(
-    spec: PartSpec,
-    solids: Sequence[Solid],
-    connectors: Iterable[Connector],
-    note: str = "",
-) -> Part:
+def build_part(entry: CatalogPart, shape: Shape) -> Part:
+    """Generate a catalog part's solids and connectors from a shape: its own, or its base's."""
+    solids, connectors, note = _geometry(shape)
     bounds = Box.bounding(solid.bounds for solid in solids)
-    if bounds.lo != ORIGIN:
-        msg = f"part {spec.id}: its bounding box starts at {bounds.lo}, not at the origin"
+    if bounds.lo != ORIGIN:  # pragma: no cover - every family builds from the origin
+        msg = f"part {entry.id}: its bounding box starts at {bounds.lo}, not at the origin"
         raise ValueError(msg)
     return Part(
-        id=spec.id,
-        name=spec.name,
-        family=Family(spec.family),
+        id=entry.id,
+        name=entry.name,
+        family=Family(shape.family),
         size=bounds.hi,
         solids=tuple(solids),
         connectors=tuple(connectors),
         note=note,
+        category=entry.category,
     )
 
 
+type Geometry = tuple[Sequence[Solid], list[Connector], str]
+"""A part's solids, its connectors, and a note on how it sits when placed unrotated."""
+
+
+def _geometry(shape: object) -> Geometry:  # noqa: PLR0911 - one return per family
+    match shape:
+        case BlockShape():
+            return _block(shape)
+        case BaseplateShape():
+            return _baseplate(shape)
+        case SlopeShape():
+            return _slope(shape)
+        case InvertedSlopeShape():
+            return _inverted_slope(shape)
+        case CurvedSlopeShape():
+            return _curved_slope(shape)
+        case RoundShape():
+            return _round(shape)
+        case SideStudsShape():
+            return _side_studs(shape)
+        case JumperShape():
+            return _jumper(shape)
+        case ArchShape():
+            return _arch(shape)
+    msg = f"no family generates {shape!r}"  # pragma: no cover - the shape union is closed
+    raise TypeError(msg)
+
+
 def _positions(width: int, length: int, rows: Iterable[int] | None = None) -> list[tuple[int, int]]:
-    """Stud centres of a footprint, in base units; ``rows`` limits the y positions."""
+    """Stud centers of a footprint, in base units; ``rows`` limits the y positions."""
     ys = range(length) if rows is None else rows
     return [(i * STUD + STUD // 2, j * STUD + STUD // 2) for i in range(width) for j in ys]
 
@@ -102,71 +106,70 @@ def _studs(positions: Iterable[tuple[int, int]], z: int) -> list[Connector]:
     return [Connector(ConnectorKind.STUD, Vec3(x, y, z), UP) for x, y in positions]
 
 
-def _receptors(positions: Iterable[tuple[int, int]]) -> list[Connector]:
+def _anti_studs(positions: Iterable[tuple[int, int]]) -> list[Connector]:
     return [Connector(ConnectorKind.ANTI_STUD, Vec3(x, y, 0), DOWN) for x, y in positions]
 
 
-def _block(spec: BlockSpec) -> Part:
-    """A box with receptors under every stud position, and studs on top unless it is a tile."""
-    width, length = spec.size
-    height = (spec.height or BLOCK_HEIGHTS[Family(spec.family)]) * PLATE
+def _block(shape: BlockShape) -> Geometry:
+    """A box with anti-studs under every stud position, and studs on top unless it is a tile."""
+    width, length = shape.size
+    height = (shape.height or BLOCK_HEIGHTS[Family(shape.family)]) * PLATE
     grid = _positions(width, length)
-    connectors = _receptors(grid)
-    if spec.family != Family.TILE:
+    connectors = _anti_studs(grid)
+    if shape.family != Family.TILE:
         connectors += _studs(grid, height)
-    return _part(spec, [Box(ORIGIN, Vec3(width * STUD, length * STUD, height))], connectors)
+    return [Box(ORIGIN, Vec3(width * STUD, length * STUD, height))], connectors, ""
 
 
-def _baseplate(spec: BaseplateSpec) -> Part:
+def _baseplate(shape: BaseplateShape) -> Geometry:
     """A thin box with studs on top and a flat underside that grips nothing."""
-    width, length = spec.size
+    width, length = shape.size
     body = Box(ORIGIN, Vec3(width * STUD, length * STUD, BASEPLATE_HEIGHT))
     note = "half a plate thick: parts standing on it start at z = 0.5"
-    return _part(spec, [body], _studs(_positions(width, length), BASEPLATE_HEIGHT), note)
+    return [body], _studs(_positions(width, length), BASEPLATE_HEIGHT), note
 
 
-def _slope(spec: SlopeSpec) -> Part:
+def _slope(shape: SlopeShape) -> Geometry:
     """A slope falling from its flat top at the back to a low lip at the front (y = 0)."""
-    width, depth = spec.size
-    run = min(spec.run, depth)
-    height = spec.height * PLATE
-    back, top_front = depth * STUD, run * STUD
+    width, length = shape.size
+    run = min(shape.run, length)
+    height = shape.height * PLATE
+    back, top_front = length * STUD, run * STUD
     lip = min(LIP, height)
     profile: Profile = [(0, 0), (back, 0), (back, height)]
     if top_front < back:
         profile.append((top_front, height))
     profile.append((0, lip))
     body = Convex.prism(profile, "x", 0, width * STUD)
-    connectors = _receptors(_positions(width, depth))
-    if spec.studs:
-        connectors += _studs(_positions(width, depth, range(run, depth)), height)
-    return _part(spec, [body], connectors, "falls toward -y (the front) when unturned")
+    connectors = _anti_studs(_positions(width, length))
+    if shape.studs:
+        connectors += _studs(_positions(width, length, range(run, length)), height)
+    return [body], connectors, "falls toward -y (the front) when unrotated"
 
 
-def _inverted_slope(spec: InvertedSlopeSpec) -> Part:
+def _inverted_slope(shape: InvertedSlopeShape) -> Geometry:
     """A slope underneath: flat bottom at the back, the underside rising to the front (y = 0)."""
-    width, depth = spec.size
-    run = min(spec.run, depth - 1)
-    height = spec.height * PLATE
-    back, bottom_front = depth * STUD, run * STUD
+    width, length = shape.size
+    run = min(shape.run, length - 1)
+    height = shape.height * PLATE
+    back, bottom_front = length * STUD, run * STUD
     profile: Profile = [(bottom_front, 0), (back, 0), (back, height), (0, height)]
     profile.append((0, height - min(LIP, height)))
     body = Convex.prism(profile, "x", 0, width * STUD)
-    connectors = _studs(_positions(width, depth), height)
-    connectors += _receptors(_positions(width, depth, range(run, depth)))
-    note = "its underside rises toward -y (the front) when unturned"
-    return _part(spec, [body], connectors, note)
+    connectors = _studs(_positions(width, length), height)
+    connectors += _anti_studs(_positions(width, length, range(run, length)))
+    return [body], connectors, "its underside rises toward -y (the front) when unrotated"
 
 
-def _curved_slope(spec: CurvedSlopeSpec) -> Part:
+def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
     """A smooth top curving down from the back to a low lip at the front (y = 0), no studs.
 
     The curve is a quarter ellipse, flat at the back and steep at the front, drawn as a few facets
     with corners on whole base units.
     """
-    width, depth = spec.size
-    height = spec.height * PLATE
-    back = depth * STUD
+    width, length = shape.size
+    height = shape.height * PLATE
+    back = length * STUD
     lip = min(LIP, height)
     arc = [
         (round(back * (1 - cos(t))), round(lip + (height - lip) * sin(t)))
@@ -174,18 +177,15 @@ def _curved_slope(spec: CurvedSlopeSpec) -> Part:
     ]
     profile: Profile = [(0, 0), (back, 0), *_distinct(arc)]
     body = Convex.prism(profile, "x", 0, width * STUD)
-    connectors = _receptors(_positions(width, depth))
-    return _part(spec, [body], connectors, "curves down toward -y (the front) when unturned")
+    connectors = _anti_studs(_positions(width, length))
+    return [body], connectors, "curves down toward -y (the front) when unrotated"
 
 
-def _round(spec: RoundSpec) -> Part:
+def _round(shape: RoundShape) -> Geometry:
     """A cylinder filling a square footprint, drawn as a regular polygon with integer corners."""
-    width, length = spec.size
-    if width != length:
-        msg = f"part {spec.id}: a round part needs a square footprint, not {width} x {length}"
-        raise ValueError(msg)
+    width, length = shape.size
     radius = width * STUD // 2
-    height = spec.height * PLATE
+    height = shape.height * PLATE
     polygon = [
         (radius + round(radius * cos(2 * pi * k / _ROUND_SIDES)),
          radius + round(radius * sin(2 * pi * k / _ROUND_SIDES)))
@@ -193,24 +193,24 @@ def _round(spec: RoundSpec) -> Part:
     ]  # fmt: skip
     body = Convex.prism(_distinct(polygon), "z", 0, height)
     grid = _positions(width, length)
-    connectors = _receptors(grid)
-    if spec.studs:
+    connectors = _anti_studs(grid)
+    if shape.studs:
         connectors += _studs(grid, height)
-    return _part(spec, [body], connectors)
+    return [body], connectors, ""
 
 
-def _side_studs(spec: SideStudsSpec) -> Part:
-    """A brick with studs on top, receptors underneath, and studs on the faces it names.
+def _side_studs(shape: SideStudsShape) -> Geometry:
+    """A brick with studs on top, anti-studs underneath, and studs on the faces it names.
 
     Side studs sit at the middle of the face's height, one per stud position along it, so a
-    plate turned on its side to grip them lines up with the stud grid.
+    plate rotated on its side to grip them lines up with the stud grid.
     """
-    width, length = spec.size
-    height = spec.height * PLATE
+    width, length = shape.size
+    height = shape.height * PLATE
     grid = _positions(width, length)
-    connectors = _receptors(grid) + _studs(grid, height)
+    connectors = _anti_studs(grid) + _studs(grid, height)
     middle = height // 2
-    for side in spec.sides:
+    for side in shape.sides:
         normal = AXES[side]
         if side in {"-y", "+y"}:
             y = 0 if side == "-y" else length * STUD
@@ -220,36 +220,32 @@ def _side_studs(spec: SideStudsSpec) -> Part:
             spots = [Vec3(x, j * STUD + STUD // 2, middle) for j in range(length)]
         connectors += [Connector(ConnectorKind.STUD, spot, normal) for spot in spots]
     body = Box(ORIGIN, Vec3(width * STUD, length * STUD, height))
-    note = f"side studs face {', '.join(spec.sides)} when unturned"
-    return _part(spec, [body], connectors, note)
+    return [body], connectors, f"side studs face {', '.join(shape.sides)} when unrotated"
 
 
-def _jumper(spec: JumperSpec) -> Part:
+def _jumper(shape: JumperShape) -> Geometry:
     """A plate with one stud in the middle of its top, half a stud off the grid on a 1 x 2."""
-    width, length = spec.size
-    centre = (width * STUD // 2, length * STUD // 2)
-    receptors = _positions(width, length)
-    if spec.centre_receptor:
-        receptors.append(centre)
+    width, length = shape.size
+    center = (width * STUD // 2, length * STUD // 2)
+    anti_studs = _positions(width, length)
+    if shape.center_anti_stud:
+        anti_studs.append(center)
     body = Box(ORIGIN, Vec3(width * STUD, length * STUD, PLATE))
-    return _part(spec, [body], _receptors(receptors) + _studs([centre], PLATE))
+    return [body], _anti_studs(anti_studs) + _studs([center], PLATE), ""
 
 
-def _arch(spec: ArchSpec) -> Part:
+def _arch(shape: ArchShape) -> Geometry:
     """An arch along y: a leg at each end and an opening under a half-ellipse between them.
 
     The opening rises to one plate below the top. The body over it is cut into convex slices, one
     per facet of the curve.
     """
-    width, length = spec.size
-    height = spec.height * PLATE
-    span = spec.span * STUD
+    width, length = shape.size
+    height = shape.height * PLATE
+    span = shape.span * STUD
     start = (length * STUD - span) // 2
     end = start + span
     rise = height - PLATE
-    if start <= 0 or start % STUD:
-        msg = f"part {spec.id}: the opening must leave a whole-stud leg at each end"
-        raise ValueError(msg)
     thickness = width * STUD
     curve = _distinct(
         [
@@ -266,8 +262,8 @@ def _arch(spec: ArchSpec) -> Part:
         solids.append(Convex.prism(slice_, "x", 0, thickness))
     legs = [j for j in range(length) if j * STUD < start or j * STUD >= end]
     connectors = _studs(_positions(width, length), height)
-    connectors += _receptors(_positions(width, length, legs))
-    return _part(spec, solids, connectors, "spans along y when unturned")
+    connectors += _anti_studs(_positions(width, length, legs))
+    return solids, connectors, "spans along y when unrotated"
 
 
 def _distinct(points: Sequence[tuple[int, int]]) -> Profile:

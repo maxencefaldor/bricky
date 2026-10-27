@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -167,6 +168,38 @@ def test_files_that_cannot_be_written_or_read_are_errors(tmp_path, capsys):
     assert f"cannot write {blocker / 'tower.bricky.json'}" in capsys.readouterr().err
     assert run("check", str(tmp_path)) == 2
     assert f"cannot read {tmp_path}" in capsys.readouterr().err
+
+
+DOWNLOADS = Path(__file__).parent / "data" / "bricklink"
+
+
+def test_the_catalog_is_imported_and_looked_into(tmp_path, capsys, monkeypatch):
+    output = tmp_path / "catalog.json"
+    assert run("catalog", "import", str(DOWNLOADS), "--output", str(output)) == 0
+    out = capsys.readouterr().out
+    assert "imported 9 parts and 6 colors" in out
+    assert "5 parts have a shape and can be placed, 2 of them printed parts" in out
+    assert "  Technic, Brick: 1" in out
+    assert "Mystery Color (240): no RGB value" in out
+    assert "bricky does not use it yet" in out
+    monkeypatch.setenv("BRICKY_CATALOG", str(output))
+    assert run("catalog", "status") == 0
+    assert "9 parts, 5 with a shape (2 printed), 6 colors" in capsys.readouterr().out
+    assert run("catalog", "show", "3068bpb0001") == 0
+    out = capsys.readouterr().out
+    assert "printed on: 3068b, whose shape it has" in out
+    assert "shape: tile, 2 x 2 studs, 1 plate tall, 0 studs, 4 anti-studs" in out
+    picture = tmp_path / "brick.png"
+    assert run("catalog", "show", "3001", "--render", "--output", str(picture)) == 0
+    assert "colors (2): White, Red" in capsys.readouterr().out
+    assert picture.read_bytes().startswith(b"\x89PNG")
+    assert run("catalog", "verify") == 0
+    assert "checked 5 parts: 0 problems" in capsys.readouterr().out
+    assert run("parts", "brick", "--shapeless") == 0
+    shapeless = r"\n3700 +Technic, Brick 1 x 2 with Hole +no shape: cannot be placed\n"
+    assert re.search(shapeless, capsys.readouterr().out)
+    assert run("catalog", "show", "3700", "--render") == 2
+    assert "part 3700 has no shape to draw" in capsys.readouterr().err
 
 
 def test_parts_search(capsys):

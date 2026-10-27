@@ -1,0 +1,335 @@
+# The sample catalog: a small set of common parts and colors, shipped with bricky so it works, and
+# its tests run, before the full catalog is imported from BrickLink with `bricky import-catalog`.
+#
+# Same format as an imported catalog (see bricky.catalog.CatalogFile), written by hand. Ids, names,
+# categories and colors follow BrickLink as remembered; an import replaces them with BrickLink's own
+# data. Each part's `shape` is bricky's: the family that generates its geometry, and its numbers.
+# `size` counts studs along the part's local x and y axes; heights count plates (a brick is 3).
+
+format = "bricky.catalog/1"
+source = "sample, entered by hand"
+
+parts = [
+  { id = "3005", name = "Brick 1 x 1", category = "Brick", shape = { family = "brick", size = [1, 1] } },
+  { id = "3004", name = "Brick 1 x 2", category = "Brick", shape = { family = "brick", size = [1, 2] } },
+  { id = "3622", name = "Brick 1 x 3", category = "Brick", shape = { family = "brick", size = [1, 3] } },
+  { id = "3010", name = "Brick 1 x 4", category = "Brick", shape = { family = "brick", size = [1, 4] } },
+  { id = "3009", name = "Brick 1 x 6", category = "Brick", shape = { family = "brick", size = [1, 6] } },
+  { id = "3008", name = "Brick 1 x 8", category = "Brick", shape = { family = "brick", size = [1, 8] } },
+  { id = "6111", name = "Brick 1 x 10", category = "Brick", shape = { family = "brick", size = [1, 10] } },
+  { id = "6112", name = "Brick 1 x 12", category = "Brick", shape = { family = "brick", size = [1, 12] } },
+  { id = "2465", name = "Brick 1 x 16", category = "Brick", shape = { family = "brick", size = [1, 16] } },
+  { id = "3003", name = "Brick 2 x 2", category = "Brick", shape = { family = "brick", size = [2, 2] } },
+  { id = "3002", name = "Brick 2 x 3", category = "Brick", shape = { family = "brick", size = [2, 3] } },
+  { id = "3001", name = "Brick 2 x 4", category = "Brick", shape = { family = "brick", size = [2, 4] } },
+  { id = "2456", name = "Brick 2 x 6", category = "Brick", shape = { family = "brick", size = [2, 6] } },
+  { id = "3007", name = "Brick 2 x 8", category = "Brick", shape = { family = "brick", size = [2, 8] } },
+  { id = "3006", name = "Brick 2 x 10", category = "Brick", shape = { family = "brick", size = [2, 10] } },
+  { id = "2356", name = "Brick 4 x 6", category = "Brick", shape = { family = "brick", size = [4, 6] } },
+  { id = "3245c", name = "Brick 1 x 2 x 2 with Inside Stud Holder", category = "Brick", shape = { family = "brick", size = [1, 2], height = 6 } },
+  { id = "14716", name = "Brick 1 x 1 x 3", category = "Brick", shape = { family = "brick", size = [1, 1], height = 9 } },
+  { id = "22886", name = "Brick 1 x 2 x 3", category = "Brick", shape = { family = "brick", size = [1, 2], height = 9 } },
+  { id = "49311", name = "Brick 1 x 4 x 3", category = "Brick", shape = { family = "brick", size = [1, 4], height = 9 } },
+  { id = "2454", name = "Brick 1 x 2 x 5", category = "Brick", shape = { family = "brick", size = [1, 2], height = 15 } },
+  { id = "3754", name = "Brick 1 x 6 x 5", category = "Brick", shape = { family = "brick", size = [1, 6], height = 15 } },
+  { id = "30145", name = "Brick 2 x 4 x 3", category = "Brick", shape = { family = "brick", size = [2, 4], height = 9 } },
+  { id = "3024", name = "Plate 1 x 1", category = "Plate", shape = { family = "plate", size = [1, 1] } },
+  { id = "3023", name = "Plate 1 x 2", category = "Plate", shape = { family = "plate", size = [1, 2] } },
+  { id = "3623", name = "Plate 1 x 3", category = "Plate", shape = { family = "plate", size = [1, 3] } },
+  { id = "3710", name = "Plate 1 x 4", category = "Plate", shape = { family = "plate", size = [1, 4] } },
+  { id = "3666", name = "Plate 1 x 6", category = "Plate", shape = { family = "plate", size = [1, 6] } },
+  { id = "3460", name = "Plate 1 x 8", category = "Plate", shape = { family = "plate", size = [1, 8] } },
+  { id = "4477", name = "Plate 1 x 10", category = "Plate", shape = { family = "plate", size = [1, 10] } },
+  { id = "60479", name = "Plate 1 x 12", category = "Plate", shape = { family = "plate", size = [1, 12] } },
+  { id = "3022", name = "Plate 2 x 2", category = "Plate", shape = { family = "plate", size = [2, 2] } },
+  { id = "3021", name = "Plate 2 x 3", category = "Plate", shape = { family = "plate", size = [2, 3] } },
+  { id = "3020", name = "Plate 2 x 4", category = "Plate", shape = { family = "plate", size = [2, 4] } },
+  { id = "3795", name = "Plate 2 x 6", category = "Plate", shape = { family = "plate", size = [2, 6] } },
+  { id = "3034", name = "Plate 2 x 8", category = "Plate", shape = { family = "plate", size = [2, 8] } },
+  { id = "3832", name = "Plate 2 x 10", category = "Plate", shape = { family = "plate", size = [2, 10] } },
+  { id = "2445", name = "Plate 2 x 12", category = "Plate", shape = { family = "plate", size = [2, 12] } },
+  { id = "91988", name = "Plate 2 x 14", category = "Plate", shape = { family = "plate", size = [2, 14] } },
+  { id = "4282", name = "Plate 2 x 16", category = "Plate", shape = { family = "plate", size = [2, 16] } },
+  { id = "11212", name = "Plate 3 x 3", category = "Plate", shape = { family = "plate", size = [3, 3] } },
+  { id = "3031", name = "Plate 4 x 4", category = "Plate", shape = { family = "plate", size = [4, 4] } },
+  { id = "3032", name = "Plate 4 x 6", category = "Plate", shape = { family = "plate", size = [4, 6] } },
+  { id = "3035", name = "Plate 4 x 8", category = "Plate", shape = { family = "plate", size = [4, 8] } },
+  { id = "3030", name = "Plate 4 x 10", category = "Plate", shape = { family = "plate", size = [4, 10] } },
+  { id = "3029", name = "Plate 4 x 12", category = "Plate", shape = { family = "plate", size = [4, 12] } },
+  { id = "3958", name = "Plate 6 x 6", category = "Plate", shape = { family = "plate", size = [6, 6] } },
+  { id = "3036", name = "Plate 6 x 8", category = "Plate", shape = { family = "plate", size = [6, 8] } },
+  { id = "3033", name = "Plate 6 x 10", category = "Plate", shape = { family = "plate", size = [6, 10] } },
+  { id = "3028", name = "Plate 6 x 12", category = "Plate", shape = { family = "plate", size = [6, 12] } },
+  { id = "3456", name = "Plate 6 x 14", category = "Plate", shape = { family = "plate", size = [6, 14] } },
+  { id = "3027", name = "Plate 6 x 16", category = "Plate", shape = { family = "plate", size = [6, 16] } },
+  { id = "3026", name = "Plate 6 x 24", category = "Plate", shape = { family = "plate", size = [6, 24] } },
+  { id = "41539", name = "Plate 8 x 8", category = "Plate", shape = { family = "plate", size = [8, 8] } },
+  { id = "92438", name = "Plate 8 x 16", category = "Plate", shape = { family = "plate", size = [8, 16] } },
+  { id = "91405", name = "Plate 16 x 16", category = "Plate", shape = { family = "plate", size = [16, 16] } },
+  { id = "3070b", name = "Tile 1 x 1 with Groove", category = "Tile", shape = { family = "tile", size = [1, 1] } },
+  { id = "3069b", name = "Tile 1 x 2 with Groove", category = "Tile", shape = { family = "tile", size = [1, 2] } },
+  { id = "63864", name = "Tile 1 x 3", category = "Tile", shape = { family = "tile", size = [1, 3] } },
+  { id = "2431", name = "Tile 1 x 4", category = "Tile", shape = { family = "tile", size = [1, 4] } },
+  { id = "6636", name = "Tile 1 x 6", category = "Tile", shape = { family = "tile", size = [1, 6] } },
+  { id = "4162", name = "Tile 1 x 8", category = "Tile", shape = { family = "tile", size = [1, 8] } },
+  { id = "3068b", name = "Tile 2 x 2 with Groove", category = "Tile", shape = { family = "tile", size = [2, 2] } },
+  { id = "26603", name = "Tile 2 x 3", category = "Tile", shape = { family = "tile", size = [2, 3] } },
+  { id = "87079", name = "Tile 2 x 4", category = "Tile", shape = { family = "tile", size = [2, 4] } },
+  { id = "69729", name = "Tile 2 x 6", category = "Tile", shape = { family = "tile", size = [2, 6] } },
+  { id = "3867", name = "Baseplate 16 x 16", category = "Baseplate", shape = { family = "baseplate", size = [16, 16] } },
+  { id = "3857", name = "Baseplate 16 x 32", category = "Baseplate", shape = { family = "baseplate", size = [16, 32] } },
+  { id = "3811", name = "Baseplate 32 x 32", category = "Baseplate", shape = { family = "baseplate", size = [32, 32] } },
+  { id = "4186", name = "Baseplate 50 x 50", category = "Baseplate", shape = { family = "baseplate", size = [50, 50] } },
+  { id = "3040", name = "Slope 45 2 x 1", category = "Slope", shape = { family = "slope", size = [1, 2], run = 1 } },
+  { id = "3039", name = "Slope 45 2 x 2", category = "Slope", shape = { family = "slope", size = [2, 2], run = 1 } },
+  { id = "3038", name = "Slope 45 2 x 3", category = "Slope", shape = { family = "slope", size = [3, 2], run = 1 } },
+  { id = "3037", name = "Slope 45 2 x 4", category = "Slope", shape = { family = "slope", size = [4, 2], run = 1 } },
+  { id = "4286", name = "Slope 33 3 x 1", category = "Slope", shape = { family = "slope", size = [1, 3], run = 2 } },
+  { id = "3298", name = "Slope 33 3 x 2", category = "Slope", shape = { family = "slope", size = [2, 3], run = 2 } },
+  { id = "4161", name = "Slope 33 3 x 3", category = "Slope", shape = { family = "slope", size = [3, 3], run = 2 } },
+  { id = "3297", name = "Slope 33 3 x 4", category = "Slope", shape = { family = "slope", size = [4, 3], run = 2 } },
+  { id = "60477", name = "Slope 18 4 x 1", category = "Slope", shape = { family = "slope", size = [1, 4], run = 3 } },
+  { id = "30363", name = "Slope 18 4 x 2", category = "Slope", shape = { family = "slope", size = [2, 4], run = 3 } },
+  { id = "60481", name = "Slope 65 2 x 1 x 2", category = "Slope", shape = { family = "slope", size = [1, 2], run = 1, height = 6 } },
+  { id = "3678b", name = "Slope 65 2 x 2 x 2", category = "Slope", shape = { family = "slope", size = [2, 2], run = 1, height = 6 } },
+  { id = "4460b", name = "Slope 75 2 x 1 x 3", category = "Slope", shape = { family = "slope", size = [1, 2], run = 1, height = 9 } },
+  { id = "3684", name = "Slope 75 2 x 2 x 3", category = "Slope", shape = { family = "slope", size = [2, 2], run = 1, height = 9 } },
+  { id = "54200", name = "Slope 30 1 x 1 x 2/3", category = "Slope", shape = { family = "slope", size = [1, 1], run = 1, height = 2, studs = false } },
+  { id = "85984", name = "Slope 30 1 x 2 x 2/3", category = "Slope", shape = { family = "slope", size = [2, 1], run = 1, height = 2, studs = false } },
+  { id = "3665", name = "Slope, Inverted 45 2 x 1", category = "Slope, Inverted", shape = { family = "inverted_slope", size = [1, 2], run = 1 } },
+  { id = "3660", name = "Slope, Inverted 45 2 x 2", category = "Slope, Inverted", shape = { family = "inverted_slope", size = [2, 2], run = 1 } },
+  { id = "4287", name = "Slope, Inverted 33 3 x 1", category = "Slope, Inverted", shape = { family = "inverted_slope", size = [1, 3], run = 2 } },
+  { id = "3747b", name = "Slope, Inverted 33 3 x 2", category = "Slope, Inverted", shape = { family = "inverted_slope", size = [2, 3], run = 2 } },
+  { id = "2449", name = "Slope, Inverted 75 2 x 1 x 3", category = "Slope, Inverted", shape = { family = "inverted_slope", size = [1, 2], run = 1, height = 9 } },
+  { id = "11477", name = "Slope, Curved 2 x 1 x 2/3", category = "Slope, Curved", shape = { family = "curved_slope", size = [1, 2] } },
+  { id = "15068", name = "Slope, Curved 2 x 2 x 2/3", category = "Slope, Curved", shape = { family = "curved_slope", size = [2, 2] } },
+  { id = "50950", name = "Slope, Curved 3 x 1", category = "Slope, Curved", shape = { family = "curved_slope", size = [1, 3] } },
+  { id = "3062b", name = "Brick, Round 1 x 1 Open Stud", category = "Brick, Round", shape = { family = "round", size = [1, 1], height = 3 } },
+  { id = "4073", name = "Plate, Round 1 x 1 Straight Side", category = "Plate, Round", shape = { family = "round", size = [1, 1], height = 1 } },
+  { id = "98138", name = "Tile, Round 1 x 1", category = "Tile, Round", shape = { family = "round", size = [1, 1], height = 1, studs = false } },
+  { id = "3941", name = "Brick, Round 2 x 2 with Axle Hole", category = "Brick, Round", shape = { family = "round", size = [2, 2], height = 3 } },
+  { id = "4032", name = "Plate, Round 2 x 2 with Axle Hole", category = "Plate, Round", shape = { family = "round", size = [2, 2], height = 1 } },
+  { id = "14769", name = "Tile, Round 2 x 2 with Bottom Stud Holder", category = "Tile, Round", shape = { family = "round", size = [2, 2], height = 1, studs = false } },
+  { id = "87087", name = "Brick, Modified 1 x 1 with Stud on 1 Side", category = "Brick, Modified", shape = { family = "side_studs", size = [1, 1], sides = ["-y"] } },
+  { id = "26604", name = "Brick, Modified 1 x 1 with Studs on 2 Sides, Adjacent", category = "Brick, Modified", shape = { family = "side_studs", size = [1, 1], sides = ["-y", "+x"] } },
+  { id = "47905", name = "Brick, Modified 1 x 1 with Studs on 2 Sides", category = "Brick, Modified", shape = { family = "side_studs", size = [1, 1], sides = ["-y", "+y"] } },
+  { id = "4733", name = "Brick, Modified 1 x 1 with Studs on 4 Sides", category = "Brick, Modified", shape = { family = "side_studs", size = [1, 1], sides = ["-y", "+x", "+y", "-x"] } },
+  { id = "11211", name = "Brick, Modified 1 x 2 with Studs on 1 Side", category = "Brick, Modified", shape = { family = "side_studs", size = [2, 1], sides = ["-y"] } },
+  { id = "30414", name = "Brick, Modified 1 x 4 with Studs on 1 Side", category = "Brick, Modified", shape = { family = "side_studs", size = [4, 1], sides = ["-y"] } },
+  { id = "15573", name = "Plate, Modified 1 x 2 with 1 Stud with Groove and Bottom Stud Holder (Jumper)", category = "Plate, Modified", shape = { family = "jumper", size = [1, 2], center_anti_stud = true } },
+  { id = "87580", name = "Plate, Modified 2 x 2 with Groove and 1 Stud in Center (Jumper)", category = "Plate, Modified", shape = { family = "jumper", size = [2, 2] } },
+  { id = "3659", name = "Arch 1 x 4", category = "Arch", shape = { family = "arch", size = [1, 4], height = 3, span = 2 } },
+  { id = "3455", name = "Arch 1 x 6", category = "Arch", shape = { family = "arch", size = [1, 6], height = 3, span = 4 } },
+  { id = "3307", name = "Arch 1 x 6 x 2", category = "Arch", shape = { family = "arch", size = [1, 6], height = 6, span = 4 } },
+  { id = "3308", name = "Arch 1 x 8 x 2", category = "Arch", shape = { family = "arch", size = [1, 8], height = 6, span = 6 } },
+]
+
+[[colors]]
+id = 1
+name = "White"
+rgb = "#FFFFFF"
+
+[[colors]]
+id = 86
+name = "Light Bluish Gray"
+rgb = "#AFB5C7"
+
+[[colors]]
+id = 85
+name = "Dark Bluish Gray"
+rgb = "#595D60"
+
+[[colors]]
+id = 11
+name = "Black"
+rgb = "#212121"
+
+[[colors]]
+id = 5
+name = "Red"
+rgb = "#B30006"
+
+[[colors]]
+id = 59
+name = "Dark Red"
+rgb = "#6A0E15"
+
+[[colors]]
+id = 4
+name = "Orange"
+rgb = "#FF7E14"
+
+[[colors]]
+id = 68
+name = "Dark Orange"
+rgb = "#B35408"
+
+[[colors]]
+id = 110
+name = "Bright Light Orange"
+rgb = "#F7AD63"
+
+[[colors]]
+id = 3
+name = "Yellow"
+rgb = "#F7D117"
+
+[[colors]]
+id = 103
+name = "Bright Light Yellow"
+rgb = "#F3E055"
+
+[[colors]]
+id = 34
+name = "Lime"
+rgb = "#A6CA55"
+
+[[colors]]
+id = 6
+name = "Green"
+rgb = "#00642E"
+
+[[colors]]
+id = 80
+name = "Dark Green"
+rgb = "#2E5543"
+
+[[colors]]
+id = 155
+name = "Olive Green"
+rgb = "#7C9051"
+
+[[colors]]
+id = 48
+name = "Sand Green"
+rgb = "#76A290"
+
+[[colors]]
+id = 39
+name = "Dark Turquoise"
+rgb = "#008A80"
+
+[[colors]]
+id = 156
+name = "Medium Azure"
+rgb = "#42C0FB"
+
+[[colors]]
+id = 42
+name = "Medium Blue"
+rgb = "#61AFFF"
+
+[[colors]]
+id = 7
+name = "Blue"
+rgb = "#0057A6"
+
+[[colors]]
+id = 63
+name = "Dark Blue"
+rgb = "#243757"
+
+[[colors]]
+id = 55
+name = "Sand Blue"
+rgb = "#5A7184"
+
+[[colors]]
+id = 71
+name = "Magenta"
+rgb = "#B72276"
+
+[[colors]]
+id = 47
+name = "Dark Pink"
+rgb = "#EF5BB3"
+
+[[colors]]
+id = 2
+name = "Tan"
+rgb = "#DEC69C"
+
+[[colors]]
+id = 69
+name = "Dark Tan"
+rgb = "#907450"
+
+[[colors]]
+id = 28
+name = "Nougat"
+rgb = "#FFAF7D"
+
+[[colors]]
+id = 150
+name = "Medium Nougat"
+rgb = "#E3A05B"
+
+[[colors]]
+id = 88
+name = "Reddish Brown"
+rgb = "#82422A"
+
+[[colors]]
+id = 120
+name = "Dark Brown"
+rgb = "#330000"
+
+[[colors]]
+id = 115
+name = "Pearl Gold"
+type = "pearl"
+rgb = "#C59A3A"
+
+[[colors]]
+id = 95
+name = "Flat Silver"
+type = "pearl"
+rgb = "#8D949C"
+
+[[colors]]
+id = 12
+name = "Trans-Clear"
+type = "transparent"
+rgb = "#EEEEEE"
+
+[[colors]]
+id = 13
+name = "Trans-Black"
+type = "transparent"
+rgb = "#635F52"
+
+[[colors]]
+id = 17
+name = "Trans-Red"
+type = "transparent"
+rgb = "#C40026"
+
+[[colors]]
+id = 98
+name = "Trans-Orange"
+type = "transparent"
+rgb = "#F08F1C"
+
+[[colors]]
+id = 19
+name = "Trans-Yellow"
+type = "transparent"
+rgb = "#F5CD2F"
+
+[[colors]]
+id = 20
+name = "Trans-Green"
+type = "transparent"
+rgb = "#4B9F4A"
+
+[[colors]]
+id = 15
+name = "Trans-Light Blue"
+type = "transparent"
+rgb = "#AEEFEC"
+
+[[colors]]
+id = 14
+name = "Trans-Dark Blue"
+type = "transparent"
+rgb = "#0020A0"

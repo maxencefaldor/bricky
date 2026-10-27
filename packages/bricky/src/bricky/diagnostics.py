@@ -106,7 +106,7 @@ class ElementInfo(BaseModel):
     part: str = Field(description="BrickLink item number.")
     part_name: str | None = Field(description="BrickLink item name; null for unknown parts.")
     color: int = Field(description="BrickLink colour id.")
-    color_name: str | None = Field(description="BrickLink colour name; null for unknown colours.")
+    color_name: str | None = Field(description="BrickLink colour name; null for unknown colors.")
     component: str | None = Field(default=None, description="Component defining the element.")
     source: Source | None = Field(
         default=None, description="Script stack that placed it, innermost first; null if unknown."
@@ -175,7 +175,7 @@ def describe_element(uid: str, info: ElementInfo | None) -> str:
     if info is None:
         return uid
     part = f"{info.part_name} ({info.part})" if info.part_name else f"unknown part {info.part}"
-    color = info.color_name or f"unknown colour {info.color}"
+    color = info.color_name or f"unknown color {info.color}"
     text = f"{uid}: {part}, {color}"
     if info.source is not None:
         text += f", {info.source.site}"

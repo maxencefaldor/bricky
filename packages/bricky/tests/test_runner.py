@@ -54,7 +54,7 @@ def test_errors_inside_bricky_point_at_the_calling_line(tmp_path):
     assert failure is not None
     assert failure.error == "ValueError"
     assert failure.frames[0].line == 7
-    assert "unknown colour 'Mauve'" in failure.message
+    assert "unknown color 'Mauve'" in failure.message
 
 
 def test_exits_and_missing_entry_points_are_failures(tmp_path):
