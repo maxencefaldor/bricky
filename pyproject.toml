@@ -33,7 +33,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["ANN", "D", "INP001", "PLR2004", "S101"]
-"examples/**" = ["INP001"]
+# Build scripts are models written as code: numbers are their content, helpers stay small.
+"examples/**" = ["C901", "D103", "FBT001", "INP001", "PLR0911", "PLR0913", "PLR0917", "PLR2004", "T201"]
 "packages/bricky/src/bricky/cli.py" = ["T201"] # a command line prints
 
 [tool.ruff.lint.pydocstyle]
