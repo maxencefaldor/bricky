@@ -1,0 +1,53 @@
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+bricky = { workspace = true }
+bricky-mcp = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "bricky",
+  "bricky-mcp",
+  "hypothesis>=6.170",
+  "pytest>=9.1",
+  "rumdl>=0.3",
+  "ruff>=0.17",
+  "ty>=0.0.92",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py315"
+src = ["packages/bricky/src", "packages/bricky-mcp/src"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "COM812", # trailing commas are the formatter's job
+  "CPY001", # no per-file copyright headers
+  "D105",   # magic methods document themselves
+  "D107",   # __init__ arguments are documented on the class
+  "TC",     # annotations are lazy since 3.14; TYPE_CHECKING blocks only break pydantic
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["ANN", "D", "INP001", "PLR2004", "S101"]
+"examples/**" = ["INP001"]
+"packages/bricky/src/bricky/cli.py" = ["T201"] # a command line prints
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ty.environment]
+python-version = "3.15"
+
+[tool.pytest]
+minversion = "9.1"
+testpaths = ["packages"]
+addopts = ["--import-mode=importlib", "--strict-config", "--strict-markers", "-ra"]
+filterwarnings = ["error"]
+xfail_strict = true
+
+[tool.rumdl]
+line-length = 100

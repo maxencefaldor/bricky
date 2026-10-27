@@ -1,0 +1,56 @@
+# Starter colour table: BrickLink colour ids and names.
+#
+# A later `bricky catalog sync` command will refresh this from the BrickLink API (`GET /colors`)
+# and add which colours each part is actually produced in.
+
+[[colors]]
+id = 1
+name = "White"
+
+[[colors]]
+id = 11
+name = "Black"
+
+[[colors]]
+id = 5
+name = "Red"
+
+[[colors]]
+id = 7
+name = "Blue"
+
+[[colors]]
+id = 3
+name = "Yellow"
+
+[[colors]]
+id = 6
+name = "Green"
+
+[[colors]]
+id = 2
+name = "Tan"
+
+[[colors]]
+id = 69
+name = "Dark Tan"
+
+[[colors]]
+id = 86
+name = "Light Bluish Gray"
+
+[[colors]]
+id = 85
+name = "Dark Bluish Gray"
+
+[[colors]]
+id = 88
+name = "Reddish Brown"
+
+[[colors]]
+id = 48
+name = "Sand Green"
+
+[[colors]]
+id = 12
+name = "Trans-Clear"
