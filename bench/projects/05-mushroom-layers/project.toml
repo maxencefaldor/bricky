@@ -1,0 +1,22 @@
+title = "A toadstool from its layers"
+difficulty = 5
+max_turns = 80
+minutes = 40
+prompt = """
+Build the toadstool described cell by cell in `inputs/layers.txt`: every plate level of the model,
+from the ground up, with the colour of each cell. `inputs/toadstool.png` shows the finished model.
+Fill exactly those cells, in those colours, with parts that hold together: the cap overhangs the
+stem, and every part must connect to the ground through studs.
+"""
+
+[[generate]]
+kind = "layers"
+file = "inputs/layers.txt"
+
+[[generate]]
+kind = "render"
+file = "inputs/toadstool.png"
+view = "iso"
+caption = "The toadstool"
+width = 1000
+height = 800

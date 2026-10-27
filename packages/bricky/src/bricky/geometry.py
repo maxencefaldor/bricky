@@ -228,6 +228,14 @@ class Box:
         size = self.size
         return size.x * size.y * size.z
 
+    def contains(self, point: Vec3) -> bool:
+        """Return whether a point lies in the box, counting low faces in and high faces out."""
+        return (
+            self.lo.x <= point.x < self.hi.x
+            and self.lo.y <= point.y < self.hi.y
+            and self.lo.z <= point.z < self.hi.z
+        )
+
     def overlaps(self, other: Box) -> bool:
         """Return whether the boxes share positive volume; touching faces do not count."""
         return (

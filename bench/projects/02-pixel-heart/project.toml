@@ -1,0 +1,21 @@
+title = "A pixel heart"
+difficulty = 2
+max_turns = 40
+minutes = 20
+prompt = """
+Build the 12 x 12 pixel picture in `inputs/heart.txt` as a mosaic: a 12 x 12 stud base of Black
+plates lying on the ground, with one layer of tiles on top giving every pixel its colour.
+`inputs/heart.png` shows the finished mosaic from above.
+"""
+
+[[generate]]
+kind = "layers"
+file = "inputs/heart.txt"
+
+[[generate]]
+kind = "render"
+file = "inputs/heart.png"
+view = "top"
+caption = "The pixel heart, from above"
+width = 1000
+height = 1000

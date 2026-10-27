@@ -1,0 +1,9 @@
+title = "Repair a footbridge"
+difficulty = 3
+max_turns = 40
+minutes = 20
+prompt = """
+`inputs/bridge.py` is meant to build a small footbridge, but it has mistakes. Fix them so the
+bridge builds with no errors and matches the design its docstrings and comments describe. Change
+only what is wrong.
+"""
