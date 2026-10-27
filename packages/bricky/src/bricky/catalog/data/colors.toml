@@ -1,56 +1,216 @@
-# Starter colour table: BrickLink colour ids and names.
+# Colours: BrickLink colour ids, names and types, with a display colour for renders.
 #
-# A later `bricky catalog sync` command will refresh this from the BrickLink API (`GET /colors`)
-# and add which colours each part is actually produced in.
+# Ids and names follow the BrickLink colour guide (https://www.bricklink.com/catalogColors.asp).
+# `rgb` is the colour renders use: an approximation of the guide's swatch, not a measured value.
+# This table was entered by hand and has not yet been checked against the BrickLink API
+# (`GET /colors`); a `bricky catalog sync` command will replace it with the API's own data.
 
 [[colors]]
 id = 1
 name = "White"
-
-[[colors]]
-id = 11
-name = "Black"
-
-[[colors]]
-id = 5
-name = "Red"
-
-[[colors]]
-id = 7
-name = "Blue"
-
-[[colors]]
-id = 3
-name = "Yellow"
-
-[[colors]]
-id = 6
-name = "Green"
-
-[[colors]]
-id = 2
-name = "Tan"
-
-[[colors]]
-id = 69
-name = "Dark Tan"
+rgb = "#FFFFFF"
 
 [[colors]]
 id = 86
 name = "Light Bluish Gray"
+rgb = "#AFB5C7"
 
 [[colors]]
 id = 85
 name = "Dark Bluish Gray"
+rgb = "#595D60"
 
 [[colors]]
-id = 88
-name = "Reddish Brown"
+id = 11
+name = "Black"
+rgb = "#212121"
+
+[[colors]]
+id = 5
+name = "Red"
+rgb = "#B30006"
+
+[[colors]]
+id = 59
+name = "Dark Red"
+rgb = "#6A0E15"
+
+[[colors]]
+id = 4
+name = "Orange"
+rgb = "#FF7E14"
+
+[[colors]]
+id = 68
+name = "Dark Orange"
+rgb = "#B35408"
+
+[[colors]]
+id = 110
+name = "Bright Light Orange"
+rgb = "#F7AD63"
+
+[[colors]]
+id = 3
+name = "Yellow"
+rgb = "#F7D117"
+
+[[colors]]
+id = 103
+name = "Bright Light Yellow"
+rgb = "#F3E055"
+
+[[colors]]
+id = 34
+name = "Lime"
+rgb = "#A6CA55"
+
+[[colors]]
+id = 6
+name = "Green"
+rgb = "#00642E"
+
+[[colors]]
+id = 80
+name = "Dark Green"
+rgb = "#2E5543"
+
+[[colors]]
+id = 155
+name = "Olive Green"
+rgb = "#7C9051"
 
 [[colors]]
 id = 48
 name = "Sand Green"
+rgb = "#76A290"
+
+[[colors]]
+id = 39
+name = "Dark Turquoise"
+rgb = "#008A80"
+
+[[colors]]
+id = 156
+name = "Medium Azure"
+rgb = "#42C0FB"
+
+[[colors]]
+id = 42
+name = "Medium Blue"
+rgb = "#61AFFF"
+
+[[colors]]
+id = 7
+name = "Blue"
+rgb = "#0057A6"
+
+[[colors]]
+id = 63
+name = "Dark Blue"
+rgb = "#243757"
+
+[[colors]]
+id = 55
+name = "Sand Blue"
+rgb = "#5A7184"
+
+[[colors]]
+id = 71
+name = "Magenta"
+rgb = "#B72276"
+
+[[colors]]
+id = 47
+name = "Dark Pink"
+rgb = "#EF5BB3"
+
+[[colors]]
+id = 2
+name = "Tan"
+rgb = "#DEC69C"
+
+[[colors]]
+id = 69
+name = "Dark Tan"
+rgb = "#907450"
+
+[[colors]]
+id = 28
+name = "Nougat"
+rgb = "#FFAF7D"
+
+[[colors]]
+id = 150
+name = "Medium Nougat"
+rgb = "#E3A05B"
+
+[[colors]]
+id = 88
+name = "Reddish Brown"
+rgb = "#82422A"
+
+[[colors]]
+id = 120
+name = "Dark Brown"
+rgb = "#330000"
+
+[[colors]]
+id = 115
+name = "Pearl Gold"
+type = "pearl"
+rgb = "#C59A3A"
+
+[[colors]]
+id = 95
+name = "Flat Silver"
+type = "pearl"
+rgb = "#8D949C"
 
 [[colors]]
 id = 12
 name = "Trans-Clear"
+type = "transparent"
+rgb = "#EEEEEE"
+
+[[colors]]
+id = 13
+name = "Trans-Black"
+type = "transparent"
+rgb = "#635F52"
+
+[[colors]]
+id = 17
+name = "Trans-Red"
+type = "transparent"
+rgb = "#C40026"
+
+[[colors]]
+id = 98
+name = "Trans-Orange"
+type = "transparent"
+rgb = "#F08F1C"
+
+[[colors]]
+id = 19
+name = "Trans-Yellow"
+type = "transparent"
+rgb = "#F5CD2F"
+
+[[colors]]
+id = 20
+name = "Trans-Green"
+type = "transparent"
+rgb = "#4B9F4A"
+
+[[colors]]
+id = 15
+name = "Trans-Light Blue"
+type = "transparent"
+rgb = "#AEEFEC"
+
+[[colors]]
+id = 14
+name = "Trans-Dark Blue"
+type = "transparent"
+rgb = "#0020A0"

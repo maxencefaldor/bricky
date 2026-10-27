@@ -29,6 +29,7 @@ class Unresolved:
 
     uid: str
     part: str
+    color: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,7 +64,7 @@ def build_world(model: Model, catalog: Catalog) -> World:
             uid = prefix + element.id
             part = catalog.part(element.part)
             if part is None:
-                unresolved.append(Unresolved(uid, element.part))
+                unresolved.append(Unresolved(uid, element.part, element.color))
                 continue
             pose = parent @ _pose(element.rot, element.pos)
             solids = tuple(box.transformed(pose) for box in part.solids)

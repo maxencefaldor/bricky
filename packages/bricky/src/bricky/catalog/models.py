@@ -6,6 +6,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field
 
 from bricky.geometry import Box, Pose, Vec3
+from bricky.units import STUD
 
 
 class ConnectorKind(StrEnum):
@@ -59,6 +60,14 @@ class PartSpec(BaseModel):
     length: int = Field(ge=1, le=16, description="Studs along the local y axis.")
 
 
+class ColorType(StrEnum):
+    """BrickLink colour types that change how a colour looks."""
+
+    SOLID = "solid"
+    TRANSPARENT = "transparent"
+    PEARL = "pearl"
+
+
 class Color(BaseModel):
     """A colour, identified by its BrickLink colour id."""
 
@@ -66,6 +75,10 @@ class Color(BaseModel):
 
     id: int = Field(ge=0, description="BrickLink colour id.")
     name: str = Field(description="BrickLink colour name.")
+    type: ColorType = Field(default=ColorType.SOLID, description="BrickLink colour type.")
+    rgb: str = Field(
+        pattern=r"^#[0-9A-F]{6}$", description="Display colour for renders, as #RRGGBB."
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,3 +100,8 @@ class Part:
     def stud_count(self) -> int:
         """Number of studs on the part."""
         return sum(1 for c in self.connectors if c.kind is ConnectorKind.STUD)
+
+    @property
+    def footprint(self) -> tuple[int, int]:
+        """Width and length in studs, along the local x and y axes."""
+        return (self.size.x // STUD, self.size.y // STUD)

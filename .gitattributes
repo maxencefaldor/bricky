@@ -1,0 +1,2 @@
+# three.js is vendored unmodified for offline renders; keep it out of language statistics.
+packages/bricky/src/bricky/render/assets/three/** linguist-vendored
