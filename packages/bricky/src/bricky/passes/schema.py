@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from typing import ClassVar
 
 from bricky.analysis import Context
-from bricky.diagnostics import Diagnostic, Region
+from bricky.diagnostics import Code, Diagnostic, Region
 
 
 class SchemaPass:
@@ -12,32 +12,49 @@ class SchemaPass:
 
     name: ClassVar[str] = "schema"
     summary: ClassVar[str] = "Unknown parts and colours, and parts below the ground plane."
+    codes: ClassVar[tuple[Code, ...]] = (
+        Code(
+            code="E101",
+            title="Unknown part",
+            rule="The element's part id is not in the catalog, so it has no geometry and no "
+            "other check can see it. `bricky parts` lists the catalog.",
+        ),
+        Code(
+            code="E102",
+            title="Unknown colour",
+            rule="The element's colour id is not in the catalog. `bricky colors` lists the "
+            "catalog's colours.",
+        ),
+        Code(
+            code="E103",
+            title="Below the ground",
+            rule="Some of the part's body lies below the ground plane, z = 0. The ground plane is "
+            "the table the model stands on.",
+        ),
+    )
 
     def run(self, context: Context) -> Iterator[Diagnostic]:
-        """Return the problems found in the model."""
+        """Return the diagnostics found in the model."""
         for item in context.world.unresolved:
             yield Diagnostic(
                 code="E101",
                 check=self.name,
-                message=f"{item.uid} uses unknown part {item.part!r}",
+                message=f"{item.uid} uses part {item.part!r}, which is not in the catalog",
                 elements=(item.uid,),
-                help="search the catalog with `bricky parts <words>`",
             )
         for placed in context.world.placed:
             if context.catalog.color(placed.color) is None:
                 yield Diagnostic(
                     code="E102",
                     check=self.name,
-                    message=f"{placed.uid} uses unknown colour {placed.color}",
+                    message=f"{placed.uid} uses colour {placed.color}, which is not in the catalog",
                     elements=(placed.uid,),
-                    help="use a BrickLink colour id from the catalog",
                 )
             if placed.bounds.lo.z < 0:
                 yield Diagnostic(
                     code="E103",
                     check=self.name,
-                    message=f"{placed.uid} reaches below the ground",
+                    message=f"{placed.uid} reaches below the ground plane",
                     elements=(placed.uid,),
                     region=Region.of(placed.bounds),
-                    help="raise it so its bottom sits at z = 0 or above",
                 )

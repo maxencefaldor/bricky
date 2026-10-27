@@ -5,6 +5,7 @@ variables and the ``[tool.bricky]`` table of the ``pyproject.toml`` in the worki
 """
 
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Final, override
 
 from pydantic import Field, field_validator
@@ -38,6 +39,18 @@ class Settings(BaseSettings):
 
     profile: str = Field(default="digital", description="Profile used when a command names none.")
     max_diagnostics: int = Field(default=20, ge=1, description="Diagnostics returned per check.")
+    build_timeout: float = Field(
+        default=60.0, gt=0, description="Seconds a build script may run before it is stopped."
+    )
+    output_limit: int = Field(
+        default=20_000,
+        ge=0,
+        description="Characters of a build script's stdout and of its stderr kept in results.",
+    )
+    render_browser: Path | None = Field(
+        default=None,
+        description="Chromium executable for renders; Playwright's own browser when unset.",
+    )
     profiles: dict[str, tuple[str, ...]] = Field(
         default_factory=lambda: dict(DEFAULT_PROFILES),
         description="Named pass lists; entries extend or override the built-in profiles.",

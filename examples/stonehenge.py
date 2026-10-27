@@ -186,15 +186,6 @@ def trilithon(builder: ModelBuilder) -> None:
     component.place("3009", at=(0, 0, BRICK * 5), rot="R90", color=SARSEN, name="lintel")
 
 
-def place_trilithon(builder: ModelBuilder, name: str, corner: Cell, along_y: bool) -> None:
-    """Place the trilithon so its footprint's minimum corner lands on `corner`."""
-    x, y = corner
-    if along_y:  # R90 swings local +x onto +y and local +y onto -x
-        builder.instance("trilithon", at=(x + 1, y, GROUND), rot="R90", name=name)
-    else:
-        builder.instance("trilithon", at=(x, y, GROUND), name=name)
-
-
 def upright(builder: ModelBuilder, name: str, corner: Cell, along_y: bool, bricks: int) -> None:
     for level in range(bricks):
         builder.place(
@@ -208,9 +199,10 @@ def upright(builder: ModelBuilder, name: str, corner: Cell, along_y: bool, brick
 
 def horseshoe(builder: ModelBuilder) -> None:
     trilithon(builder)
-    place_trilithon(builder, "tri51-52", (27, 21), along_y=True)
-    place_trilithon(builder, "tri53-54", (26, 13), along_y=True)
-    place_trilithon(builder, "tri57-58", (13, 13), along_y=True)
+    # Trilithons stand along y on the sides of the horseshoe: turn the component a quarter.
+    builder.instance("trilithon", at=(27, 21, GROUND), rot="R90", name="tri51-52")
+    builder.instance("trilithon", at=(26, 13, GROUND), rot="R90", name="tri53-54")
+    builder.instance("trilithon", at=(13, 13, GROUND), rot="R90", name="tri57-58")
     upright(builder, "stone60", (12, 25), along_y=True, bricks=5)
     builder.place("2456", at=(15, 24, GROUND), color=SARSEN, name="fallen59")
     builder.place("3009", at=(10, 15, GROUND), color=SARSEN, name="lintel160")

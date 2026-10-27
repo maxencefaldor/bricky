@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>bricky render</title>
+<style>
+  html, body { margin: 0; background: #ffffff; }
+  #sheet { position: relative; overflow: hidden; background: #ffffff; }
+  .header {
+    position: absolute; left: 0; top: 0; height: 30px; box-sizing: border-box; padding: 0 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    font: 600 13px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1f2328; border-bottom: 1px solid #d0d7de; white-space: nowrap; overflow: hidden;
+  }
+  .legend { display: flex; gap: 14px; font-weight: 500; color: #59636e; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .panel { position: absolute; box-sizing: border-box; border-right: 1px solid #d0d7de; border-bottom: 1px solid #d0d7de; }
+  .panel canvas, .panel svg { position: absolute; left: 0; top: 0; }
+</style>
+<script type="importmap">
+  { "imports": { "three": "./three/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="sheet"></div>
+<script type="module">
+  import { api } from "./viewer.js";
+  window.bricky = api;
+</script>
+</body>
+</html>

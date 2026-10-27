@@ -1,7 +1,7 @@
 """The ``bricky`` command line.
 
 Each subcommand extends a request model from :mod:`bricky.service` with an output format, so the
-CLI accepts exactly what the MCP tools accept.
+CLI accepts exactly what the MCP tools accept, and prints the same text the MCP tools return.
 """
 
 import json
@@ -19,7 +19,7 @@ from pydantic_settings import (
 )
 
 from bricky import service
-from bricky.diagnostics import render_report
+from bricky.diagnostics import Report, render_report
 from bricky.errors import BrickyError
 from bricky.files import model_schema
 
@@ -34,60 +34,81 @@ class _Output(BaseModel):
         print(result.model_dump_json(indent=2) if self.output_format == "json" else text)
 
 
-class BuildCommand(service.BuildRequest, _Output):
-    """Run a build script, save the model it returns, then check it."""
+def _fail_on_errors(report: Report | None) -> None:
+    if report is not None and not report.ok:
+        raise SystemExit(1)
 
-    def cli_cmd(self) -> None:
+
+class BuildCommand(service.BuildRequest, _Output):
+    """Run a build script, save its model, check it and render it."""
+
+    async def cli_cmd(self) -> None:
         """Run the command."""
-        result = service.build(self)
-        lines = [f"saved {result.output} ({result.elements} elements)"]
-        if result.report is not None:
-            lines.append(render_report(result.report))
-        self.emit(result, "\n\n".join(lines))
-        if result.report is not None and not result.report.ok:
-            raise SystemExit(1)
+        async with service.Session() as session:
+            result = await service.build(self, session)
+        self.emit(result, result.describe())
+        _fail_on_errors(result.report)
 
 
 class CheckCommand(service.CheckRequest, _Output):
     """Check a model file and report diagnostics."""
 
-    def cli_cmd(self) -> None:
+    async def cli_cmd(self) -> None:
         """Run the command."""
-        report = service.check(self)
+        async with service.Session() as session:
+            report = await service.check(self, session)
         self.emit(report, render_report(report))
-        if not report.ok:
-            raise SystemExit(1)
+        _fail_on_errors(report)
+
+
+class RenderCommand(service.RenderRequest, _Output):
+    """Render pictures of a model file."""
+
+    async def cli_cmd(self) -> None:
+        """Run the command."""
+        async with service.Session() as session:
+            result = await service.render(self, session)
+        self.emit(result, result.describe())
 
 
 class PartsCommand(service.PartsRequest, _Output):
     """Search the parts catalog."""
 
-    def cli_cmd(self) -> None:
+    async def cli_cmd(self) -> None:
         """Run the command."""
-        result = service.parts(self)
-        rows = [
-            f"{p.id:<7} {p.name:<24} {p.family:<6} {p.width}x{p.length}  "
-            f"{p.height:g} plates  {p.studs} studs"
-            for p in result.parts
-        ]
-        rows.append(f"{len(result.parts)} of {result.total} matching parts")
-        self.emit(result, "\n".join(rows))
+        async with service.Session() as session:
+            result = await service.parts(self, session)
+        self.emit(result, result.describe())
+
+
+class ColorsCommand(service.ColorsRequest, _Output):
+    """List the catalog's colours."""
+
+    async def cli_cmd(self) -> None:
+        """Run the command."""
+        async with service.Session() as session:
+            result = await service.colors(self, session)
+        self.emit(result, result.describe())
 
 
 class PassesCommand(service.PassesRequest, _Output):
     """List the installed check passes and the profiles that run them."""
 
-    def cli_cmd(self) -> None:
+    async def cli_cmd(self) -> None:
         """Run the command."""
-        result = service.passes(self)
-        installed = {p.name for p in result.installed}
-        rows = [f"{p.name:<14} {p.summary}" for p in result.installed]
-        rows.append("")
-        for name, names in result.profiles.items():
-            marked = ", ".join(n if n in installed else f"{n} (not installed)" for n in names)
-            default = " (default)" if name == result.default_profile else ""
-            rows.append(f"{name}{default}: {marked}")
-        self.emit(result, "\n".join(rows))
+        async with service.Session() as session:
+            result = await service.passes(self, session)
+        self.emit(result, result.describe())
+
+
+class ExplainCommand(service.ExplainRequest, _Output):
+    """Explain diagnostic codes: what each means and the exact rule its pass checks."""
+
+    async def cli_cmd(self) -> None:
+        """Run the command."""
+        async with service.Session() as session:
+            result = await service.explain(self, session)
+        self.emit(result, result.describe())
 
 
 class SchemaCommand(BaseModel):
@@ -99,7 +120,7 @@ class SchemaCommand(BaseModel):
 
 
 class Bricky(BaseSettings):
-    """Check and inspect LEGO® models written as Python build scripts."""
+    """Build, check and render LEGO® models written as Python build scripts."""
 
     model_config = SettingsConfigDict(
         cli_prog_name="bricky",
@@ -110,10 +131,15 @@ class Bricky(BaseSettings):
         cli_enforce_required=True,
     )
 
-    build: CliSubCommand[BuildCommand] = Field(description="Run a build script, save and check it.")
+    build: CliSubCommand[BuildCommand] = Field(
+        description="Run a build script, save, check and render it."
+    )
     check: CliSubCommand[CheckCommand] = Field(description="Check a model file.")
+    render: CliSubCommand[RenderCommand] = Field(description="Render pictures of a model file.")
     parts: CliSubCommand[PartsCommand] = Field(description="Search the parts catalog.")
+    colors: CliSubCommand[ColorsCommand] = Field(description="List the catalog's colours.")
     passes: CliSubCommand[PassesCommand] = Field(description="List installed passes and profiles.")
+    explain: CliSubCommand[ExplainCommand] = Field(description="Explain diagnostic codes.")
     json_schema: CliSubCommand[SchemaCommand] = Field(description="Print the model file schema.")
 
     @classmethod

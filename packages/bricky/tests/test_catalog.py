@@ -1,6 +1,8 @@
+import re
+
 import pytest
 
-from bricky.catalog import ConnectorKind, Family, default_catalog
+from bricky.catalog import ColorType, ConnectorKind, Family, default_catalog
 from bricky.geometry import DOWN, UP, Vec3
 from bricky.units import BRICK, PLATE, STUD
 
@@ -16,6 +18,7 @@ def test_brick_geometry():
     assert brick is not None
     assert brick.name == "Brick 2 x 4"
     assert brick.size == Vec3(2 * STUD, 4 * STUD, BRICK)
+    assert brick.footprint == (2, 4)
     studs = [c for c in brick.connectors if c.kind is ConnectorKind.STUD]
     receptors = [c for c in brick.connectors if c.kind is ConnectorKind.ANTI_STUD]
     assert len(studs) == len(receptors) == 8
@@ -40,9 +43,36 @@ def test_colours_resolve_by_name_or_id():
         catalog.resolve_color("Chartreuse Sparkle")
 
 
+def test_every_colour_has_a_display_colour_and_a_unique_id_and_name():
+    colors = default_catalog().colors
+    assert all(re.fullmatch(r"#[0-9A-F]{6}", c.rgb) for c in colors)
+    assert len({c.id for c in colors}) == len(colors)
+    assert len({c.name.casefold() for c in colors}) == len(colors)
+    transparent = {c.name for c in colors if c.type is ColorType.TRANSPARENT}
+    assert transparent == {c.name for c in colors if c.name.startswith("Trans-")}
+
+
+def test_colour_search_matches_ids_names_and_types():
+    catalog = default_catalog()
+    assert [c.id for c in catalog.search_colors("pearl gold")] == [115]
+    assert {c.name for c in catalog.search_colors("bluish")} == {
+        "Light Bluish Gray",
+        "Dark Bluish Gray",
+    }
+    assert all(c.type is ColorType.TRANSPARENT for c in catalog.search_colors("transparent"))
+
+
 def test_search_matches_every_word_and_both_size_spellings():
     catalog = default_catalog()
     assert [p.id for p in catalog.search("brick 2x4")] == ["3001"]
     assert [p.id for p in catalog.search("brick 2 x 4")] == ["3001"]
     assert {p.family for p in catalog.search("plate")} == {Family.PLATE}
     assert len(catalog.search("tile", limit=3)) == 3
+
+
+def test_find_by_family_and_footprint_in_either_order():
+    catalog = default_catalog()
+    assert [p.id for p in catalog.find(family="plate", size=(6, 1))] == ["3666"]
+    assert [p.id for p in catalog.find(family=Family.BRICK, size=(2, 2))] == ["3003"]
+    assert {p.footprint for p in catalog.find(family="tile")} >= {(1, 1), (2, 2)}
+    assert catalog.find(family="plate", size=(5, 1)) == []

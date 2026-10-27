@@ -14,11 +14,20 @@ from typing import Final
 from pydantic import BaseModel, ConfigDict
 
 from bricky.catalog.families import build_part
-from bricky.catalog.models import Color, Connector, ConnectorKind, Family, Part, PartSpec
+from bricky.catalog.models import (
+    Color,
+    ColorType,
+    Connector,
+    ConnectorKind,
+    Family,
+    Part,
+    PartSpec,
+)
 
 __all__ = [
     "Catalog",
     "Color",
+    "ColorType",
     "Connector",
     "ConnectorKind",
     "Family",
@@ -81,6 +90,38 @@ class Catalog:
             msg = f"unknown colour {value!r}; known colours: {known}"
             raise ValueError(msg)
         return color
+
+    def find(
+        self, *, family: Family | str | None = None, size: tuple[int, int] | None = None
+    ) -> list[Part]:
+        """Return the parts of a family and footprint, in data-file order.
+
+        Args:
+            family: Part family, such as ``"plate"``; any family when omitted.
+            size: Footprint in studs, in either order: ``(1, 6)`` and ``(6, 1)`` both find a
+                1 x 6 part. Any footprint when omitted.
+
+        Example:
+            >>> [p.id for p in default_catalog().find(family="plate", size=(6, 1))]
+            ['3666']
+        """
+        wanted = None if family is None else Family(family)
+        footprint = None if size is None else tuple(sorted(size))
+        return [
+            part
+            for part in self._parts.values()
+            if (wanted is None or part.family is wanted)
+            and (footprint is None or tuple(sorted(part.footprint)) == footprint)
+        ]
+
+    def search_colors(self, query: str = "") -> list[Color]:
+        """Return colours whose id, name or type contain every word of the query."""
+        words = query.casefold().split()
+        return [
+            color
+            for color in self._colors.values()
+            if all(w in f"{color.id} {color.name.casefold()} {color.type}" for w in words)
+        ]
 
     def search(self, query: str, limit: int | None = None) -> list[Part]:
         """Return parts whose id, name, family or size match every word of the query.

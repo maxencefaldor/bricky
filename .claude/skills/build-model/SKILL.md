@@ -1,20 +1,25 @@
 ---
 name: build-model
-description: Design a buildable LEGO model with bricky. Use when asked to build, model or recreate something in bricks, or to fix a bricky build script.
+description: Design a buildable LEGO® model with bricky. Use when asked to build, model or recreate something in bricks, or to fix a bricky build script.
 ---
 
 # Build a model with bricky
 
-Work like a programmer with a compiler: write a build script, build it, read the diagnostics, fix,
-and repeat until the report says `0 errors`.
+Work like a programmer with a compiler and a camera: write a build script, build it, read the
+report and look at the pictures, fix, and repeat. Stop when the report says `0 errors` and the
+pictures show what you meant. The report alone cannot tell you the second part.
 
 ## Loop
 
 1. Plan the footprint and height in studs and plates. One stud is 8 mm, one plate 3.2 mm, and a
    brick is three plates.
-2. Write `models/<name>.py`, defining `build()` that returns a `bricky.ModelBuilder`.
-3. Run `uv run bricky build models/<name>.py`.
-4. Fix every error, then build again. Stop only at `0 errors`.
+2. Write `models/<name>.py` (create `models/` if needed), defining `build()` that returns a
+   `bricky.ModelBuilder`. The scripts in `examples/` show the style.
+3. Run `uv run bricky build models/<name>.py`. It runs the script, saves the model, checks it and
+   renders it.
+4. Read the report, then open the image it names (`models/<name>.png`): iso, front, right and top
+   views, with rulers in studs and plates. Parts that diagnostics name are tinted red and labelled.
+5. Fix the script and build again.
 
 ## Writing the script
 
@@ -29,21 +34,36 @@ def build() -> ModelBuilder:
 ```
 
 - `at=(x, y, z)`: x east and y north in studs, z up in plates. It is the minimum corner of the
-  part's rotated bounding box.
+  rotated bounding box of what you place, a part or a whole component.
 - `rot`: `R0`, `R90`, `R180` or `R270` about the vertical axis.
 - Use loops and functions for anything that repeats. Use `builder.component(...)` with
   `builder.instance(...)` for identical groups.
-- Find parts with `uv run bricky parts "plate 2x4"`. Colours use BrickLink names, such as
-  `Dark Bluish Gray`.
+- Find parts with `uv run bricky parts "plate 2x4"`, or from Python with
+  `builder.catalog.find(family="plate", size=(1, 6))`. List colours with
+  `uv run bricky colors gray`; names follow BrickLink, such as `Dark Bluish Gray`.
+- Give important parts a `name=`; the report and the pictures label parts by name.
+- `print()` freely: the build shows what the script printed.
+
+## Reading the feedback
+
+- Every diagnostic names its elements, what they are and the script line that placed them. The
+  `by source line` summary says which lines to look at first.
+- `uv run bricky explain E301` gives the exact rule behind a code.
+- Read positions off the orthographic views: their rulers use the same units as `at`.
+- Look closer with `uv run bricky render models/<name>.bricky.json`, which writes
+  `models/<name>.<view>.png` and leaves the build's picture alone:
+  - `--views front --views top` for single, larger views.
+  - `--highlight "lintel*"` or `--highlight @horseshoe` (a function of your script) to see what
+    those parts are; everything else is drawn faintly.
+  - `--clip "z<120"` (plates) or `--clip "x<10"` (studs) to cut the model open and look inside.
+  - `--html` to write a viewer you can orbit in a browser.
+
+## Building well
+
+This advice is yours to weigh; bricky only reports facts.
+
 - Stagger joints between layers, like a brick wall, so every brick bridges the ones below it.
-
-## Fixing diagnostics
-
-| Code | Meaning | Usual fix |
-| --- | --- | --- |
-| E101 | Unknown part | Search with `bricky parts` and use a listed id |
-| E102 | Unknown colour | Use a colour name from the catalog |
-| E103 | Below the ground | Raise the part so its bottom is at z = 0 or above |
-| E201 | Parts overlap | Move one part, or remove it |
-| E202 | Studs blocked | Align the upper part to whole studs, or move it clear |
-| E301 | Floating group | Connect it to the structure below, or rest it on the ground |
+- Overhanging parts must reach back over something that holds them: E301 reports anything that is
+  not connected to the ground through studs.
+- Compare the pictures with the subject: proportions, silhouette from each side, colours. A model
+  with no errors can still look wrong.

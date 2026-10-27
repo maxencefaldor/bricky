@@ -1,35 +1,46 @@
 """MCP server exposing bricky's commands to any agent harness.
 
 Every tool is generated from a request model in :mod:`bricky.service`, so tool arguments, defaults
-and descriptions match the ``bricky`` command line exactly. Tools are async and hand the work to
-:func:`asyncio.to_thread`, so the server stays responsive while a model is checked.
+and descriptions match the ``bricky`` command line exactly. Each tool answers with the same text
+the CLI prints, the result as structured content, and, for builds and renders, the pictures
+themselves, so the agent sees the model without another call.
+
+The server holds one :class:`bricky.service.Session` for its lifetime, which keeps the render
+browser warm between calls. Build scripts never run inside the server: the service starts each one
+in a process of its own, so nothing a script prints can reach the protocol stream.
 """
 
-import asyncio
+import base64
 import copy
 import inspect
-from collections.abc import Awaitable, Callable
-from typing import Final
+from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Annotated, Final, Protocol, runtime_checkable
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from mcp.types import ToolAnnotations
+from mcp.types import CallToolResult, ContentBlock, ImageContent, TextContent, ToolAnnotations
 from pydantic import BaseModel
 
 from bricky import service
-from bricky.diagnostics import Report
+from bricky.diagnostics import Report, render_report
 from bricky.errors import BrickyError
 
 INSTRUCTIONS: Final = """\
-bricky checks LEGO models that you write as Python build scripts.
+bricky builds, checks and renders LEGO® models that you write as Python build scripts.
 
-Workflow: write a script that defines build() and returns a bricky.ModelBuilder, call build_model
-on it, read the diagnostics, fix the script, and repeat until the report is ok.
+Workflow: write a script that defines build() and returns a bricky.ModelBuilder, then call
+build_model on it. It answers with diagnostics (each names the script line that placed the part)
+and a picture of the model: iso, front, right and top views, with rulers in studs and plates. Read
+both, fix the script, and repeat until the report has no errors and the pictures show what you
+meant. Use render_model to look closer: highlight parts by id or by script function, cut the model
+open, or choose other views.
 
 Coordinates: x points east and y north, both in studs; z points up, in plates (a brick is 3
-plates). In ModelBuilder.place, `at` is the minimum corner of the part's rotated bounding box.
-Rotations are 'R0', 'R90', 'R180' and 'R270' about the vertical axis. Use search_parts to find
-part ids, such as '3001' for Brick 2 x 4.
+plates). `at` is the minimum corner of the rotated bounding box of whatever you place, a part or a
+component. Rotations are 'R0', 'R90', 'R180' and 'R270' about the vertical axis. Use search_parts
+and list_colors to find ids, and explain_code for the exact rule behind a diagnostic.
 """
 
 READ_ONLY: Final = ToolAnnotations(read_only_hint=True, open_world_hint=False)
@@ -38,16 +49,48 @@ WRITES_FILES: Final = ToolAnnotations(
 )
 
 
+@runtime_checkable
+class Described(Protocol):
+    """A result that renders itself as text for people and agents."""
+
+    def describe(self) -> str:
+        """Return the result as text."""
+        ...
+
+
+def _text(result: BaseModel) -> str:
+    if isinstance(result, Report):
+        return render_report(result)
+    if isinstance(result, Described):
+        return result.describe()
+    return result.model_dump_json(indent=2)
+
+
+def _images(result: BaseModel) -> list[ContentBlock]:
+    images: Sequence[service.Image] = getattr(result, "images", ())
+    return [
+        ImageContent(
+            type="image",
+            data=base64.b64encode(Path(image.path).read_bytes()).decode("ascii"),
+            mime_type="image/png",
+        )
+        for image in images
+    ]
+
+
 def tool_from[Req: BaseModel, Res: BaseModel](
     name: str,
     request_type: type[Req],
-    handler: Callable[[Req], Res],
+    handler: Callable[[Req, service.Session], Awaitable[Res]],
     result_type: type[Res],
-) -> Callable[..., Awaitable[Res]]:
+    session: service.Session,
+) -> Callable[..., Awaitable[CallToolResult]]:
     """Build an async tool whose parameters are exactly the request model's fields.
 
     Each parameter's default is a copy of the request field's ``FieldInfo``, so the tool schema
-    carries the same descriptions, defaults and constraints as the request model.
+    carries the same descriptions, defaults and constraints as the request model. The tool returns
+    the result's text and any rendered images as content, and the result itself as structured
+    content, validated against ``result_type``.
     """
     parameters = [
         inspect.Parameter(
@@ -59,41 +102,65 @@ def tool_from[Req: BaseModel, Res: BaseModel](
         for field, info in request_type.model_fields.items()
     ]
 
-    async def tool(**arguments: object) -> Res:
+    async def tool(**arguments: object) -> CallToolResult:
         try:
             request = request_type.model_validate(arguments)
-            return await asyncio.to_thread(handler, request)
+            result = await handler(request, session)
         except BrickyError as error:
             raise ToolError(str(error)) from error
+        content: list[ContentBlock] = [TextContent(type="text", text=_text(result))]
+        content.extend(_images(result))
+        return CallToolResult(content=content, structured_content=result.model_dump(mode="json"))
 
-    tool.__signature__ = inspect.Signature(parameters, return_annotation=result_type)  # ty: ignore[unresolved-attribute]
+    tool.__signature__ = inspect.Signature(  # ty: ignore[unresolved-attribute]
+        parameters, return_annotation=Annotated[CallToolResult, result_type]
+    )
     tool.__name__ = name
     tool.__doc__ = request_type.__doc__
     return tool
 
 
-def create_server() -> MCPServer:
-    """Create the bricky MCP server with all its tools."""
-    server = MCPServer("bricky", instructions=INSTRUCTIONS)
-    server.add_tool(
-        tool_from("build_model", service.BuildRequest, service.build, service.BuildResult),
-        annotations=WRITES_FILES,
-        structured_output=True,
+def create_server(session: service.Session | None = None) -> MCPServer:
+    """Create the bricky MCP server with all its tools.
+
+    Args:
+        session: Session shared by every tool call; a new one, closed with the server, by default.
+    """
+    shared = session or service.Session()
+
+    @asynccontextmanager
+    async def lifespan(_: MCPServer) -> AsyncGenerator[None]:
+        try:
+            yield
+        finally:
+            if session is None:
+                await shared.close()
+
+    server = MCPServer("bricky", instructions=INSTRUCTIONS, lifespan=lifespan)
+
+    def register[Req: BaseModel, Res: BaseModel](
+        name: str,
+        request_type: type[Req],
+        handler: Callable[[Req, service.Session], Awaitable[Res]],
+        result_type: type[Res],
+        annotations: ToolAnnotations,
+    ) -> None:
+        server.add_tool(
+            tool_from(name, request_type, handler, result_type, shared),
+            annotations=annotations,
+            structured_output=True,
+        )
+
+    register("build_model", service.BuildRequest, service.build, service.BuildResult, WRITES_FILES)
+    register(
+        "render_model", service.RenderRequest, service.render, service.RenderResult, WRITES_FILES
     )
-    server.add_tool(
-        tool_from("check_model", service.CheckRequest, service.check, Report),
-        annotations=READ_ONLY,
-        structured_output=True,
-    )
-    server.add_tool(
-        tool_from("search_parts", service.PartsRequest, service.parts, service.PartsResult),
-        annotations=READ_ONLY,
-        structured_output=True,
-    )
-    server.add_tool(
-        tool_from("list_passes", service.PassesRequest, service.passes, service.PassesResult),
-        annotations=READ_ONLY,
-        structured_output=True,
+    register("check_model", service.CheckRequest, service.check, Report, READ_ONLY)
+    register("search_parts", service.PartsRequest, service.parts, service.PartsResult, READ_ONLY)
+    register("list_colors", service.ColorsRequest, service.colors, service.ColorsResult, READ_ONLY)
+    register("list_passes", service.PassesRequest, service.passes, service.PassesResult, READ_ONLY)
+    register(
+        "explain_code", service.ExplainRequest, service.explain, service.ExplainResult, READ_ONLY
     )
     return server
 

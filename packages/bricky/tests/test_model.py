@@ -1,11 +1,13 @@
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from pydantic import ValidationError
 
 from bricky import Component, Element, Instance, Model, ModelBuilder, load_model, save_model
 from bricky.analysis import build_world
 from bricky.catalog import default_catalog
-from bricky.geometry import Box, Vec3
-from bricky.units import STUD
+from bricky.geometry import ROTATIONS, Box, Vec3
+from bricky.units import PLATE, STUD
 
 
 def world_bounds(model: Model) -> list[Box]:
@@ -87,3 +89,74 @@ def test_files_round_trip(tmp_path):
     path = tmp_path / "m.bricky.json"
     save_model(model, path)
     assert load_model(path) == model
+
+
+@settings(max_examples=60)
+@given(
+    rot=st.sampled_from([rotation.name for rotation in ROTATIONS]),
+    x=st.integers(-8, 30),
+    y=st.integers(-8, 30),
+    z=st.integers(0, 30),
+)
+def test_instances_put_the_rotated_corner_at_the_given_point(rot, x, y, z):
+    builder = ModelBuilder()
+    column = builder.component("column")
+    column.place("3001", at=(0, 0, 0), color="Red")
+    column.place("3003", at=(0, 4, 3), color="Red")
+    builder.instance("column", at=(x, y, z), rot=rot)
+    bounds = Box.bounding(world_bounds(builder.build()))
+    assert bounds.lo == Vec3(x * STUD, y * STUD, z * PLATE)
+
+
+def test_parts_and_components_turn_the_same_way():
+    one = ModelBuilder()
+    one.place("3001", at=(3, 5, 0), rot="R90", color="Red")
+    two = ModelBuilder()
+    two.component("brick").place("3001", at=(0, 0, 0), color="Red")
+    two.instance("brick", at=(3, 5, 0), rot="R90")
+    assert world_bounds(one.build()) == world_bounds(two.build())
+
+
+def test_components_may_be_filled_after_their_instances_are_placed():
+    builder = ModelBuilder()
+    builder.instance("late", at=(2, 0, 0), rot="R180")
+    builder.component("late").place("3010", at=(0, 0, 0), color="Tan")
+    (bounds,) = world_bounds(builder.build())
+    assert bounds.lo == Vec3(2 * STUD, 0, 0)
+
+
+def test_nested_components_follow_the_same_corner_rule():
+    builder = ModelBuilder()
+    builder.component("brick").place("3001", at=(0, 0, 0), color="Red")
+    pair = builder.component("pair")
+    pair.instance("brick", at=(0, 0, 0))
+    pair.instance("brick", at=(0, 4, 0))
+    builder.instance("pair", at=(10, 10, 0), rot="R90")
+    bounds = Box.bounding(world_bounds(builder.build()))
+    assert bounds == Box(Vec3(10 * STUD, 10 * STUD, 0), Vec3(18 * STUD, 12 * STUD, 3 * PLATE))
+
+
+def test_unknown_empty_and_cyclic_components_fail_when_built():
+    unknown = ModelBuilder()
+    unknown.instance("nope", at=(0, 0, 0))
+    with pytest.raises(ValueError, match="unknown component 'nope'"):
+        unknown.build()
+    empty = ModelBuilder()
+    empty.component("void")
+    empty.instance("void", at=(0, 0, 0))
+    with pytest.raises(ValueError, match="'void' is empty"):
+        empty.build()
+    cyclic = ModelBuilder()
+    cyclic.component("a").instance("b", at=(0, 0, 0))
+    cyclic.component("b").instance("a", at=(0, 0, 0))
+    with pytest.raises(ValueError, match="cycle: a -> b -> a"):
+        cyclic.build()
+
+
+def test_invalid_names_are_rejected_without_using_up_the_id():
+    builder = ModelBuilder()
+    with pytest.raises(ValueError, match="pattern"):
+        builder.place("3001", at=(0, 0, 0), color="Red", name="two words")
+    with pytest.raises(ValueError, match="unknown colour"):
+        builder.place("3001", at=(0, 0, 0), color="Mauve", name="first")
+    assert builder.place("3001", at=(0, 0, 0), color="Red", name="first") == "first"

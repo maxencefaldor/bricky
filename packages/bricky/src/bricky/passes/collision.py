@@ -6,7 +6,7 @@ from typing import ClassVar
 
 from bricky.analysis import Context
 from bricky.catalog import Connector, ConnectorKind
-from bricky.diagnostics import Diagnostic, Region
+from bricky.diagnostics import Code, Diagnostic, Region
 from bricky.geometry import Box, Vec3
 from bricky.units import STUD_DIAMETER, STUD_HEIGHT
 
@@ -32,6 +32,23 @@ class CollisionPass:
 
     name: ClassVar[str] = "collision"
     summary: ClassVar[str] = "Parts sharing space, and studs blocked by parts with no receptor."
+    codes: ClassVar[tuple[Code, ...]] = (
+        Code(
+            code="E201",
+            title="Overlap",
+            rule="The solid bodies of two parts share positive volume. Faces that only touch do "
+            "not count, and studs are not part of the body (see E202). Each overlapping pair is "
+            "reported once, with the box they share.",
+        ),
+        Code(
+            code="E202",
+            title="Blocked stud",
+            rule="A stud stands inside another part's body where that part has no receptor "
+            "facing it at the same position, so the two parts cannot sit where they are. Studs "
+            "are 1.6 mm tall and 4.8 mm wide. Each pair of parts is reported once, with how "
+            "many studs are blocked and the box they span.",
+        ),
+    )
 
     def run(self, context: Context) -> Iterator[Diagnostic]:
         """Return the problems found in the model."""
@@ -53,7 +70,6 @@ class CollisionPass:
                         message=f"{a.uid} and {b.uid} occupy the same space",
                         elements=(a.uid, b.uid),
                         region=Region.of(shared),
-                        help="move one of them, or remove it",
                     )
 
     def _blocked_studs(self, context: Context) -> Iterator[Diagnostic]:
@@ -84,5 +100,4 @@ class CollisionPass:
                 message=f"{studs} of {a.uid} push into {b.uid}, which has no receptor there",
                 elements=(a.uid, b.uid),
                 region=Region.of(regions[i, j]),
-                help=f"line {b.uid} up with the stud grid of {a.uid}, or move it clear",
             )
