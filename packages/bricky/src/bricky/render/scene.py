@@ -60,6 +60,8 @@ class Flag(IntFlag):
     GHOST = 2
     ERROR = 4
     WARNING = 8
+    CHANGED = 16
+    """New or changed since the last build."""
 
 
 _AXIS_CODES: Final = {vector: i for i, vector in enumerate(AXES.values())}
@@ -178,6 +180,7 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
     report: Report | None = None,
     highlight: Sequence[str] = (),
     clips: Sequence[Clip] = (),
+    changed: Sequence[str] = (),
     cull: bool = True,
 ) -> Scene:
     """Resolve a model into the scene a render draws.
@@ -192,6 +195,7 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
             name, a file or a file and line of the build script, such as ``"@horseshoe"`` or
             ``"@stonehenge.py:142"``.
         clips: Planes that cut the model, to look inside it.
+        changed: Uids of parts that are new or changed since the last build, to mark.
         cull: Leave out faces pressed against opaque neighbours. Turn it off for viewers that
             cut the model interactively, where buried faces can come into view.
 
@@ -209,6 +213,11 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
     marks: list[Mark] = []
     if report is not None:
         _mark_diagnostics(report, placed, flags, labels, marks)
+    if changed:
+        new = set(changed)
+        for i, p in enumerate(placed):
+            if p.uid in new:
+                flags[i] |= Flag.CHANGED
     if highlight:
         chosen = _select(model, [p.uid for p in placed], provenance, highlight)
         _highlight(chosen, placed, flags, labels)

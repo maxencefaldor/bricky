@@ -58,6 +58,10 @@ def build() -> ModelBuilder:
 
 - Every diagnostic names its elements, what they are and the script line that placed them. The
   `by source line` summary says which lines to look at first.
+- From the second build on, `since the last build` counts the elements added, removed, changed
+  (same id and part, moved, turned or recoloured) and unchanged, by script line, and the cells
+  filled, emptied and recoloured. The picture outlines new and changed parts in purple. Check
+  that an edit changed what you meant, and nothing else.
 - `uv run bricky explain E301` gives the exact rule behind a code.
 - Read positions off the orthographic views: their rulers use the same units as `at`.
 - Look closer with `uv run bricky render models/<name>.bricky.json`, which writes

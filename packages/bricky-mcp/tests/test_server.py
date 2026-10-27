@@ -89,8 +89,18 @@ def test_build_model_returns_the_report_and_the_picture(tmp_path: Path):
     assert image.mime_type == "image/png"
     data = result.structured_content
     assert data["output"]["stdout"] == "chatter on stdout\n"
+    assert data["changes"] is None
     assert data["report"]["errors"] == 1
     assert data["images"][0]["view"] == "front"
+    script.write_text(SCRIPT.replace("at=(5, 5, 5)", "at=(0, 0, 3)"))
+    again = call("build_model", {"script": str(script), "render": False})
+    assert "since the last build: 0 added, 0 removed, 1 changed, 1 unchanged" in (
+        again.content[0].text
+    )
+    assert again.structured_content["changes"]["changed_at"] == [
+        {"line": f"{script}:9 in build()", "elements": 1}
+    ]
+    assert again.structured_content["report"]["errors"] == 0
 
 
 def test_render_model_returns_one_picture_per_view(tmp_path: Path):

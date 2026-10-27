@@ -79,6 +79,11 @@ def build() -> ModelBuilder:
 - **The model** (`script.bricky.json`) and its **source map** (`script.bricky.map.json`), which
   records the script lines that placed each element. The map is tied to the model's exact bytes,
   so a stale map is ignored rather than trusted.
+- **What changed since the last build**: elements added, removed, changed and unchanged, by the
+  script line that placed them, and cells filled, emptied and recoloured. Elements match by part,
+  colour and the space they take, so renumbered elements count as unchanged; an element that kept
+  its id and part but moved, turned or changed colour counts as changed. The picture outlines
+  what is new or changed, so an edit that did more, or less, than intended shows at once.
 - **The report**: each diagnostic states a fact (what, where, which elements) and each element
   carries its part, colour and script line. A `by source line` summary says where to look first.
 - **The picture** (`script.png`): iso, front, right and top views. The orthographic views carry

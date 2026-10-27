@@ -75,6 +75,35 @@ def test_build_shows_what_the_script_printed(tmp_path, capsys):
     assert "script output:\n  hello from the script" in capsys.readouterr().out
 
 
+def test_building_again_says_what_changed_and_where(tmp_path, capsys):
+    script = tmp_path / "tower.py"
+    script.write_text(TOWER)
+    assert run("build", str(script), "--no-render") == 0
+    assert "since the last build" not in capsys.readouterr().out
+    assert run("build", str(script), "--no-render") == 0
+    assert "since the last build: no changes (2 elements)" in capsys.readouterr().out
+    script.write_text(
+        TOWER.replace('color="White"', 'color="Blue"').replace(
+            "    return builder",
+            '    builder.place("3001", at=(0, 0, 6), color="Red")\n    return builder',
+        )
+    )
+    assert run("build", str(script), "--no-render", "--output-format", "json") == 0
+    changes = json.loads(capsys.readouterr().out)["changes"]
+    assert (changes["added"], changes["removed"], changes["changed"]) == (1, 0, 1)
+    assert changes["cells_filled"] == changes["cells_recoloured"] == 2 * 4 * 3
+    assert changes["added_at"] == [{"line": f"{script}:9 in build()", "elements": 1}]
+    # Taking out the first brick renumbers the others, which are still unchanged.
+    edited = script.read_text().replace(
+        '    builder.place("3001", at=(0, 0, 0), color="Red")\n', ""
+    )
+    script.write_text(edited)
+    assert run("build", str(script), "--no-render") == 1  # the rest now floats
+    out = capsys.readouterr().out
+    assert "since the last build: 0 added, 1 removed, 0 changed, 2 unchanged" in out
+    assert f"removed from the earlier script at:\n    {script}:7 in build(): 1 element" in out
+
+
 def test_build_reports_script_failures_with_line_numbers(tmp_path, capsys):
     script = tmp_path / "bad.py"
     script.write_text("def build():\n    return 1 / 0\n")

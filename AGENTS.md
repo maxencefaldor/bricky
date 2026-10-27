@@ -30,7 +30,8 @@ layers above it in this list:
    curves drawn as exact facets.
 4. `model`, `provenance`, `builder`, `files`: the canonical model format, the script lines that
    placed each element, how to write models, and their files and source maps.
-5. `analysis`: derived data (world geometry, spatial index, links), cached in `Context`.
+5. `analysis`: derived data (world geometry, spatial index, links, cells), cached in `Context`,
+   and the differences between two builds.
 6. `passes`, `diagnostics`, `check`: plugin passes and the reports they produce.
 7. `render`: scenes resolved from a model, drawn with three.js in headless Chromium.
 8. `runner`, `service`: build scripts in child processes, and every command defined once.

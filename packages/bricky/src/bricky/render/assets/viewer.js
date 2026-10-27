@@ -12,9 +12,9 @@ import * as THREE from "three";
 const MM = 0.4;
 const STUD = 20;
 const PLATE = 8;
-const FLAG = { HIGHLIGHT: 1, GHOST: 2, ERROR: 4, WARNING: 8 };
+const FLAG = { HIGHLIGHT: 1, GHOST: 2, ERROR: 4, WARNING: 8, CHANGED: 16 };
 const AXES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
-const INK = { error: "#cf222e", warning: "#b35900", highlight: "#0969da", text: "#1f2328", quiet: "#59636e" };
+const INK = { error: "#cf222e", warning: "#b35900", highlight: "#0969da", changed: "#8250df", text: "#1f2328", quiet: "#59636e" };
 const PAPER = "#f6f7f9";
 const HEADER = 30;
 const MARGIN = { left: 60, right: 16, top: 34, bottom: 44 };
@@ -133,11 +133,13 @@ export function buildModel(scene) {
     plain: new THREE.LineBasicMaterial({ color: 0x14181d, transparent: true, opacity: 0.35, clippingPlanes: planes }),
     ghost: new THREE.LineBasicMaterial({ color: 0x8c959f, transparent: true, opacity: 0.12, depthWrite: false, clippingPlanes: planes }),
     highlight: new THREE.LineBasicMaterial({ color: INK.highlight, transparent: true, opacity: 0.95, clippingPlanes: planes }),
+    changed: new THREE.LineBasicMaterial({ color: INK.changed, transparent: true, opacity: 0.95, clippingPlanes: planes }),
     error: new THREE.LineBasicMaterial({ color: INK.error, transparent: true, opacity: 0.95, depthTest: false, clippingPlanes: planes }),
     warning: new THREE.LineBasicMaterial({ color: INK.warning, transparent: true, opacity: 0.95, depthTest: false, clippingPlanes: planes }),
   };
   const lines = [
-    [outline((f) => !(f & (FLAG.GHOST | FLAG.ERROR | FLAG.WARNING | FLAG.HIGHLIGHT))), edgeMaterials.plain, 1],
+    [outline((f) => !(f & (FLAG.GHOST | FLAG.ERROR | FLAG.WARNING | FLAG.HIGHLIGHT | FLAG.CHANGED))), edgeMaterials.plain, 1],
+    [outline((f) => f & FLAG.CHANGED && !(f & (FLAG.GHOST | FLAG.ERROR | FLAG.WARNING | FLAG.HIGHLIGHT))), edgeMaterials.changed, 2],
     [outline((f) => f & FLAG.GHOST), edgeMaterials.ghost, 3],
     [outline((f) => f & FLAG.HIGHLIGHT && !(f & (FLAG.ERROR | FLAG.WARNING))), edgeMaterials.highlight, 4],
     [outline((f) => f & FLAG.WARNING && !(f & FLAG.ERROR)), edgeMaterials.warning, 5],
@@ -590,6 +592,7 @@ function header(scene, width) {
   if (flags & FLAG.ERROR) keys.push(["error", "error"]);
   if (flags & FLAG.WARNING) keys.push(["warning", "warning"]);
   if (flags & FLAG.HIGHLIGHT) keys.push(["highlight", "highlighted"]);
+  if (flags & FLAG.CHANGED) keys.push(["changed", "new or changed since the last build"]);
   if (scene.clips.length) keys.push([null, `cut: ${scene.clips.map(describeClip).join(", ")}`]);
   for (const [kind, label] of keys) {
     const item = document.createElement("span");
