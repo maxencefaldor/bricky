@@ -9,9 +9,9 @@ model itself; that stays the agent's job.
 
 ![The Elizabeth Tower example: iso, front, right and top views with rulers](docs/images/elizabeth-tower.png)
 
-> Status: v0.2. Exact-geometry kernel, a starter catalog of 30 classic parts and 40 colours, the
-> digital checks, provenance from script lines, renders, the `bricky` command line and an MCP
-> server. Slopes and other part families, targets and physics come next.
+> Status: v0.2. Exact-geometry kernel, 112 parts in eleven families and 40 colours, the digital
+> checks, provenance from script lines, renders, the `bricky` command line, an MCP server and a
+> benchmark. The full BrickLink catalog and physics come next.
 
 ## Quick start
 
@@ -61,9 +61,15 @@ def build() -> ModelBuilder:
   `builder.instance("column", at=...)` places copies.
 - **Parts and colours:** ids follow the BrickLink catalog, such as `3001` and `Dark Bluish Gray`.
   Scripts can query the catalog: `builder.catalog.find(family="plate", size=(1, 6))`.
+- **Families:** bricks, plates, tiles and baseplates; slopes, inverted and curved slopes; round
+  parts; bricks with studs on their sides; jumpers; arches. `bricky parts` says which way a part
+  faces when unturned, such as a slope falling toward -y. Shapes are exact: curves are flat facets
+  with corners on the grid, and studs on a side connect to parts turned to face them.
 - **Cells:** `cells(builder.build())` says which part and colour fill every cell, a cell being one
   stud square and one plate tall, keyed `(x, y, z)` in the units of `at`. Comparing a model with a
   target, a plan or another model, takes a few exact lines.
+
+![The cottage example: slopes, an arch, round parts, a tile on a side stud and a jumper](docs/images/cottage.png)
 
 ## The feedback loop
 

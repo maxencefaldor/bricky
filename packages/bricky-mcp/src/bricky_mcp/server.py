@@ -39,8 +39,12 @@ open, or choose other views.
 
 Coordinates: x points east and y north, both in studs; z points up, in plates (a brick is 3
 plates). `at` is the minimum corner of the rotated bounding box of whatever you place, a part or a
-component. Rotations are 'R0', 'R90', 'R180' and 'R270' about the vertical axis. Use search_parts
-and list_colors to find ids, and explain_code for the exact rule behind a diagnostic.
+component. Rotations are 'R0', 'R90', 'R180' and 'R270' about the vertical axis; any of the 24 grid
+rotations can be named by where the part's x and y axes go, such as '+x+z' to stand a part up
+facing -y. Use search_parts and list_colors to find ids: search_parts also says which way a part
+faces when unturned, such as a slope falling toward -y. explain_code gives the exact rule behind a
+diagnostic, and bricky.cells(model) in a script gives the cells a model fills, to compare with a
+target.
 """
 
 READ_ONLY: Final = ToolAnnotations(read_only_hint=True, open_world_hint=False)

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from functools import cache
 
 from bricky.catalog import Catalog, Connector, Part
-from bricky.geometry import Box, Pose, Rotation, Vec3
+from bricky.geometry import Box, Pose, Rotation, Solid, Vec3
 from bricky.model import Element, Instance, Model
 
 
@@ -18,7 +18,7 @@ class Placed:
     part: Part
     color: int
     pose: Pose
-    solids: tuple[Box, ...]
+    solids: tuple[Solid, ...]
     connectors: tuple[Connector, ...]
     bounds: Box
 
@@ -67,7 +67,7 @@ def build_world(model: Model, catalog: Catalog) -> World:
                 unresolved.append(Unresolved(uid, element.part, element.color))
                 continue
             pose = parent @ _pose(element.rot, element.pos)
-            solids = tuple(box.transformed(pose) for box in part.solids)
+            solids = tuple(solid.transformed(pose) for solid in part.solids)
             placed.append(
                 Placed(
                     uid=uid,
@@ -76,7 +76,7 @@ def build_world(model: Model, catalog: Catalog) -> World:
                     pose=pose,
                     solids=solids,
                     connectors=tuple(c.transformed(pose) for c in part.connectors),
-                    bounds=Box.bounding(solids),
+                    bounds=Box.bounding(solid.bounds for solid in solids),
                 )
             )
         for instance in instances:

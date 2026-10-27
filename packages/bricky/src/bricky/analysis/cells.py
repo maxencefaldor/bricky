@@ -11,7 +11,7 @@ from typing import Final
 
 from bricky.analysis.world import World, build_world
 from bricky.catalog import Catalog, default_catalog
-from bricky.geometry import Box, Vec3
+from bricky.geometry import Solid, Vec3
 from bricky.model import Model
 from bricky.units import PLATE, STUD
 
@@ -63,8 +63,8 @@ def model_cells(model: Model, catalog: Catalog | None = None) -> dict[CellKey, C
     return world_cells(build_world(model, catalog or default_catalog()))
 
 
-def _candidates(solid: Box) -> list[CellKey]:
-    lo, hi = solid.lo, solid.hi
+def _candidates(solid: Solid) -> list[CellKey]:
+    lo, hi = solid.bounds.lo, solid.bounds.hi
     return [
         (x, y, z)
         for x in range(lo.x // STUD, -(-hi.x // STUD))

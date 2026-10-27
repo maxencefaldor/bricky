@@ -1,15 +1,16 @@
 import re
 
 import pytest
+from pydantic import ValidationError
 
-from bricky.catalog import ColorType, ConnectorKind, Family, default_catalog
+from bricky.catalog import Catalog, ColorType, ConnectorKind, Family, default_catalog
 from bricky.geometry import DOWN, UP, Vec3
 from bricky.units import BRICK, PLATE, STUD
 
 
-def test_default_catalog_loads():
+def test_default_catalog_loads_every_family():
     catalog = default_catalog()
-    assert len(catalog.parts) == 30
+    assert len(catalog.parts) > 100
     assert {part.family for part in catalog.parts} == set(Family)
 
 
@@ -64,9 +65,14 @@ def test_colour_search_matches_ids_names_and_types():
 
 def test_search_matches_every_word_and_both_size_spellings():
     catalog = default_catalog()
-    assert [p.id for p in catalog.search("brick 2x4")] == ["3001"]
-    assert [p.id for p in catalog.search("brick 2 x 4")] == ["3001"]
-    assert {p.family for p in catalog.search("plate")} == {Family.PLATE}
+    assert [p.id for p in catalog.search("brick 2x4")] == ["3001", "30145"]
+    assert [p.id for p in catalog.search("brick 2 x 4")] == ["3001", "30145"]
+    assert {p.family for p in catalog.search("plate 2x2")} == {
+        Family.PLATE,
+        Family.ROUND,
+        Family.JUMPER,
+    }
+    assert [p.id for p in catalog.search("slope 45 2x2")] == ["3039", "3660"]
     assert len(catalog.search("tile", limit=3)) == 3
 
 
@@ -74,5 +80,12 @@ def test_find_by_family_and_footprint_in_either_order():
     catalog = default_catalog()
     assert [p.id for p in catalog.find(family="plate", size=(6, 1))] == ["3666"]
     assert [p.id for p in catalog.find(family=Family.BRICK, size=(2, 2))] == ["3003"]
+    assert [p.id for p in catalog.find(family="slope", size=(2, 2))] == ["3039", "3678b", "3684"]
     assert {p.footprint for p in catalog.find(family="tile")} >= {(1, 1), (2, 2)}
     assert catalog.find(family="plate", size=(5, 1)) == []
+
+
+def test_repeated_ids_are_rejected():
+    part = {"id": "3005", "name": "Brick 1 x 1", "family": "brick", "size": [1, 1]}
+    with pytest.raises(ValidationError, match="repeated part id: 3005"):
+        Catalog.from_data({"parts": [part, part]})

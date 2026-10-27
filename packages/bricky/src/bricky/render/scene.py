@@ -1,14 +1,18 @@
-"""What a render draws: a model resolved into boxes, studs, colours and marks.
+"""What a render draws: a model resolved into boxes, shapes, studs, colours and marks.
 
 A scene is plain data in base units (0.4 mm), shaped as compact arrays so a large model crosses into
-the browser quickly. Building one is pure Python; :mod:`bricky.render.browser` draws it.
+the browser quickly. Parts made only of boxes are drawn as boxes; parts with other solids, such as
+slopes and round parts, are drawn as shapes: corners, faces and the edges worth outlining. Building
+a scene is pure Python; :mod:`bricky.render.browser` draws it.
 """
 
 import fnmatch
 import re
+from collections import Counter
 from collections.abc import Callable, Iterator, Sequence
 from enum import IntFlag, StrEnum
 from itertools import pairwise
+from math import sqrt
 from typing import Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -18,7 +22,7 @@ from bricky.analysis.links import receptor_index
 from bricky.catalog import Catalog, ColorType, ConnectorKind
 from bricky.diagnostics import Region, Report, Severity
 from bricky.errors import BrickyError
-from bricky.geometry import AXES, Box, Vec3
+from bricky.geometry import AXES, Box, Convex, Vec3
 from bricky.model import Model
 from bricky.provenance import Frame, Provenance
 from bricky.units import PLATE, STUD, plates, studs, to_plates, to_studs
@@ -125,6 +129,19 @@ class Mark(BaseModel):
     kind: Literal["error", "warning"]
 
 
+class Shape(BaseModel):
+    """A part drawn from its faces, for parts that are not just boxes."""
+
+    part: int = Field(description="Index into Scene.parts.")
+    vertices: list[int] = Field(description="x, y, z of every corner, one after another.")
+    faces: list[list[int]] = Field(
+        description="Corner indices of each face, counter-clockwise seen from outside."
+    )
+    edges: list[int] = Field(
+        description="Pairs of corner indices: the edges where the surface folds, to outline."
+    )
+
+
 class Scene(BaseModel):
     """Everything a render draws, in base units (0.4 mm)."""
 
@@ -138,6 +155,9 @@ class Scene(BaseModel):
             "Per solid: x0, y0, z0, x1, y1, z1, part index, and a mask of the faces to draw "
             "(bits -x +x -y +y -z +z); faces pressed flat against opaque neighbours are left out."
         )
+    )
+    shapes: list[Shape] = Field(
+        default_factory=list, description="Parts that are not just boxes, by their faces."
     )
     studs: list[tuple[int, int, int, int, int]] = Field(
         description="Per stud: x, y, z of its base, axis code (+x -x +y -y +z -z), part index."
@@ -192,7 +212,9 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
     if highlight:
         chosen = _select(model, [p.uid for p in placed], provenance, highlight)
         _highlight(chosen, placed, flags, labels)
-    boxes = _boxes(catalog, placed, flags, clips, cull=cull)
+    shaped = [i for i, p in enumerate(placed) if any(isinstance(s, Convex) for s in p.solids)]
+    boxes = _boxes(catalog, placed, flags, clips, cull=cull, skip=set(shaped))
+    shapes = [_shape(i, placed[i]) for i in shaped]
     studs_ = _exposed_studs(world)
     bounds = _cut(Box.bounding(p.bounds for p in placed), clips)
     return Scene(
@@ -202,6 +224,7 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
         parts=[(color_index[p.color], int(flags[i])) for i, p in enumerate(placed)],
         uids=[p.uid for p in placed],
         boxes=boxes,
+        shapes=shapes,
         studs=studs_,
         labels=labels,
         marks=marks,
@@ -263,16 +286,23 @@ def _highlight(
         labels.extend(Label(part=i, text=placed[i].uid, kind="highlight") for i in sorted(chosen))
 
 
-def _boxes(
+def _boxes(  # noqa: PLR0913 - keyword-only options, one per concern
     catalog: Catalog,
     placed: Sequence[Placed],
     flags: Sequence[Flag],
     clips: Sequence[Clip],
     *,
     cull: bool,
+    skip: set[int],
 ) -> list[tuple[int, int, int, int, int, int, int, int]]:
-    """Every solid of every part, with the mask of faces worth drawing."""
-    solids = [(solid, i) for i, p in enumerate(placed) for solid in p.solids]
+    """Every box of every part not drawn as a shape, with the mask of faces worth drawing."""
+    solids = [
+        (solid, i)
+        for i, p in enumerate(placed)
+        if i not in skip
+        for solid in p.solids
+        if isinstance(solid, Box)
+    ]
     if cull:
         # Only parts that are opaque, drawn solid and wholly kept by the cut can hide a face.
         opaque = [
@@ -288,6 +318,57 @@ def _boxes(
         (solid.lo.x, solid.lo.y, solid.lo.z, solid.hi.x, solid.hi.y, solid.hi.z, i, mask)
         for (solid, i), mask in zip(solids, masks, strict=True)
     ]
+
+
+_CREASE: Final = 0.94
+"""Faces meeting at a cosine below this, about 20 degrees, fold visibly: their edge is drawn."""
+
+
+def _shape(index: int, part: Placed) -> Shape:
+    """A part's solids as one surface: the faces two solids share are inside, and left out."""
+    faces: list[tuple[tuple[int, int, int], ...]] = []
+    for solid in part.solids:
+        convex = solid if isinstance(solid, Convex) else solid.as_convex()
+        faces.extend(tuple(convex.vertices[i].as_tuple() for i in face) for face in convex.faces)
+    inside = Counter(frozenset(face) for face in faces)
+    outer = [face for face in faces if inside[frozenset(face)] == 1]
+    corners: dict[tuple[int, int, int], int] = {}
+    indexed = [[corners.setdefault(point, len(corners)) for point in face] for face in outer]
+    normals: dict[tuple[int, int], list[tuple[float, float, float]]] = {}
+    for face, points in zip(indexed, outer, strict=True):
+        normal = _unit(_newell(points))
+        for a, b in zip(face, [*face[1:], face[0]], strict=True):
+            normals.setdefault((min(a, b), max(a, b)), []).append(normal)
+    edges = [
+        corner
+        for edge, around in normals.items()
+        if len(around) != 2 or _dot(*around) < _CREASE  # noqa: PLR2004 - an edge joins two faces
+        for corner in edge
+    ]
+    return Shape(
+        part=index,
+        vertices=[c for point in corners for c in point],
+        faces=indexed,
+        edges=edges,
+    )
+
+
+def _newell(points: Sequence[tuple[int, int, int]]) -> tuple[int, int, int]:
+    x = y = z = 0
+    for p, q in zip(points, [*points[1:], points[0]], strict=True):
+        x += (p[1] - q[1]) * (p[2] + q[2])
+        y += (p[2] - q[2]) * (p[0] + q[0])
+        z += (p[0] - q[0]) * (p[1] + q[1])
+    return x, y, z
+
+
+def _unit(vector: tuple[int, int, int]) -> tuple[float, float, float]:
+    length = sqrt(sum(c * c for c in vector)) or 1.0
+    return vector[0] / length, vector[1] / length, vector[2] / length
+
+
+def _dot(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 
 
 def _exposed_studs(world: World) -> list[tuple[int, int, int, int, int]]:

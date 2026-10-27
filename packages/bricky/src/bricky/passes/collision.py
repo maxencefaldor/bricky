@@ -7,7 +7,7 @@ from typing import ClassVar
 from bricky.analysis import Context
 from bricky.catalog import Connector, ConnectorKind
 from bricky.diagnostics import Code, Diagnostic, Region
-from bricky.geometry import Box, Vec3
+from bricky.geometry import Box, Solid, Vec3, overlaps
 from bricky.units import STUD_DIAMETER, STUD_HEIGHT
 
 _STUD_RADIUS = STUD_DIAMETER // 2
@@ -20,11 +20,15 @@ def stud_volume(stud: Connector) -> Box:
     return Box.spanning(stud.pos - side, tip + side)
 
 
-def _shared(a: Iterable[Box], b: Iterable[Box]) -> Box | None:
-    overlaps = [
-        shared for box in a for other in b if (shared := box.intersection(other)) is not None
+def _shared(a: Iterable[Solid], b: Iterable[Solid]) -> Box | None:
+    """The box around where two parts' solids overlap, or None if they do not."""
+    shared = [
+        box
+        for solid in a
+        for other in b
+        if overlaps(solid, other) and (box := solid.bounds.intersection(other.bounds)) is not None
     ]
-    return Box.bounding(overlaps) if overlaps else None
+    return Box.bounding(shared) if shared else None
 
 
 class CollisionPass:
@@ -85,7 +89,7 @@ class CollisionPass:
                 for j in context.solid_index.query(volume):
                     if j == i or j in receivers:
                         continue
-                    if any(volume.overlaps(solid) for solid in placed[j].solids):
+                    if any(overlaps(volume, solid) for solid in placed[j].solids):
                         counts[i, j] += 1
                         previous = regions.get((i, j))
                         regions[i, j] = (
