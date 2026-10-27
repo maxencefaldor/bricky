@@ -1,0 +1,101 @@
+import pytest
+
+from bricky import BrickyError, Element, Model, ModelBuilder, Settings, check_model
+from bricky.passes import installed_passes
+from bricky.settings import DIGITAL
+
+
+def codes(model: Model, **options) -> list[str]:
+    report = check_model(model, settings=Settings(), **options)
+    return [d.code for d in report.diagnostics]
+
+
+def stack(*placements: tuple[str, tuple[float, float, float], str]) -> Model:
+    builder = ModelBuilder()
+    for part, at, rot in placements:
+        builder.place(part, at=at, rot=rot, color="Red")
+    return builder.build()
+
+
+def test_the_core_passes_are_installed_through_entry_points():
+    assert set(DIGITAL) <= set(installed_passes())
+
+
+def test_interlocking_bricks_pass():
+    model = stack(
+        ("3001", (0, 0, 0), "R0"),
+        ("3001", (2, 0, 0), "R0"),
+        ("3001", (0, 0, 3), "R90"),
+        ("3001", (0, 2, 3), "R90"),
+        ("3068b", (0, 0, 6), "R0"),
+    )
+    assert codes(model) == []
+
+
+def test_parts_resting_on_the_ground_need_no_connection():
+    assert codes(stack(("3001", (0, 0, 0), "R0"), ("3001", (10, 0, 0), "R0"))) == []
+
+
+def test_overlapping_parts_collide():
+    assert codes(stack(("3001", (0, 0, 0), "R0"), ("3001", (1, 0, 0), "R0"))) == ["E201"]
+
+
+def test_half_stud_offsets_are_blocked_and_float():
+    model = stack(("3001", (0, 0, 0), "R0"), ("3003", (0.5, 0, 3), "R0"))
+    assert codes(model) == ["E202", "E301"]
+
+
+def test_an_upside_down_tile_cannot_sit_on_studs():
+    model = stack(("3003", (0, 0, 0), "R0"), ("3068b", (0, 0, 3), "+x-y"))
+    assert codes(model) == ["E202", "E301"]
+
+
+def test_floating_groups_are_reported_once_each():
+    model = stack(
+        ("3001", (0, 0, 6), "R0"),
+        ("3022", (0, 0, 9), "R0"),
+        ("3022", (10, 10, 3), "R0"),
+    )
+    report = check_model(model, settings=Settings())
+    assert [d.code for d in report.diagnostics] == ["E301", "E301"]
+    assert sorted(len(d.elements) for d in report.diagnostics) == [1, 2]
+
+
+def test_schema_errors():
+    model = Model(
+        elements=(
+            Element(id="ghost", part="99999", color=5),
+            Element(id="odd", part="3001", color=4242),
+            Element(id="deep", part="3001", color=5, pos=(100, 0, -8)),
+        )
+    )
+    assert codes(model, passes=["schema"]) == ["E101", "E102", "E103"]
+
+
+def test_reports_cap_diagnostics_but_count_everything():
+    builder = ModelBuilder()
+    for i in range(5):
+        builder.place("3024", at=(3 * i, 0, 2), color="Red")
+    report = check_model(builder.build(), max_diagnostics=2, settings=Settings())
+    assert report.errors == 5
+    assert len(report.diagnostics) == 2
+    assert report.omitted == 3
+    assert not report.ok
+
+
+def test_profiles_report_passes_that_are_not_installed():
+    report = check_model(stack(("3001", (0, 0, 0), "R0")), profile="physical", settings=Settings())
+    assert report.passes == DIGITAL
+    assert report.missing == ("stability", "buildability", "budget")
+
+
+def test_unknown_profiles_are_rejected():
+    with pytest.raises(BrickyError, match="unknown profile"):
+        check_model(Model(), profile="lunar", settings=Settings())
+
+
+def test_configured_profiles_extend_the_defaults():
+    settings = Settings(profiles={"quick": ("schema",)})
+    assert set(settings.profiles) == {"digital", "physical", "quick"}
+    report = check_model(stack(("3001", (0, 0, 0), "R0")), profile="quick", settings=settings)
+    assert report.passes == ("schema",)

@@ -1,0 +1,220 @@
+# Starter catalog: classic System bricks, plates and tiles.
+#
+# Ids and names follow the BrickLink catalog. `width` and `length` count studs along the part's
+# local x and y axes (width <= length). Geometry is generated from `family`; see families.py.
+
+# Bricks
+
+[[parts]]
+id = "3005"
+name = "Brick 1 x 1"
+family = "brick"
+width = 1
+length = 1
+
+[[parts]]
+id = "3004"
+name = "Brick 1 x 2"
+family = "brick"
+width = 1
+length = 2
+
+[[parts]]
+id = "3622"
+name = "Brick 1 x 3"
+family = "brick"
+width = 1
+length = 3
+
+[[parts]]
+id = "3010"
+name = "Brick 1 x 4"
+family = "brick"
+width = 1
+length = 4
+
+[[parts]]
+id = "3009"
+name = "Brick 1 x 6"
+family = "brick"
+width = 1
+length = 6
+
+[[parts]]
+id = "3008"
+name = "Brick 1 x 8"
+family = "brick"
+width = 1
+length = 8
+
+[[parts]]
+id = "3003"
+name = "Brick 2 x 2"
+family = "brick"
+width = 2
+length = 2
+
+[[parts]]
+id = "3002"
+name = "Brick 2 x 3"
+family = "brick"
+width = 2
+length = 3
+
+[[parts]]
+id = "3001"
+name = "Brick 2 x 4"
+family = "brick"
+width = 2
+length = 4
+
+[[parts]]
+id = "2456"
+name = "Brick 2 x 6"
+family = "brick"
+width = 2
+length = 6
+
+[[parts]]
+id = "3007"
+name = "Brick 2 x 8"
+family = "brick"
+width = 2
+length = 8
+
+# Plates
+
+[[parts]]
+id = "3024"
+name = "Plate 1 x 1"
+family = "plate"
+width = 1
+length = 1
+
+[[parts]]
+id = "3023"
+name = "Plate 1 x 2"
+family = "plate"
+width = 1
+length = 2
+
+[[parts]]
+id = "3623"
+name = "Plate 1 x 3"
+family = "plate"
+width = 1
+length = 3
+
+[[parts]]
+id = "3710"
+name = "Plate 1 x 4"
+family = "plate"
+width = 1
+length = 4
+
+[[parts]]
+id = "3666"
+name = "Plate 1 x 6"
+family = "plate"
+width = 1
+length = 6
+
+[[parts]]
+id = "3460"
+name = "Plate 1 x 8"
+family = "plate"
+width = 1
+length = 8
+
+[[parts]]
+id = "3022"
+name = "Plate 2 x 2"
+family = "plate"
+width = 2
+length = 2
+
+[[parts]]
+id = "3021"
+name = "Plate 2 x 3"
+family = "plate"
+width = 2
+length = 3
+
+[[parts]]
+id = "3020"
+name = "Plate 2 x 4"
+family = "plate"
+width = 2
+length = 4
+
+[[parts]]
+id = "3795"
+name = "Plate 2 x 6"
+family = "plate"
+width = 2
+length = 6
+
+[[parts]]
+id = "3034"
+name = "Plate 2 x 8"
+family = "plate"
+width = 2
+length = 8
+
+# Tiles
+
+[[parts]]
+id = "3070b"
+name = "Tile 1 x 1 with Groove"
+family = "tile"
+width = 1
+length = 1
+
+[[parts]]
+id = "3069b"
+name = "Tile 1 x 2 with Groove"
+family = "tile"
+width = 1
+length = 2
+
+[[parts]]
+id = "63864"
+name = "Tile 1 x 3"
+family = "tile"
+width = 1
+length = 3
+
+[[parts]]
+id = "2431"
+name = "Tile 1 x 4"
+family = "tile"
+width = 1
+length = 4
+
+[[parts]]
+id = "6636"
+name = "Tile 1 x 6"
+family = "tile"
+width = 1
+length = 6
+
+[[parts]]
+id = "4162"
+name = "Tile 1 x 8"
+family = "tile"
+width = 1
+length = 8
+
+[[parts]]
+id = "3068b"
+name = "Tile 2 x 2 with Groove"
+family = "tile"
+width = 2
+length = 2
+
+[[parts]]
+id = "87079"
+name = "Tile 2 x 4"
+family = "tile"
+width = 2
+length = 4
