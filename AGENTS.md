@@ -26,8 +26,9 @@ layers above it in this list:
 1. `errors`, `settings`: the error front-ends show as a message, and configuration.
 2. `units`, `geometry`: exact integer units (0.4 mm), the 24 grid rotations, boxes and convex
    solids with integer corners, and exact overlap tests between them.
-3. `catalog`: parts and colours keyed by BrickLink ids; geometry is generated per family, with
-   curves drawn as exact facets.
+3. `catalog`: parts and colors keyed by BrickLink ids, imported from BrickLink's catalog
+   downloads; each part's shape is read from its official name, and its geometry generated per
+   family, with curves drawn as exact facets.
 4. `model`, `provenance`, `builder`, `files`: the canonical model format, the script lines that
    placed each element, how to write models, and their files and source maps.
 5. `analysis`: derived data (world geometry, spatial index, links, cells), cached in `Context`,
@@ -67,8 +68,12 @@ committed; a reference never reaches the agent's workspace.
   their output is captured, a timeout stops them, and a cancelled command kills them.
 - **Renders are first-class feedback:** every build draws its model by default. Renderer assets
   live in `bricky/render/assets`; three.js is vendored unmodified, so renders work offline.
-- **Official sources only:** LEGO® and BrickLink data and formats. Do not add LDraw, other brands
-  or community LEGO® libraries. General-purpose tools such as three.js are fine.
+- **Sources:** BrickLink, the LEGO Group's marketplace, is the source of what parts and colors
+  exist. Shapes come from bricky's own families, read from official names. Do not add other
+  brands or community LEGO® libraries without a decision recorded here. General-purpose tools
+  such as three.js are fine.
+- **Catalog data stays local:** imports write to bricky's data folder, never into the repository;
+  tests use the sample catalog in `bricky/catalog/data`.
 - **Trademark:** never put "LEGO" in a package, module or repository name. In prose, use "LEGO®"
   as an adjective.
 - **Tests:** every pass gets a passing case and a failing case. Geometry gets property tests.

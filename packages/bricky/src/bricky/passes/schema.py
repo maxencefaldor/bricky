@@ -16,8 +16,9 @@ class SchemaPass:
         Code(
             code="E101",
             title="Unknown part",
-            rule="The element's part id is not in the catalog, so it has no geometry and no "
-            "other check can see it. `bricky parts` lists the catalog.",
+            rule="The element's part id is not in the catalog, or the catalog lists the part "
+            "without a shape, so it has no geometry and no other check can see it. `bricky parts` "
+            "searches the catalog.",
         ),
         Code(
             code="E102",
@@ -36,10 +37,16 @@ class SchemaPass:
     def run(self, context: Context) -> Iterator[Diagnostic]:
         """Return the diagnostics found in the model."""
         for item in context.world.unresolved:
+            entry = context.catalog.entry(item.part)
+            what = (
+                "which is not in the catalog"
+                if entry is None
+                else f"({entry.name}), which has no shape in the catalog"
+            )
             yield Diagnostic(
                 code="E101",
                 check=self.name,
-                message=f"{item.uid} uses part {item.part!r}, which is not in the catalog",
+                message=f"{item.uid} uses part {item.part!r} {what}",
                 elements=(item.uid,),
             )
         for placed in context.world.placed:

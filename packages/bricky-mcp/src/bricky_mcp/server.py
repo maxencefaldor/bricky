@@ -43,7 +43,8 @@ plates). `at` is the minimum corner of the rotated bounding box of whatever you 
 component. Rotations are 'R0', 'R90', 'R180' and 'R270' about the vertical axis; any of the 24 grid
 rotations can be named by where the part's x and y axes go, such as '+x+z' to stand a part up
 facing -y. Use search_parts and list_colors to find ids: search_parts also says which way a part
-faces when unturned, such as a slope falling toward -y. explain_code gives the exact rule behind a
+faces when unrotated, such as a slope falling toward -y, and show_part describes one part and can
+draw it. Only parts with a shape can be placed. explain_code gives the exact rule behind a
 diagnostic, and bricky.cells(model) in a script gives the cells a model fills, to compare with a
 target.
 """
@@ -162,6 +163,13 @@ def create_server(session: service.Session | None = None) -> MCPServer:
     )
     register("check_model", service.CheckRequest, service.check, Report, READ_ONLY)
     register("search_parts", service.PartsRequest, service.parts, service.PartsResult, READ_ONLY)
+    register(
+        "show_part",
+        service.CatalogShowRequest,
+        service.catalog_show,
+        service.CatalogShowResult,
+        WRITES_FILES,
+    )
     register("list_colors", service.ColorsRequest, service.colors, service.ColorsResult, READ_ONLY)
     register("list_passes", service.PassesRequest, service.passes, service.PassesResult, READ_ONLY)
     register(

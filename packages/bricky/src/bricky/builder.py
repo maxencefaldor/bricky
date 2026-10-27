@@ -66,7 +66,14 @@ class _Scope:
     def place(self, part: str, at: Point, color: int | str, rot: str, name: str | None) -> str:
         definition = self.catalog.part(part)
         if definition is None:
-            msg = f"unknown part {part!r}; search the catalog with `bricky parts <words>`"
+            entry = self.catalog.entry(part)
+            if entry is None:
+                msg = f"unknown part {part!r}; search the catalog with `bricky parts <words>`"
+            else:
+                msg = (
+                    f"part {part} ({entry.name}) has no shape in bricky yet, so it cannot be "
+                    "placed; `bricky parts <words>` lists parts that can be"
+                )
             raise ValueError(msg)
         rotation = Rotation.parse(rot)
         footprint = Box(ORIGIN, definition.size).transformed(Pose(rotation))

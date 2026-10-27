@@ -25,7 +25,7 @@ from bricky.errors import BrickyError
 from bricky.geometry import AXES, Box, Convex, Vec3
 from bricky.model import Model
 from bricky.provenance import Frame, Provenance
-from bricky.units import PLATE, STUD, plates, studs, to_plates, to_studs
+from bricky.units import PLATE, STUD, STUD_HEIGHT, plates, studs, to_plates, to_studs
 
 
 class View(StrEnum):
@@ -168,7 +168,7 @@ class Scene(BaseModel):
     marks: list[Mark] = Field(default_factory=list)
     clips: list[Clip] = Field(default_factory=list)
     bounds: tuple[int, int, int, int, int, int] = Field(
-        description="Corners of what the views show: all solids, cut by the clips."
+        description="Corners of what the views show: all solids and stud tips, cut by the clips."
     )
 
 
@@ -225,10 +225,14 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
     boxes = _boxes(catalog, placed, flags, clips, cull=cull, skip=set(shaped))
     shapes = [_shape(i, placed[i]) for i in shaped]
     studs_ = _exposed_studs(world)
-    bounds = _cut(Box.bounding(p.bounds for p in placed), clips)
+    body = Box.bounding(p.bounds for p in placed)
+    axes = list(AXES.values())
+    tips = [Vec3(x, y, z) + axes[axis] * STUD_HEIGHT for x, y, z, axis, _ in studs_]
+    framed = Box.bounding([body, *(Box(tip, tip) for tip in tips)])
+    bounds = _cut(framed, clips)
     return Scene(
         name=model.name,
-        title=_title(model, bounds, len(placed), report),
+        title=_title(model, _cut(body, clips), len(placed), report),
         colors=colors,
         parts=[(color_index[p.color], int(flags[i])) for i, p in enumerate(placed)],
         uids=[p.uid for p in placed],
@@ -434,7 +438,8 @@ def _box(region: Region) -> tuple[int, int, int, int, int, int]:
 def _title(model: Model, bounds: Box, count: int, report: Report | None) -> str:
     size = bounds.size
     title = (
-        f"{model.name}: {count} elements, {to_studs(size.x):g} x {to_studs(size.y):g} studs, "
+        f"{model.name}: {count} element{'' if count == 1 else 's'}, "
+        f"{to_studs(size.x):g} x {to_studs(size.y):g} studs, "
         f"{to_plates(size.z):g} plates tall"
     )
     if report is not None:
@@ -499,7 +504,7 @@ ALL_FACES: Final = 0b111111
 
 
 def catalog_type(catalog: Catalog, color_id: int) -> ColorType:
-    """The type of a colour, treating unknown colours as solid."""
+    """The type of a colour, treating unknown colors as solid."""
     color = catalog.color(color_id)
     return color.type if color is not None else ColorType.SOLID
 

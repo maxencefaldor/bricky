@@ -1,0 +1,11 @@
+"""Shared test setup: every test, and every process a test starts, uses the sample catalog.
+
+A machine that has imported the full BrickLink catalog would otherwise give different search
+results and counts, so tests pin the catalog to the sample shipped with bricky.
+"""
+
+import os
+
+from bricky.catalog import SAMPLE_CATALOG
+
+os.environ["BRICKY_CATALOG"] = str(SAMPLE_CATALOG)

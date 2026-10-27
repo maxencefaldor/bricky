@@ -46,6 +46,7 @@ def test_tools_mirror_the_service_requests():
         "render_model",
         "check_model",
         "search_parts",
+        "show_part",
         "list_colors",
         "list_passes",
         "explain_code",

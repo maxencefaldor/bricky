@@ -9,9 +9,10 @@ model itself; that stays the agent's job.
 
 ![The Elizabeth Tower example: iso, front, right and top views with rulers](docs/images/elizabeth-tower.png)
 
-> Status: v0.2. Exact-geometry kernel, 112 parts in eleven families and 40 colours, the digital
-> checks, provenance from script lines, renders, the `bricky` command line, an MCP server and a
-> benchmark. The full BrickLink catalog and physics come next.
+> Status: v0.2. Exact-geometry kernel, an importer for BrickLink's full catalog of parts and
+> colors with shapes in eleven families, the digital checks, provenance from script lines, renders,
+> the `bricky` command line, an MCP server and a benchmark. Shapes from LDraw for the parts no
+> family covers, and physics, come next.
 
 ## Quick start
 
@@ -20,6 +21,7 @@ uv sync
 uv run playwright install chromium            # once: the browser renders draw in
 uv run bricky build examples/stonehenge.py    # 0 errors, and examples/stonehenge.png
 uv run bricky build examples/broken.py        # one mistake of each kind
+uv run bricky catalog import ~/bricklink      # once: every BrickLink part and color (see below)
 uv run bricky parts "plate 2x4"
 uv run bricky colors gray
 uv run bricky explain E301
@@ -70,6 +72,34 @@ def build() -> ModelBuilder:
   target, a plan or another model, takes a few exact lines.
 
 ![The cottage example: slopes, an arch, round parts, a tile on a side stud and a jumper](docs/images/cottage.png)
+
+## The catalog
+
+bricky knows parts and colors by their BrickLink ids. BrickLink is the LEGO Group's marketplace,
+and its catalog lists every part, every color and which colors each part comes in. Until it is
+imported, bricky uses a small sample of common parts.
+
+To import it, sign in at <https://www.bricklink.com/catalogDownload.asp> and download, as XML,
+Catalog Items (item type Parts), Colors, Categories and Codes into one folder. Then:
+
+```sh
+uv run bricky catalog import ~/bricklink   # every part and color, into bricky's data folder
+uv run bricky catalog status               # which catalog is in use, and what is in it
+uv run bricky catalog show 3001 --render   # one part: its facts, its shape and a picture
+uv run bricky catalog verify               # generate every shaped part's geometry and check it
+```
+
+BrickLink says what each part is, not its shape in space, so bricky generates each part's
+geometry from a shape: a family, such as slope, and its numbers, read from the part's official
+name. "Slope 45 2 x 4" is a slope two studs deep and four wide; "Brick 1 x 2 x 2" a brick two
+bricks tall. A name with any detail that would change the shape, such as "Double" or "with
+Cutout", gets none rather than a wrong one. Printed parts take the shape of the part they are
+printed on. Parts without a shape stay in the catalog, so `bricky parts --shapeless` finds them,
+but they cannot be placed until a family covers them. The import reports how many parts each
+family covers and which categories have none.
+
+The import writes to bricky's data folder, outside any repository, and bricky uses it from then on.
+Set `catalog` in `[tool.bricky]`, or `BRICKY_CATALOG`, to use another catalog file.
 
 ## The feedback loop
 

@@ -82,7 +82,7 @@ class PartsCommand(service.PartsRequest, _Output):
 
 
 class ColorsCommand(service.ColorsRequest, _Output):
-    """List the catalog's colours."""
+    """Search the catalog's colors."""
 
     async def cli_cmd(self) -> None:
         """Run the command."""
@@ -111,6 +111,67 @@ class ExplainCommand(service.ExplainRequest, _Output):
         self.emit(result, result.describe())
 
 
+class CatalogImportCommand(service.CatalogImportRequest, _Output):
+    """Import BrickLink's catalog: every part and every color, into the catalog bricky uses."""
+
+    async def cli_cmd(self) -> None:
+        """Run the command."""
+        async with service.Session() as session:
+            result = await service.catalog_import(self, session)
+        self.emit(result, result.describe())
+
+
+class CatalogStatusCommand(service.CatalogStatusRequest, _Output):
+    """Say which catalog bricky uses and what is in it."""
+
+    async def cli_cmd(self) -> None:
+        """Run the command."""
+        async with service.Session() as session:
+            result = await service.catalog_status(self, session)
+        self.emit(result, result.describe())
+
+
+class CatalogShowCommand(service.CatalogShowRequest, _Output):
+    """Show everything the catalog knows about one part."""
+
+    async def cli_cmd(self) -> None:
+        """Run the command."""
+        async with service.Session() as session:
+            result = await service.catalog_show(self, session)
+        self.emit(result, result.describe())
+
+
+class CatalogVerifyCommand(service.CatalogVerifyRequest, _Output):
+    """Generate every shaped part's geometry and check it."""
+
+    async def cli_cmd(self) -> None:
+        """Run the command; exit 1 when a part has a problem."""
+        async with service.Session() as session:
+            result = await service.catalog_verify(self, session)
+        self.emit(result, result.describe())
+        if result.problems:
+            raise SystemExit(1)
+
+
+class CatalogCommand(BaseModel):
+    """Import the catalog of parts and colors, and look into it."""
+
+    import_: CliSubCommand[CatalogImportCommand] = Field(
+        alias="import", description="Import BrickLink's catalog of parts and colors."
+    )
+    status: CliSubCommand[CatalogStatusCommand] = Field(
+        description="Say which catalog bricky uses and what is in it."
+    )
+    show: CliSubCommand[CatalogShowCommand] = Field(description="Show one part.")
+    verify: CliSubCommand[CatalogVerifyCommand] = Field(
+        description="Check every shaped part's geometry."
+    )
+
+    def cli_cmd(self) -> None:
+        """Run the chosen subcommand."""
+        CliApp.run_subcommand(self)
+
+
 class SchemaCommand(BaseModel):
     """Print the JSON Schema of the model file format."""
 
@@ -137,7 +198,10 @@ class Bricky(BaseSettings):
     check: CliSubCommand[CheckCommand] = Field(description="Check a model file.")
     render: CliSubCommand[RenderCommand] = Field(description="Render pictures of a model file.")
     parts: CliSubCommand[PartsCommand] = Field(description="Search the parts catalog.")
-    colors: CliSubCommand[ColorsCommand] = Field(description="List the catalog's colours.")
+    colors: CliSubCommand[ColorsCommand] = Field(description="Search the catalog's colors.")
+    catalog: CliSubCommand[CatalogCommand] = Field(
+        description="Import the catalog of parts and colors, and look into it."
+    )
     passes: CliSubCommand[PassesCommand] = Field(description="List installed passes and profiles.")
     explain: CliSubCommand[ExplainCommand] = Field(description="Explain diagnostic codes.")
     json_schema: CliSubCommand[SchemaCommand] = Field(description="Print the model file schema.")

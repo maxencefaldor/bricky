@@ -21,7 +21,20 @@ from pydantic import BaseModel, Field, ValidationError
 from pydantic_settings import CliPositionalArg
 
 from bricky.analysis import build_world, diff_worlds
-from bricky.catalog import Catalog, Color, ColorType, Family, Part, default_catalog
+from bricky.catalog import (
+    IMPORTED_CATALOG,
+    SAMPLE_CATALOG,
+    Catalog,
+    CatalogPart,
+    Color,
+    ColorType,
+    ConnectorKind,
+    Family,
+    Part,
+    catalog_path,
+    load_catalog,
+)
+from bricky.catalog.bricklink import DOWNLOAD_PAGE, Coverage, import_catalog, read_downloads
 from bricky.check import check_model
 from bricky.diagnostics import Code, Report, render_report
 from bricky.errors import BrickyError
@@ -34,7 +47,8 @@ from bricky.files import (
     save_source_map,
     write_file,
 )
-from bricky.model import Model
+from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box
+from bricky.model import Element, Model
 from bricky.passes import installed_codes, installed_passes
 from bricky.provenance import Provenance
 from bricky.render import Clip, Renderer, View, build_scene, write_html
@@ -54,6 +68,9 @@ _VIEWS_HELP: Final = (
 _WIDTH: Final = 1600
 _HEIGHT: Final = 1200
 _LISTED_LINES: Final = 10
+_LISTED_CATEGORIES: Final = 25
+_SHOW_COLOR: Final = 86
+"""Light Bluish Gray: the color a part is drawn in when the catalog lists none for it."""
 
 
 class Session:
@@ -65,7 +82,7 @@ class Session:
 
     def __init__(self, settings: Settings | None = None, catalog: Catalog | None = None) -> None:
         self.settings = settings or Settings()
-        self.catalog = catalog or default_catalog()
+        self.catalog = catalog or load_catalog(catalog_path(self.settings))
         self._renderer: Renderer | None = None
         self._lock = asyncio.Lock()
 
@@ -658,23 +675,35 @@ class PartsRequest(BaseModel):
 
     query: CliPositionalArg[str] = Field(
         default="",
-        description="Words to match against ids, names and sizes, such as 'plate 2x4' (quoted).",
+        description="Words to match against ids, names, categories and sizes, such as "
+        "'plate 2x4' (quoted).",
     )
     limit: int = Field(default=20, ge=1, le=500, description="Maximum number of parts to return.")
+    shapeless: bool = Field(
+        default=False,
+        description="Also list parts the catalog knows but has no shape for; they cannot be "
+        "placed.",
+    )
 
 
 class PartInfo(BaseModel):
-    """A catalog part, summarised for choosing parts."""
+    """A catalog part, summarized for choosing parts."""
 
     id: str = Field(description="BrickLink item number.")
     name: str = Field(description="BrickLink item name.")
-    family: Family
-    width: int = Field(description="Studs along the part's local x axis.")
-    length: int = Field(description="Studs along the part's local y axis.")
-    height: float = Field(description="Body height in plates.")
-    studs: int = Field(description="Number of studs, on top and on its sides.")
+    category: str | None = Field(default=None, description="BrickLink category.")
+    family: Family | None = Field(
+        default=None, description="Family that generates its shape; null when it has none."
+    )
+    width: int | None = Field(default=None, description="Studs along the part's local x axis.")
+    length: int | None = Field(default=None, description="Studs along the part's local y axis.")
+    height: float | None = Field(default=None, description="Body height in plates.")
+    studs: int | None = Field(default=None, description="Number of studs, on top and on sides.")
     note: str = Field(
-        default="", description="How the part sits when placed unturned, where that matters."
+        default="", description="How the part sits when placed unrotated, where that matters."
+    )
+    base: str | None = Field(
+        default=None, description="For a printed part, the part it is printed on."
     )
 
 
@@ -686,30 +715,35 @@ class PartsResult(BaseModel):
 
     def describe(self) -> str:
         """Render the result as a table, with each part's note under it."""
+        key = max((len(p.id) for p in self.parts), default=0)
         name = max((len(p.name) for p in self.parts), default=0)
-        family = max((len(p.family) for p in self.parts), default=0)
+        family = max((len(p.family or "") for p in self.parts), default=0)
         rows = []
         for p in self.parts:
+            if p.family is None:
+                rows.append(f"{p.id:<{key}}  {p.name:<{name}}  no shape: cannot be placed")
+                continue
             rows.append(
-                f"{p.id:<7} {p.name:<{name}}  {p.family:<{family}}  {p.width}x{p.length}  "
-                f"{_count(p.height, 'plate')}  {_count(p.studs, 'stud')}"
+                f"{p.id:<{key}}  {p.name:<{name}}  {p.family:<{family}}  {p.width}x{p.length}  "
+                f"{_count(p.height or 0, 'plate')}  {_count(p.studs or 0, 'stud')}"
             )
             if p.note:
-                rows.append(f"{'':<8}{p.note}")
+                rows.append(f"{'':<{key + 2}}{p.note}")
         rows.append(f"{len(self.parts)} of {self.total} matching parts")
         return "\n".join(rows)
 
 
 async def parts(request: PartsRequest, session: Session) -> PartsResult:
     """Search the parts catalog."""
-    hits = await asyncio.to_thread(session.catalog.search, request.query)
-    return PartsResult(
-        parts=tuple(_part_info(part) for part in hits[: request.limit]), total=len(hits)
-    )
+    catalog = session.catalog
+    hits = await asyncio.to_thread(catalog.search, request.query, shapeless=request.shapeless)
+    shown = hits[: request.limit]
+    infos = await asyncio.to_thread(lambda: tuple(_part_info(catalog, e) for e in shown))
+    return PartsResult(parts=infos, total=len(hits))
 
 
 class ColorsRequest(BaseModel):
-    """List the catalog's colours."""
+    """Search the catalog's colors."""
 
     query: CliPositionalArg[str] = Field(
         default="", description="Words to match against ids, names and types, such as 'gray'."
@@ -738,9 +772,259 @@ class ColorsResult(BaseModel):
 
 
 async def colors(request: ColorsRequest, session: Session) -> ColorsResult:
-    """List the catalog's colours."""
+    """Search the catalog's colors."""
     found = await asyncio.to_thread(session.catalog.search_colors, request.query)
     return ColorsResult(colors=tuple(_color_info(c) for c in found))
+
+
+# ---------------------------------------------------------------------------------------------
+# catalog
+
+
+class CatalogImportRequest(BaseModel):
+    """Import BrickLink's catalog: every part and every color, into the catalog bricky uses."""
+
+    bricklink: CliPositionalArg[Path] = Field(
+        description="Folder holding BrickLink's catalog downloads as XML, from "
+        f"{DOWNLOAD_PAGE}: Catalog Items (Parts), Colors, Categories and Codes. File names do "
+        "not matter."
+    )
+    output: Path | None = Field(
+        default=None,
+        description="Catalog file to write; defaults to bricky's data folder, where bricky "
+        "looks for it.",
+    )
+
+
+class CatalogImportResult(BaseModel):
+    """What an import wrote, and how much of the catalog has a shape."""
+
+    catalog: Path = Field(description="The catalog file written.")
+    source: str
+    files: dict[str, Path] = Field(description="The BrickLink download read for each kind.")
+    coverage: Coverage
+    in_use: bool = Field(description="Whether bricky uses this catalog from now on.")
+
+    def describe(self) -> str:
+        """Render the result as text."""
+        c = self.coverage
+        shaped = (
+            f"  {c.shaped:,} parts have a shape and can be placed, {c.printed:,} of them printed "
+            "parts shaped like their base"
+        )
+        lines = [
+            f"imported {c.parts:,} parts and {c.colors:,} colors ({self.source})",
+            shaped,
+            f"  {c.parts - c.shaped:,} parts have no shape yet and cannot be placed",
+            "",
+            "shaped parts by family:",
+            *(f"  {family}: {count:,}" for family, count in c.by_family.items()),
+            "",
+            "parts without a shape, by category (most first):",
+            *(
+                f"  {category}: {count:,}"
+                for category, count in list(c.unshaped_by_category.items())[:_LISTED_CATEGORIES]
+            ),
+        ]
+        hidden = len(c.unshaped_by_category) - _LISTED_CATEGORIES
+        if hidden > 0:
+            lines.append(f"  ... and {hidden} more categories")
+        if c.skipped_colors:
+            lines += ["", "colors left out:", *(f"  {color}" for color in c.skipped_colors)]
+        lines += ["", f"wrote {self.catalog}"]
+        if not self.in_use:
+            lines.append(
+                "bricky does not use it yet: set catalog to this file in [tool.bricky] or "
+                "BRICKY_CATALOG"
+            )
+        return "\n".join(lines)
+
+
+async def catalog_import(request: CatalogImportRequest, session: Session) -> CatalogImportResult:
+    """Import BrickLink's catalog downloads and write the catalog file.
+
+    Raises:
+        BrickyError: If a download is missing or invalid, or the file cannot be written.
+    """
+    downloads = await asyncio.to_thread(read_downloads, request.bricklink)
+    catalog, coverage = await asyncio.to_thread(import_catalog, downloads)
+    output = request.output or IMPORTED_CATALOG
+    await asyncio.to_thread(write_file, output, catalog.dump())
+    in_use = catalog_path(session.settings).resolve() == output.resolve()
+    return CatalogImportResult(
+        catalog=output,
+        source=catalog.source,
+        files=downloads.files,
+        coverage=coverage,
+        in_use=in_use,
+    )
+
+
+class CatalogStatusRequest(BaseModel):
+    """Say which catalog bricky uses and what is in it."""
+
+
+class CatalogStatusResult(BaseModel):
+    """The catalog bricky uses."""
+
+    catalog: Path = Field(description="The catalog file.")
+    source: str
+    sample: bool = Field(description="Whether it is the small sample shipped with bricky.")
+    parts: int
+    shaped: int = Field(description="Parts with a shape, which can be placed.")
+    printed: int = Field(description="Printed parts shaped like the part they are printed on.")
+    colors: int
+    by_family: dict[str, int] = Field(description="Shaped parts by family.")
+
+    def describe(self) -> str:
+        """Render the result as text."""
+        counts = (
+            f"{self.parts:,} parts, {self.shaped:,} with a shape ({self.printed:,} printed), "
+            f"{self.colors:,} colors"
+        )
+        lines = [
+            f"catalog: {self.catalog}",
+            f"source: {self.source}",
+            counts,
+            *(f"  {family}: {count:,}" for family, count in self.by_family.items()),
+        ]
+        if self.sample:
+            lines.append(
+                "this is the sample shipped with bricky; import every part with "
+                "`bricky catalog import <folder of BrickLink downloads>`"
+            )
+        return "\n".join(lines)
+
+
+async def catalog_status(request: CatalogStatusRequest, session: Session) -> CatalogStatusResult:  # noqa: ARG001 - every command takes its request
+    """Describe the catalog bricky uses."""
+    catalog = session.catalog
+    path = catalog_path(session.settings)
+    families: Counter[str] = Counter()
+    printed = 0
+    for entry in await asyncio.to_thread(lambda: catalog.entries):
+        shape = catalog.shape(entry.id)
+        if shape is not None:
+            families[shape.family.value] += 1
+            printed += entry.base is not None
+    return CatalogStatusResult(
+        catalog=path,
+        source=catalog.source,
+        sample=path == SAMPLE_CATALOG,
+        parts=len(catalog),
+        shaped=families.total(),
+        printed=printed,
+        colors=len(catalog.colors),
+        by_family=dict(families.most_common()),
+    )
+
+
+class CatalogShowRequest(BaseModel):
+    """Show everything the catalog knows about one part."""
+
+    part: CliPositionalArg[str] = Field(description="BrickLink item number, such as '3001'.")
+    render: bool = Field(
+        default=False, description="Also draw the part, in the first color it comes in."
+    )
+    output: Path | None = Field(
+        default=None, description="Image file for the drawing; defaults to <part>.png here."
+    )
+
+
+class CatalogShowResult(BaseModel):
+    """One catalog part: BrickLink's facts, and the geometry bricky generates for it."""
+
+    part: CatalogPart
+    info: PartInfo
+    colors: tuple[str, ...] = Field(description="Names of the colors the part comes in.")
+    anti_studs: int | None = Field(description="Number of anti-studs; null without a shape.")
+    images: tuple[Image, ...] = ()
+
+    def describe(self) -> str:
+        """Render the result as text."""
+        p, info = self.part, self.info
+        lines = [f"{p.id}: {p.name}", f"category: {p.category or 'none'}"]
+        if p.alternates:
+            lines.append(f"other numbers: {', '.join(p.alternates)}")
+        if p.base:
+            lines.append(f"printed on: {p.base}, whose shape it has")
+        if info.family is None:
+            lines.append("shape: none, so it cannot be placed")
+        else:
+            lines.append(
+                f"shape: {info.family}, {info.width} x {info.length} studs, "
+                f"{_count(info.height or 0, 'plate')} tall, {_count(info.studs or 0, 'stud')}, "
+                f"{_count(self.anti_studs or 0, 'anti-stud')}"
+            )
+            if info.note:
+                lines.append(f"  {info.note}")
+        if self.colors:
+            lines.append(f"colors ({len(self.colors)}): {', '.join(self.colors)}")
+        lines.extend(_describe_images(self.images))
+        return "\n".join(lines)
+
+
+async def catalog_show(request: CatalogShowRequest, session: Session) -> CatalogShowResult:
+    """Describe one catalog part, and draw it when asked.
+
+    Raises:
+        BrickyError: If the catalog does not list the part, or it has no shape to draw.
+    """
+    catalog = session.catalog
+    entry = catalog.entry(request.part)
+    if entry is None:
+        msg = f"the catalog has no part {request.part!r}; search it with `bricky parts <words>`"
+        raise BrickyError(msg)
+    part = catalog.part(entry.id)
+    names = tuple(c.name for i in entry.colors if (c := catalog.color(i)) is not None)
+    images: tuple[Image, ...] = ()
+    if request.render:
+        if part is None:
+            msg = f"part {entry.id} has no shape to draw"
+            raise BrickyError(msg)
+        color = next(iter(entry.colors), _SHOW_COLOR)
+        model = Model(name=entry.id, elements=(Element(id=entry.id, part=entry.id, color=color),))
+        path = request.output or Path(f"{entry.id}.png")
+        images = await _render(
+            session, model, provenance=None, report=None, views=[View.SHEET], paths=[path]
+        )
+    return CatalogShowResult(
+        part=entry,
+        info=_part_info(catalog, entry),
+        colors=names,
+        anti_studs=None
+        if part is None
+        else sum(c.kind is ConnectorKind.ANTI_STUD for c in part.connectors),
+        images=images,
+    )
+
+
+class CatalogVerifyRequest(BaseModel):
+    """Generate every shaped part's geometry and check it."""
+
+
+class CatalogVerifyResult(BaseModel):
+    """Parts whose geometry is not as every family promises."""
+
+    checked: int = Field(description="Parts whose geometry was generated and checked.")
+    problems: tuple[str, ...] = Field(description="Each problem, naming its part.")
+
+    def describe(self) -> str:
+        """Render the result as text."""
+        lines = [
+            *self.problems,
+            f"checked {self.checked:,} parts: {_count(len(self.problems), 'problem')}",
+        ]
+        return "\n".join(lines)
+
+
+async def catalog_verify(request: CatalogVerifyRequest, session: Session) -> CatalogVerifyResult:  # noqa: ARG001 - every command takes its request
+    """Generate every shaped part's geometry and check what every family promises.
+
+    A part's body fills its bounding box from the origin; anti-studs sit on its bottom face,
+    pointing down and inside its footprint; studs stand on its top face or on a side face.
+    """
+    return await asyncio.to_thread(_verify, session.catalog)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -877,18 +1161,59 @@ def _write_images(paths: Sequence[Path], pngs: Sequence[bytes]) -> None:
         write_file(path, png)
 
 
-def _part_info(part: Part) -> PartInfo:
+def _part_info(catalog: Catalog, entry: CatalogPart) -> PartInfo:
+    info = PartInfo(id=entry.id, name=entry.name, category=entry.category, base=entry.base)
+    part = catalog.part(entry.id)
+    if part is None:
+        return info
     width, length = part.footprint
-    return PartInfo(
-        id=part.id,
-        name=part.name,
-        family=part.family,
-        width=width,
-        length=length,
-        height=to_plates(part.size.z),
-        studs=part.stud_count,
-        note=part.note,
+    return info.model_copy(
+        update={
+            "family": part.family,
+            "width": width,
+            "length": length,
+            "height": to_plates(part.size.z),
+            "studs": part.stud_count,
+            "note": part.note,
+        }
     )
+
+
+def _verify(catalog: Catalog) -> CatalogVerifyResult:
+    problems: list[str] = []
+    checked = 0
+    for entry in catalog.entries:
+        try:
+            part = catalog.part(entry.id)
+        except ValueError as error:
+            problems.append(f"{entry.id} {entry.name}: its shape cannot be generated: {error}")
+            continue
+        if part is not None:
+            checked += 1
+            problems += [f"{entry.id} {entry.name}: {problem}" for problem in _part_problems(part)]
+    return CatalogVerifyResult(checked=checked, problems=tuple(problems))
+
+
+def _part_problems(part: Part) -> list[str]:
+    """What a part's geometry breaks of the promises every family makes."""
+    size = part.size
+    problems = []
+    if Box.bounding(solid.bounds for solid in part.solids) != Box(ORIGIN, size):
+        problems.append("its body does not fill its bounding box from the origin")
+    sides = {AXES["-x"]: 0, AXES["+x"]: size.x, AXES["-y"]: 0, AXES["+y"]: size.y}
+    places = Counter((c.kind, c.pos, c.normal) for c in part.connectors)
+    problems += [f"two {kind}s at {pos}" for (kind, pos, _), n in places.items() if n > 1]
+    for c in part.connectors:
+        inside = 0 < c.pos.x < size.x and 0 < c.pos.y < size.y
+        if c.kind is ConnectorKind.ANTI_STUD:
+            if c.normal != DOWN or c.pos.z != 0 or not inside:
+                problems.append(f"the anti-stud at {c.pos} is not on the bottom face")
+        elif c.normal == UP:
+            if c.pos.z != size.z or not inside:
+                problems.append(f"the stud at {c.pos} is not on the top face")
+        elif c.normal not in sides or (c.pos.x if c.normal.x else c.pos.y) != sides[c.normal]:
+            problems.append(f"the stud at {c.pos} facing {c.normal} is not on a side face")
+    return problems
 
 
 def _color_info(color: Color) -> ColorInfo:

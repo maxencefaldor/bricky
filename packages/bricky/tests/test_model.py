@@ -29,7 +29,7 @@ def test_builder_rejects_unknown_parts_and_colours():
     builder = ModelBuilder()
     with pytest.raises(ValueError, match="unknown part"):
         builder.place("99999", at=(0, 0, 0), color="Red")
-    with pytest.raises(ValueError, match="unknown colour"):
+    with pytest.raises(ValueError, match="unknown color"):
         builder.place("3001", at=(0, 0, 0), color="Mauve")
     with pytest.raises(ValueError, match="not a whole number"):
         builder.place("3001", at=(0.01, 0, 0), color="Red")
@@ -157,6 +157,6 @@ def test_invalid_names_are_rejected_without_using_up_the_id():
     builder = ModelBuilder()
     with pytest.raises(ValueError, match="pattern"):
         builder.place("3001", at=(0, 0, 0), color="Red", name="two words")
-    with pytest.raises(ValueError, match="unknown colour"):
+    with pytest.raises(ValueError, match="unknown color"):
         builder.place("3001", at=(0, 0, 0), color="Mauve", name="first")
     assert builder.place("3001", at=(0, 0, 0), color="Red", name="first") == "first"

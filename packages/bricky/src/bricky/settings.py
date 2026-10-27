@@ -51,6 +51,11 @@ class Settings(BaseSettings):
         default=None,
         description="Chromium executable for renders; Playwright's own browser when unset.",
     )
+    catalog: Path | None = Field(
+        default=None,
+        description="Catalog file to use. When unset, bricky uses the catalog `bricky "
+        "import-catalog` wrote to its data folder, or the sample it ships with when there is none.",
+    )
     profiles: dict[str, tuple[str, ...]] = Field(
         default_factory=lambda: dict(DEFAULT_PROFILES),
         description="Named pass lists; entries extend or override the built-in profiles.",

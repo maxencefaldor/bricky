@@ -8,7 +8,7 @@ from bricky import BrickyError, ModelBuilder, Settings, check_model, default_cat
 from bricky.geometry import Box, Vec3
 from bricky.render import Clip, Flag, Renderer, View, build_scene, write_html
 from bricky.render.scene import ALL_FACES, visible_faces
-from bricky.units import PLATE, STUD
+from bricky.units import PLATE, STUD, STUD_HEIGHT
 
 
 def stack() -> ModelBuilder:
@@ -51,7 +51,8 @@ def test_scenes_drop_seated_studs_and_keep_exposed_ones():
     scene = build_scene(stack().build(), default_catalog())
     assert len(scene.studs) == 8
     assert {stud[4] for stud in scene.studs} == {scene.uids.index("top")}
-    assert scene.bounds == (0, 0, 0, 2 * STUD, 4 * STUD, 6 * PLATE)
+    assert scene.bounds == (0, 0, 0, 2 * STUD, 4 * STUD, 6 * PLATE + STUD_HEIGHT)  # stud tips
+    assert scene.title.startswith("stack: 2 elements, 2 x 4 studs, 6 plates tall")
 
 
 def test_scenes_mark_the_parts_diagnostics_name():
