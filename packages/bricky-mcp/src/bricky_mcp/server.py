@@ -32,10 +32,11 @@ bricky builds, checks and renders LEGO® models that you write as Python build s
 
 Workflow: write a script that defines build() and returns a bricky.ModelBuilder, then call
 build_model on it. It answers with diagnostics (each names the script line that placed the part)
-and a picture of the model: iso, front, right and top views, with rulers in studs and plates. Read
-both, fix the script, and repeat until the report has no errors and the pictures show what you
-meant. Use render_model to look closer: highlight parts by id or by script function, cut the model
-open, or choose other views.
+and a picture of the model: iso, front, right and top views, with rulers in studs and plates. From
+the second build on, it also says what changed since the last one, by script line, and outlines
+new and changed parts. Read it all, fix the script, and repeat until the report has no errors and
+the pictures show what you meant. Use render_model to look closer: highlight parts by id or by
+script function, cut the model open, or choose other views.
 
 Coordinates: x points east and y north, both in studs; z points up, in plates (a brick is 3
 plates). `at` is the minimum corner of the rotated bounding box of whatever you place, a part or a

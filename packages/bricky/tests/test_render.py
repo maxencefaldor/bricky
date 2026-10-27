@@ -91,6 +91,13 @@ def test_highlights_select_by_uid_or_script_function():
         build_scene(model, default_catalog(), highlight=["@lintels"])
 
 
+def test_scenes_mark_the_parts_new_or_changed_since_the_last_build():
+    scene = build_scene(stack().build(), default_catalog(), changed=["top"])
+    flags = dict(zip(scene.uids, (part[1] for part in scene.parts), strict=True))
+    assert flags["top"] == Flag.CHANGED
+    assert flags["bottom"] == 0
+
+
 def test_clips_frame_the_part_left_to_see():
     scene = build_scene(stack().build(), default_catalog(), clips=[Clip.parse("z<3")])
     assert scene.bounds[5] == 3 * PLATE

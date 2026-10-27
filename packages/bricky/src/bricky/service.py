@@ -11,6 +11,7 @@ Build scripts never run in this process: :func:`run_script` starts each one in a
 import asyncio
 import sys
 import time
+from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -19,6 +20,7 @@ from typing import Final, Self
 from pydantic import BaseModel, Field, ValidationError
 from pydantic_settings import CliPositionalArg
 
+from bricky.analysis import build_world, diff_worlds
 from bricky.catalog import Catalog, Color, ColorType, Family, Part, default_catalog
 from bricky.check import check_model
 from bricky.diagnostics import Code, Report, render_report
@@ -51,6 +53,7 @@ _VIEWS_HELP: Final = (
 )
 _WIDTH: Final = 1600
 _HEIGHT: Final = 1200
+_LISTED_LINES: Final = 10
 
 
 class Session:
@@ -124,6 +127,7 @@ class Timings(BaseModel):
     """Seconds spent in each stage of a command."""
 
     script: float = 0.0
+    compare: float = 0.0
     check: float = 0.0
     render: float = 0.0
 
@@ -180,6 +184,69 @@ class BuildRequest(BaseModel):
     max_diagnostics: int | None = Field(default=None, ge=1, description=_MAX_HELP)
 
 
+class LineCount(BaseModel):
+    """Elements counted by the build-script line that placed them."""
+
+    line: str = Field(description="Script file, line and enclosing function.")
+    elements: int
+
+
+class Changes(BaseModel):
+    """What changed since the last build saved a model at the same path.
+
+    Elements count with every instance unfolded. Elements match by what they are and the space
+    they take, not by id, so renumbered elements are unchanged; an element whose id and part are
+    the same but whose place, rotation or colour differ has changed.
+    """
+
+    added: int = Field(description="Elements the earlier model did not have.")
+    removed: int = Field(description="Elements of the earlier model that are gone.")
+    changed: int = Field(
+        description="Elements with the same id and part, now in another place, rotation or colour."
+    )
+    unchanged: int = Field(description="Elements of the same part and colour in the same space.")
+    cells_filled: int = Field(description="Cells, a stud square and a plate high, now filled.")
+    cells_emptied: int = Field(description="Cells filled before and empty now.")
+    cells_recoloured: int = Field(description="Cells filled in both, in another colour.")
+    added_at: tuple[LineCount, ...] = Field(
+        description="Added elements by the script line that placed them, most first."
+    )
+    changed_at: tuple[LineCount, ...] = Field(
+        description="Changed elements by the script line that placed them, most first."
+    )
+    removed_at: tuple[LineCount, ...] = Field(
+        description="Removed elements by the line that placed them in the earlier script, which "
+        "may have moved since."
+    )
+
+    def describe(self) -> str:
+        """Render the changes as text for people and agents."""
+        if not (self.added or self.removed or self.changed):
+            return f"since the last build: no changes ({_count(self.unchanged, 'element')})"
+        elements = (
+            f"since the last build: {self.added} added, {self.removed} removed, "
+            f"{self.changed} changed, {self.unchanged} unchanged"
+        )
+        cells = (
+            f"  cells: {self.cells_filled} filled, {self.cells_emptied} emptied, "
+            f"{self.cells_recoloured} recoloured"
+        )
+        lines = [elements, cells]
+        for title, counts in (
+            ("added at", self.added_at),
+            ("changed at", self.changed_at),
+            ("removed from the earlier script at", self.removed_at),
+        ):
+            if counts:
+                lines.append(f"  {title}:")
+                lines.extend(
+                    f"    {c.line}: {_count(c.elements, 'element')}" for c in counts[:_LISTED_LINES]
+                )
+                if len(counts) > _LISTED_LINES:
+                    lines.append(f"    ... and {len(counts) - _LISTED_LINES} more lines")
+        return "\n".join(lines)
+
+
 class BuildResult(BaseModel):
     """What a build produced."""
 
@@ -189,6 +256,10 @@ class BuildResult(BaseModel):
     )
     elements: int = Field(description="Elements in the model, with every instance unfolded.")
     output: ScriptOutput = Field(description="What the build script printed.")
+    changes: Changes | None = Field(
+        description="What changed since the model last built at the same path; null on the "
+        "first build."
+    )
     report: Report | None = Field(description="The check report, unless checking was off.")
     images: tuple[Image, ...] = Field(description="Rendered pictures, unless rendering was off.")
     seconds: Timings
@@ -196,6 +267,8 @@ class BuildResult(BaseModel):
     def describe(self) -> str:
         """Render the result as text for people and agents."""
         blocks = [f"saved {self.model} ({self.elements} elements)"]
+        if self.changes is not None:
+            blocks.append(self.changes.describe())
         if text := self.output.describe():
             blocks.append(text)
         if self.report is not None:
@@ -208,6 +281,9 @@ class BuildResult(BaseModel):
 async def build(request: BuildRequest, session: Session) -> BuildResult:
     """Run a build script in its own process, save its model and source map, check and render.
 
+    When an earlier build saved a model at the same path, the result says what changed since,
+    and the pictures mark the parts that are new or changed.
+
     Raises:
         BrickyError: If the script is missing, fails, times out or returns no model, or if the
             render cannot be made.
@@ -216,8 +292,16 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
     started = time.perf_counter()
     run = await run_script(request.script, settings)
     path = request.output or request.script.with_name(request.script.stem + SUFFIX)
+    earlier = await asyncio.to_thread(_earlier, path)
     source_map = await asyncio.to_thread(_save, run, request.script, path)
     seconds = Timings(script=time.perf_counter() - started)
+
+    changes = None
+    changed: tuple[str, ...] = ()
+    if earlier is not None:
+        started = time.perf_counter()
+        changes, changed = await asyncio.to_thread(_compare, earlier, run, session.catalog)
+        seconds.compare = time.perf_counter() - started
 
     report = None
     if request.check:
@@ -243,6 +327,7 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
             report=report,
             views=request.views,
             paths=_view_paths(path.with_name(model_stem(path) + ".png"), request.views),
+            changed=changed,
         )
         seconds.render = time.perf_counter() - started
     return BuildResult(
@@ -250,6 +335,7 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
         source_map=source_map,
         elements=run.model.element_count(),
         output=run.output,
+        changes=changes,
         report=report,
         images=images,
         seconds=seconds,
@@ -330,6 +416,54 @@ def _read_result(path: Path) -> RunResult | None:
         return RunResult.model_validate_json(path.read_bytes())
     except FileNotFoundError, ValidationError:
         return None
+
+
+def _earlier(path: Path) -> tuple[Model, Provenance | None] | None:
+    """The model an earlier build saved at ``path``, with its source map, if there is one."""
+    if not path.is_file():
+        return None
+    try:
+        return _load(path)
+    except BrickyError:
+        return None
+
+
+def _compare(
+    earlier: tuple[Model, Provenance | None], run: ScriptRun, catalog: Catalog
+) -> tuple[Changes, tuple[str, ...]]:
+    """What changed since the earlier model, and the uids of the parts to mark as new or changed.
+
+    Parts are marked only when some are unchanged: when nothing carried over, every part is new
+    and marking them all would say nothing.
+    """
+    before, before_provenance = earlier
+    diff = diff_worlds(build_world(before, catalog), build_world(run.model, catalog))
+    changes = Changes(
+        added=len(diff.added),
+        removed=len(diff.removed),
+        changed=len(diff.changed),
+        unchanged=diff.unchanged,
+        cells_filled=diff.filled,
+        cells_emptied=diff.emptied,
+        cells_recoloured=diff.recoloured,
+        added_at=_by_line(run.model, run.provenance, diff.added),
+        changed_at=_by_line(run.model, run.provenance, diff.changed),
+        removed_at=_by_line(before, before_provenance, diff.removed),
+    )
+    marked = diff.added + diff.changed if diff.unchanged else ()
+    return changes, marked
+
+
+def _by_line(
+    model: Model, provenance: Provenance | None, uids: Sequence[str]
+) -> tuple[LineCount, ...]:
+    """Count elements by the script line that placed each: most first, ties in placing order."""
+    if provenance is None:
+        return ()
+    counts = Counter(
+        str(source.site) for uid in uids if (source := provenance.trace(model, uid).source)
+    )
+    return tuple(LineCount(line=line, elements=n) for line, n in counts.most_common())
 
 
 def _save(run: ScriptRun, script: Path, path: Path) -> Path | None:
@@ -484,6 +618,7 @@ async def _render(  # noqa: PLR0913 - keyword-only options, one per concern
     paths: Sequence[Path],
     highlight: Sequence[str] = (),
     clips: Sequence[Clip] = (),
+    changed: Sequence[str] = (),
     size: tuple[int, int] = (_WIDTH, _HEIGHT),
 ) -> tuple[Image, ...]:
     """Draw ``views`` of a model and write each to the path at the same position in ``paths``."""
@@ -495,6 +630,7 @@ async def _render(  # noqa: PLR0913 - keyword-only options, one per concern
         report=report,
         highlight=highlight,
         clips=clips,
+        changed=changed,
     )
     renderer = await session.renderer()
     width, height = size
@@ -771,6 +907,7 @@ def _describe_timings(seconds: Timings) -> str:
         f"{name} {value:.2f} s"
         for name, value in (
             ("script", seconds.script),
+            ("compare", seconds.compare),
             ("check", seconds.check),
             ("render", seconds.render),
         )
