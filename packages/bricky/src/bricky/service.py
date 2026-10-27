@@ -536,7 +536,10 @@ class PartInfo(BaseModel):
     width: int = Field(description="Studs along the part's local x axis.")
     length: int = Field(description="Studs along the part's local y axis.")
     height: float = Field(description="Body height in plates.")
-    studs: int = Field(description="Number of studs on top.")
+    studs: int = Field(description="Number of studs, on top and on its sides.")
+    note: str = Field(
+        default="", description="How the part sits when placed unturned, where that matters."
+    )
 
 
 class PartsResult(BaseModel):
@@ -546,12 +549,17 @@ class PartsResult(BaseModel):
     total: int = Field(description="Matching parts before the limit was applied.")
 
     def describe(self) -> str:
-        """Render the result as a table."""
-        rows = [
-            f"{p.id:<7} {p.name:<24} {p.family:<6} {p.width}x{p.length}  "
-            f"{_count(p.height, 'plate')}  {_count(p.studs, 'stud')}"
-            for p in self.parts
-        ]
+        """Render the result as a table, with each part's note under it."""
+        name = max((len(p.name) for p in self.parts), default=0)
+        family = max((len(p.family) for p in self.parts), default=0)
+        rows = []
+        for p in self.parts:
+            rows.append(
+                f"{p.id:<7} {p.name:<{name}}  {p.family:<{family}}  {p.width}x{p.length}  "
+                f"{_count(p.height, 'plate')}  {_count(p.studs, 'stud')}"
+            )
+            if p.note:
+                rows.append(f"{'':<8}{p.note}")
         rows.append(f"{len(self.parts)} of {self.total} matching parts")
         return "\n".join(rows)
 
@@ -743,6 +751,7 @@ def _part_info(part: Part) -> PartInfo:
         length=length,
         height=to_plates(part.size.z),
         studs=part.stud_count,
+        note=part.note,
     )
 
 

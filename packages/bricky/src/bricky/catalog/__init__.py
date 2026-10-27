@@ -6,12 +6,13 @@ Geometry is generated from each part's family, so the data files stay small and 
 
 import re
 import tomllib
-from collections.abc import Iterable
+from collections import Counter
+from collections.abc import Iterable, Mapping
 from functools import cache
 from importlib.resources import files
-from typing import Final
+from typing import Final, Self
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from bricky.catalog.families import build_part
 from bricky.catalog.models import (
@@ -43,6 +44,19 @@ class _CatalogData(BaseModel):
     parts: tuple[PartSpec, ...] = ()
     colors: tuple[Color, ...] = ()
 
+    @model_validator(mode="after")
+    def _unique(self) -> Self:
+        for what, keys in (
+            ("part id", [part.id for part in self.parts]),
+            ("colour id", [str(color.id) for color in self.colors]),
+            ("colour name", [color.name.casefold() for color in self.colors]),
+        ):
+            repeated = sorted(key for key, count in Counter(keys).items() if count > 1)
+            if repeated:
+                msg = f"repeated {what}: {', '.join(repeated)}"
+                raise ValueError(msg)
+        return self
+
 
 class Catalog:
     """An immutable index of parts and colours."""
@@ -56,6 +70,16 @@ class Catalog:
     def from_specs(cls, parts: Iterable[PartSpec], colors: Iterable[Color]) -> Catalog:
         """Build a catalog from data-file entries, generating each part's geometry."""
         return cls((build_part(spec) for spec in parts), colors)
+
+    @classmethod
+    def from_data(cls, data: Mapping[str, object]) -> Catalog:
+        """Build a catalog from data as the data files hold it: ``parts`` and ``colors`` lists.
+
+        Raises:
+            pydantic.ValidationError: If an entry is invalid, or an id or name repeats.
+        """
+        parsed = _CatalogData.model_validate(data)
+        return cls.from_specs(parsed.parts, parsed.colors)
 
     @property
     def parts(self) -> tuple[Part, ...]:
@@ -124,22 +148,33 @@ class Catalog:
         ]
 
     def search(self, query: str, limit: int | None = None) -> list[Part]:
-        """Return parts whose id, name, family or size match every word of the query.
+        """Return parts whose id, name or family match every word of the query.
 
-        Sizes match in either spelling, so ``"2x4"`` and ``"2 x 4"`` both find ``Brick 2 x 4``.
+        A word matches when the part's text contains it, except a size, which must match a whole
+        size of the part's name, in either order and either spelling: ``"1x2"``, ``"2x1"`` and
+        ``"1 x 2"`` all find ``Plate 1 x 2`` and not ``Plate 1 x 12``.
         """
         words = _SIZE.sub(r"\1x\2", query.casefold()).split()
-        hits = [
-            part for part in self._parts.values() if all(w in _search_text(part) for w in words)
-        ]
+        hits = [part for part in self._parts.values() if all(_matches(w, part) for w in words)]
         return hits if limit is None else hits[:limit]
 
 
 _SIZE: Final = re.compile(r"(\d+)\s*x\s*(\d+)")
+_SIZE_WORD: Final = re.compile(r"(\d+)x(\d+)")
+
+
+def _matches(word: str, part: Part) -> bool:
+    text = _search_text(part)
+    size = _SIZE_WORD.fullmatch(word)
+    if size is None:
+        return word in text
+    a, b = size.groups()
+    words = set(text.split())
+    return f"{a}x{b}" in words or f"{b}x{a}" in words
 
 
 def _search_text(part: Part) -> str:
-    name = part.name.casefold()
+    name = part.name.casefold().replace(",", " ")
     return f"{part.id} {name} {part.family} {_SIZE.sub(r'\1x\2', name)}"
 
 
@@ -151,5 +186,4 @@ def default_catalog() -> Catalog:
         **tomllib.loads(data.joinpath("parts.toml").read_text(encoding="utf-8")),
         **tomllib.loads(data.joinpath("colors.toml").read_text(encoding="utf-8")),
     }
-    parsed = _CatalogData.model_validate(raw)
-    return Catalog.from_specs(parsed.parts, parsed.colors)
+    return Catalog.from_data(raw)

@@ -2,7 +2,17 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from bricky.geometry import ALIASES, IDENTITY, ROTATIONS, Box, Pose, Rotation, Vec3
+from bricky.geometry import (
+    ALIASES,
+    IDENTITY,
+    ROTATIONS,
+    Box,
+    Convex,
+    Pose,
+    Rotation,
+    Vec3,
+    overlaps,
+)
 
 coordinates = st.integers(min_value=-1000, max_value=1000)
 vectors = st.builds(Vec3, coordinates, coordinates, coordinates)
@@ -81,3 +91,63 @@ def test_touching_boxes_do_not_overlap():
 def test_bounding_needs_at_least_one_box():
     with pytest.raises(ValueError, match="empty"):
         Box.bounding([])
+
+
+# Convex solids
+
+sizes = st.builds(Vec3, st.integers(1, 200), st.integers(1, 200), st.integers(1, 200))
+solid_boxes = st.builds(lambda lo, size: Box(lo, lo + size), vectors, sizes)
+SLOPE = Convex.prism([(0, 0), (40, 0), (40, 24), (20, 24), (0, 4)], "x", 0, 20)
+"""Slope 45 2 x 1: its slanted face is the plane z = y + 4."""
+
+
+@given(solid_boxes, solid_boxes)
+def test_convex_boxes_overlap_exactly_like_boxes(a, b):
+    assert overlaps(a.as_convex(), b.as_convex()) == a.overlaps(b)
+    assert overlaps(a.as_convex(), b) == a.overlaps(b)
+
+
+@given(solid_boxes, vectors)
+def test_convex_boxes_contain_points_like_boxes(box, point):
+    assert box.as_convex().contains(point) == box.contains(point)
+
+
+@given(solid_boxes, rotations, vectors)
+def test_turning_a_convex_box_turns_its_bounds(box, rotation, shift):
+    pose = Pose(rotation, shift)
+    assert box.as_convex().transformed(pose).bounds == box.transformed(pose)
+
+
+@given(rotations, vectors, solid_boxes)
+def test_overlap_tests_agree_both_ways_and_under_any_pose(rotation, shift, box):
+    pose = Pose(rotation, shift)
+    slope, other = SLOPE.transformed(pose), box.transformed(pose)
+    assert overlaps(slope, other) == overlaps(other, slope) == overlaps(SLOPE, box)
+
+
+def test_touching_a_slanted_face_is_not_overlapping():
+    # A box whose lower front edge lies on the slope's face, at y = 10, z = 14.
+    touching = Box(Vec3(0, 0, 14), Vec3(20, 10, 24))
+    assert not overlaps(SLOPE, touching)
+    assert overlaps(SLOPE, Box(Vec3(0, 0, 13), Vec3(20, 10, 24)))
+    assert overlaps(SLOPE, Box(Vec3(5, 30, 20), Vec3(15, 35, 30)))  # the flat top at the back
+
+
+def test_points_on_shared_faces_belong_to_one_side():
+    assert SLOPE.contains(Vec3(10, 5, 2))
+    assert not SLOPE.contains(Vec3(10, 5, 20))
+    assert SLOPE.contains(Vec3(0, 10, 10))  # on the low x face: inside
+    assert not SLOPE.contains(Vec3(20, 10, 10))  # on the high x face: outside
+
+
+def test_convex_solids_must_be_convex_and_face_outward():
+    box = Box(Vec3(0, 0, 0), Vec3(10, 10, 10))
+    with pytest.raises(ValueError, match="faces inward"):
+        Convex(box.corners(), tuple(tuple(reversed(face)) for face in box.as_convex().faces))
+    with pytest.raises(ValueError, match="faces inward"):
+        Convex.prism([(0, 0), (20, 0), (20, 10), (10, 10), (10, 20), (0, 20)], "z", 0, 5)  # an L
+    with pytest.raises(ValueError, match="not flat"):
+        Convex(
+            (*box.corners()[:7], Vec3(10, 10, 11)),
+            box.as_convex().faces,
+        )

@@ -24,8 +24,10 @@ The core package, `packages/bricky/src/bricky`, is layered. Each module imports 
 layers above it in this list:
 
 1. `errors`, `settings`: the error front-ends show as a message, and configuration.
-2. `units`, `geometry`: exact integer units (0.4 mm) and the 24 grid rotations.
-3. `catalog`: parts and colours keyed by BrickLink ids; geometry is generated per family.
+2. `units`, `geometry`: exact integer units (0.4 mm), the 24 grid rotations, boxes and convex
+   solids with integer corners, and exact overlap tests between them.
+3. `catalog`: parts and colours keyed by BrickLink ids; geometry is generated per family, with
+   curves drawn as exact facets.
 4. `model`, `provenance`, `builder`, `files`: the canonical model format, the script lines that
    placed each element, how to write models, and their files and source maps.
 5. `analysis`: derived data (world geometry, spatial index, links), cached in `Context`.

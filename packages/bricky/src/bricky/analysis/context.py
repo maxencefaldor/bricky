@@ -32,8 +32,8 @@ class Context:
         """Spatial index of every solid, keyed by element index."""
         index: SpatialHash[int] = SpatialHash()
         for i, placed in enumerate(self.world.placed):
-            for box in placed.solids:
-                index.insert(i, box)
+            for solid in placed.solids:
+                index.insert(i, solid.bounds)
         return index
 
     @cached_property

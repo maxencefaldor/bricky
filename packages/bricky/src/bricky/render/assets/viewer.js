@@ -68,6 +68,10 @@ export function buildModel(scene) {
   for (const b of scene.boxes) {
     partBounds[b[6]].expandByPoint(toThree(b[0], b[1], b[2])).expandByPoint(toThree(b[3], b[4], b[5]));
   }
+  for (const s of scene.shapes) {
+    const v = s.vertices;
+    for (let k = 0; k < v.length; k += 3) partBounds[s.part].expandByPoint(toThree(v[k], v[k + 1], v[k + 2]));
+  }
 
   // Bodies: the visible faces of every box, merged into one mesh per material kind. The scene
   // already left out faces pressed against opaque neighbours, which nobody can see.
@@ -75,6 +79,10 @@ export function buildModel(scene) {
   for (const b of scene.boxes) {
     const part = scene.parts[b[6]];
     faces[kindOf(part)].addBox(b, colorOf(part));
+  }
+  for (const s of scene.shapes) {
+    const part = scene.parts[s.part];
+    faces[kindOf(part)].addShape(s, colorOf(part));
   }
   for (const [kind, buffer] of Object.entries(faces)) {
     if (!buffer.count) continue;
@@ -115,6 +123,7 @@ export function buildModel(scene) {
   const outline = (filter) => {
     const points = [];
     for (const b of scene.boxes) if (filter(scene.parts[b[6]][1])) pushEdges(points, b);
+    for (const s of scene.shapes) if (filter(scene.parts[s.part][1])) pushShapeEdges(points, s);
     for (const s of scene.studs) if (filter(scene.parts[s[4]][1])) pushRim(points, s);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
@@ -283,6 +292,30 @@ class FaceBuffer {
     }
   }
 
+  // A part that is not just boxes: its faces, each fanned into triangles with a flat normal.
+  addShape(s, color) {
+    const v = s.vertices;
+    for (const face of s.faces) {
+      const points = face.map((i) => [v[3 * i] * MM, v[3 * i + 2] * MM, -v[3 * i + 1] * MM]);
+      let nx = 0, ny = 0, nz = 0;
+      for (let k = 0; k < points.length; k++) {
+        const p = points[k], q = points[(k + 1) % points.length];
+        nx += (p[1] - q[1]) * (p[2] + q[2]);
+        ny += (p[2] - q[2]) * (p[0] + q[0]);
+        nz += (p[0] - q[0]) * (p[1] + q[1]);
+      }
+      const length = Math.hypot(nx, ny, nz) || 1;
+      const base = this.positions.length / 3;
+      for (const p of points) {
+        this.positions.push(p[0], p[1], p[2]);
+        this.normals.push(nx / length, ny / length, nz / length);
+        this.colors.push(color.r, color.g, color.b);
+      }
+      for (let k = 1; k + 1 < points.length; k++) this.indices.push(base, base + k, base + k + 1);
+      this.count += 1;
+    }
+  }
+
   geometry() {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(this.positions, 3));
@@ -318,6 +351,15 @@ function pushEdges(points, b) {
   for (const y of ys) for (const z of zs) points.push(xs[0], y, z, xs[1], y, z);
   for (const x of xs) for (const z of zs) points.push(x, ys[0], z, x, ys[1], z);
   for (const x of xs) for (const y of ys) points.push(x, y, zs[0], x, y, zs[1]);
+}
+
+// The creased edges of a shape, which the scene picked out.
+function pushShapeEdges(points, s) {
+  const v = s.vertices;
+  for (let k = 0; k < s.edges.length; k += 2) {
+    const a = 3 * s.edges[k], b = 3 * s.edges[k + 1];
+    points.push(v[a] * MM, v[a + 2] * MM, -v[a + 1] * MM, v[b] * MM, v[b + 2] * MM, -v[b + 1] * MM);
+  }
 }
 
 function clipPlane(clip) {

@@ -1,13 +1,17 @@
-"""Integer geometry: vectors, the 24 grid rotations, poses and boxes.
+"""Integer geometry: vectors, the 24 grid rotations, poses, boxes and convex solids.
 
 Every part sits in one of the 24 orientations that map grid axes onto grid axes, so a rotation is
 a signed permutation and all arithmetic stays exact. Boxes stay axis-aligned under any rotation,
-which keeps collision tests to a handful of integer comparisons.
+which keeps most collision tests to a handful of integer comparisons. Parts that are not boxes,
+such as slopes and round parts, are unions of convex solids with integer corners: their faces'
+planes have integer normals, and whether two solids overlap is decided exactly, by separating axes.
 """
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
-from typing import Final
+from functools import cache
+from math import gcd
+from typing import Final, Literal
 
 
 @dataclass(frozen=True, slots=True, order=True)
@@ -223,6 +227,27 @@ class Box:
         return self.hi - self.lo
 
     @property
+    def bounds(self) -> Box:
+        """The box itself, so a box and a :class:`Convex` both answer ``bounds``."""
+        return self
+
+    def corners(self) -> tuple[Vec3, ...]:
+        """The eight corners: bit 1 of the index picks the high x, bit 2 high y, bit 4 high z."""
+        lo, hi = self.lo, self.hi
+        return tuple(
+            Vec3(hi.x if i & 1 else lo.x, hi.y if i & 2 else lo.y, hi.z if i & 4 else lo.z)
+            for i in range(8)
+        )
+
+    def as_convex(self) -> Convex:
+        """The same solid as a :class:`Convex`, for exact tests against other convex solids.
+
+        Raises:
+            ValueError: If the box has no volume.
+        """
+        return _box_convex(self)
+
+    @property
     def volume(self) -> int:
         """Volume in cubic base units."""
         size = self.size
@@ -263,3 +288,191 @@ class Box:
     def transformed(self, pose: Pose) -> Box:
         """Return the box placed by a pose; grid rotations keep boxes axis-aligned."""
         return Box.spanning(pose.apply(self.lo), pose.apply(self.hi))
+
+
+_BOX_FACES: Final = (
+    (0, 4, 6, 2),
+    (1, 3, 7, 5),
+    (0, 1, 5, 4),
+    (2, 6, 7, 3),
+    (0, 2, 3, 1),
+    (4, 5, 7, 6),
+)
+"""Faces of a box by :meth:`Box.corners` index, counter-clockwise seen from outside."""
+
+
+type Plane = tuple[Vec3, int]
+"""An outward normal and an offset: points ``p`` with ``normal.dot(p) <= offset`` are inside."""
+
+
+@dataclass(frozen=True, slots=True)
+class Convex:
+    """A convex solid with integer corners, such as the body of a slope.
+
+    Faces list corner indices counter-clockwise seen from outside. Every face's plane is kept as an
+    integer outward normal and offset, so whether a point is inside, or two solids overlap, is
+    decided without rounding.
+
+    Raises:
+        ValueError: If a face has fewer than three corners, is not flat, or faces inward, or the
+            solid is not convex.
+    """
+
+    vertices: tuple[Vec3, ...]
+    faces: tuple[tuple[int, ...], ...]
+    planes: tuple[Plane, ...] = field(init=False, repr=False, compare=False)
+    bounds: Box = field(init=False, repr=False, compare=False)
+    directions: tuple[Vec3, ...] = field(init=False, repr=False, compare=False)
+    """The distinct directions of the edges, each as a primitive vector."""
+
+    def __post_init__(self) -> None:
+        planes: list[Plane] = []
+        directions: set[Vec3] = set()
+        for face in self.faces:
+            corners = [self.vertices[i] for i in face]
+            normal = _primitive(_newell(corners))
+            if len(corners) < 3 or normal == ORIGIN:  # noqa: PLR2004 - a face needs three corners
+                msg = f"face {face} is degenerate"
+                raise ValueError(msg)
+            offset = normal.dot(corners[0])
+            if any(normal.dot(corner) != offset for corner in corners):
+                msg = f"face {face} is not flat"
+                raise ValueError(msg)
+            if any(normal.dot(vertex) > offset for vertex in self.vertices):
+                msg = f"face {face} faces inward, or the solid is not convex"
+                raise ValueError(msg)
+            planes.append((normal, offset))
+            for a, b in zip(corners, corners[1:] + corners[:1], strict=True):
+                if a != b:
+                    directions.add(_direction(b - a))
+        xs, ys, zs = zip(*(v.as_tuple() for v in self.vertices), strict=True)
+        object.__setattr__(self, "planes", tuple(planes))
+        object.__setattr__(
+            self, "bounds", Box(Vec3(min(xs), min(ys), min(zs)), Vec3(max(xs), max(ys), max(zs)))
+        )
+        object.__setattr__(self, "directions", tuple(sorted(directions)))
+
+    @classmethod
+    def prism(
+        cls,
+        polygon: Sequence[tuple[int, int]],
+        axis: Literal["x", "y", "z"],
+        lo: int,
+        hi: int,
+    ) -> Convex:
+        """Extrude a convex polygon along an axis, from ``lo`` to ``hi``.
+
+        The polygon runs counter-clockwise in its plane, in coordinates ``(a, b)`` chosen so that
+        a, b and the axis are right-handed: ``(x, y)`` along z, ``(y, z)`` along x, and
+        ``(z, x)`` along y.
+
+        Raises:
+            ValueError: If the polygon is not convex and counter-clockwise, or ``lo >= hi``.
+        """
+        if lo >= hi:
+            msg = f"a prism needs lo < hi, not {lo} and {hi}"
+            raise ValueError(msg)
+
+        def point(a: int, b: int, c: int) -> Vec3:
+            if axis == "z":
+                return Vec3(a, b, c)
+            if axis == "x":
+                return Vec3(c, a, b)
+            return Vec3(b, c, a)
+
+        n = len(polygon)
+        vertices = tuple(point(a, b, lo) for a, b in polygon) + tuple(
+            point(a, b, hi) for a, b in polygon
+        )
+        bottom = tuple(reversed(range(n)))
+        top = tuple(range(n, 2 * n))
+        sides = tuple((i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n))
+        return cls(vertices, (bottom, top, *sides))
+
+    def transformed(self, pose: Pose) -> Convex:
+        """Return the solid placed by a pose; proper rotations keep faces wound outward."""
+        return Convex(tuple(pose.apply(v) for v in self.vertices), self.faces)
+
+    def contains(self, point: Vec3) -> bool:
+        """Return whether a point lies in the solid.
+
+        A point on a face counts as inside when the face looks toward lower coordinates (its
+        normal's first nonzero component is negative) and outside otherwise, as with
+        :meth:`Box.contains`, so solids that share a face never both contain a point on it.
+        """
+        for normal, offset in self.planes:
+            value = normal.dot(point)
+            if value > offset or (value == offset and _looks_up(normal)):
+                return False
+        return True
+
+    def extent(self, axis: Vec3) -> tuple[int, int]:
+        """The lowest and highest values of ``axis.dot(corner)`` over the corners."""
+        values = [axis.dot(v) for v in self.vertices]
+        return min(values), max(values)
+
+
+type Solid = Box | Convex
+"""A part's body is a union of solids: boxes, or convex solids where a box will not do."""
+
+
+def overlaps(a: Solid, b: Solid) -> bool:
+    """Return whether two solids share positive volume; touching faces or edges do not count.
+
+    Convex solids are tested by separating axes: two convex solids keep their insides apart exactly
+    when some axis from their face normals, or the cross products of their edge directions, has
+    them on opposite sides, touching at most.
+    """
+    if not a.bounds.overlaps(b.bounds):
+        return False
+    if isinstance(a, Box) and isinstance(b, Box):
+        return True
+    first = a if isinstance(a, Convex) else a.as_convex()
+    second = b if isinstance(b, Convex) else b.as_convex()
+    axes = [normal for normal, _ in (*first.planes, *second.planes)]
+    axes += [u.cross(v) for u in first.directions for v in second.directions]
+    for axis in axes:
+        if axis == ORIGIN:
+            continue
+        a_lo, a_hi = first.extent(axis)
+        b_lo, b_hi = second.extent(axis)
+        if a_hi <= b_lo or b_hi <= a_lo:
+            return False
+    return True
+
+
+@cache
+def _box_convex(box: Box) -> Convex:
+    return Convex(box.corners(), _BOX_FACES)
+
+
+def _newell(points: Sequence[Vec3]) -> Vec3:
+    """Newell's normal of a polygon: outward for corners counter-clockwise seen from outside."""
+    x = y = z = 0
+    for p, q in zip(points, [*points[1:], points[0]], strict=True):
+        x += (p.y - q.y) * (p.z + q.z)
+        y += (p.z - q.z) * (p.x + q.x)
+        z += (p.x - q.x) * (p.y + q.y)
+    return Vec3(x, y, z)
+
+
+def _primitive(vector: Vec3) -> Vec3:
+    """The vector divided by the greatest common divisor of its components."""
+    divisor = gcd(vector.x, vector.y, vector.z)
+    if divisor == 0:
+        return vector
+    return Vec3(vector.x // divisor, vector.y // divisor, vector.z // divisor)
+
+
+def _direction(vector: Vec3) -> Vec3:
+    """A primitive vector along the same line, its first nonzero component positive."""
+    primitive = _primitive(vector)
+    return -primitive if _looks_up(-primitive) else primitive
+
+
+def _looks_up(vector: Vec3) -> bool:
+    """Whether the first nonzero component is positive."""
+    for component in vector:
+        if component:
+            return component > 0
+    return False
