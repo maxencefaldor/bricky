@@ -1,0 +1,11 @@
+title = "Notre-Dame de Paris"
+difficulty = 10
+max_turns = 200
+minutes = 120
+prompt = """
+Build the cathedral of Notre-Dame de Paris at 1:300 scale: about 53 studs long and 20 studs wide,
+with the west towers about 72 plates tall and the spire about 100 plates. `inputs/notes.md`
+describes the real one. Make it recognisable from every side: the west façade with its portals,
+gallery of kings, rose window and two towers; the long nave and choir with flying buttresses; the
+transept with its rose windows; the roof and the spire over the crossing.
+"""

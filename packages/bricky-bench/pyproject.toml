@@ -1,0 +1,26 @@
+[project]
+name = "bricky-bench"
+version = "0.2.0"
+description = "Benchmark projects for agents that build LEGO® models with bricky."
+readme = "README.md"
+license = "Apache-2.0"
+authors = [{ name = "Maxence Faldor" }]
+requires-python = ">=3.15"
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.15",
+  "Typing :: Typed",
+]
+dependencies = ["bricky", "pydantic>=2", "pydantic-settings>=2"]
+
+[project.scripts]
+bricky-bench = "bricky_bench.cli:main"
+
+[tool.uv.sources]
+bricky = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14"]
+build-backend = "uv_build"

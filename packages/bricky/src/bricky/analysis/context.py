@@ -2,6 +2,7 @@
 
 from functools import cached_property
 
+from bricky.analysis.cells import Cell, CellKey, world_cells
 from bricky.analysis.links import Link, ReceptorIndex, find_links, receptor_index
 from bricky.analysis.spatial import SpatialHash
 from bricky.analysis.world import World, build_world
@@ -20,6 +21,11 @@ class Context:
     def world(self) -> World:
         """Every element placed in world space."""
         return build_world(self.model, self.catalog)
+
+    @cached_property
+    def cells(self) -> dict[CellKey, Cell]:
+        """Which element fills each stud x stud x plate cell."""
+        return world_cells(self.world)
 
     @cached_property
     def solid_index(self) -> SpatialHash[int]:

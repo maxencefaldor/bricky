@@ -1,0 +1,41 @@
+title = "A castle from its plans"
+difficulty = 9
+max_turns = 160
+minutes = 90
+prompt = """
+Rebuild the castle in the plans: `inputs/plans.png` shows it from four sides (iso, front, right and
+top), `inputs/back.png` and `inputs/left.png` show the other two, and `inputs/top.png` is a larger
+plan. The orthographic views have rulers in studs and plates, the units bricky's `at` uses. Match
+the towers, walls, gate, battlements, arrow slits, keep, flag and path: their positions, sizes and
+colours.
+"""
+
+[[generate]]
+kind = "render"
+file = "inputs/plans.png"
+view = "sheet"
+caption = "The castle: plans"
+
+[[generate]]
+kind = "render"
+file = "inputs/back.png"
+view = "back"
+caption = "The castle: back"
+width = 1200
+height = 900
+
+[[generate]]
+kind = "render"
+file = "inputs/left.png"
+view = "left"
+caption = "The castle: left side"
+width = 1200
+height = 900
+
+[[generate]]
+kind = "render"
+file = "inputs/top.png"
+view = "top"
+caption = "The castle: plan"
+width = 1200
+height = 1200

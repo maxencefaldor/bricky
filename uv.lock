@@ -5,12 +5,14 @@ requires-python = ">=3.15"
 [manifest]
 members = [
     "bricky",
+    "bricky-bench",
     "bricky-mcp",
 ]
 
 [manifest.dependency-groups]
 dev = [
     { name = "bricky", editable = "packages/bricky" },
+    { name = "bricky-bench", editable = "packages/bricky-bench" },
     { name = "bricky-mcp", editable = "packages/bricky-mcp" },
     { name = "hypothesis", specifier = ">=6.170" },
     { name = "pytest", specifier = ">=9.1" },
@@ -62,6 +64,23 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "playwright", specifier = ">=1.63" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "pydantic-settings", specifier = ">=2" },
+]
+
+[[package]]
+name = "bricky-bench"
+version = "0.2.0"
+source = { editable = "packages/bricky-bench" }
+dependencies = [
+    { name = "bricky" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "bricky", editable = "packages/bricky" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pydantic-settings", specifier = ">=2" },
 ]

@@ -34,6 +34,10 @@ layers above it in this list:
 8. `runner`, `service`: build scripts in child processes, and every command defined once.
 9. `cli`, and `bricky_mcp` in its own package: front-ends that only adapt `service`.
 
+`bricky_bench`, in `packages/bricky-bench`, runs the benchmark in `bench/` on top of bricky's public
+API. Benchmark inputs are generated from each project's reference by `bricky-bench prepare` and
+committed; a reference never reaches the agent's workspace.
+
 ## Conventions
 
 - **Tools:** use the standard, official, established tool in each category. That means uv, ruff,

@@ -94,10 +94,11 @@ class CollisionPass:
         for (i, j), count in sorted(counts.items()):
             a, b = placed[i], placed[j]
             studs = "1 stud" if count == 1 else f"{count} studs"
+            push = "pushes" if count == 1 else "push"
             yield Diagnostic(
                 code="E202",
                 check=self.name,
-                message=f"{studs} of {a.uid} push into {b.uid}, which has no receptor there",
+                message=f"{studs} of {a.uid} {push} into {b.uid}, which has no receptor there",
                 elements=(a.uid, b.uid),
                 region=Region.of(regions[i, j]),
             )

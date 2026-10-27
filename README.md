@@ -61,6 +61,9 @@ def build() -> ModelBuilder:
   `builder.instance("column", at=...)` places copies.
 - **Parts and colours:** ids follow the BrickLink catalog, such as `3001` and `Dark Bluish Gray`.
   Scripts can query the catalog: `builder.catalog.find(family="plate", size=(1, 6))`.
+- **Cells:** `cells(builder.build())` says which part and colour fill every cell, a cell being one
+  stud square and one plate tall, keyed `(x, y, z)` in the units of `at`. Comparing a model with a
+  target, a plan or another model, takes a few exact lines.
 
 ## The feedback loop
 
@@ -114,12 +117,21 @@ as not installed.
   `search_parts`, `list_colors`, `list_passes` and `explain_code` over stdio. Their arguments come
   from the same request models as the CLI; builds and renders return their pictures as images.
 
+## Benchmark
+
+[`bench/`](bench/README.md) holds ten projects, from a brick wall to Notre-Dame de Paris: prompts
+with pictures, plans, notes or a broken script to repair. Seven are scored cell by cell against a
+reference the agent never sees. `uv run bricky-bench run` runs them with Claude Code in fresh
+workspaces and keeps every transcript, model and score.
+
 ## Layout
 
 | Path | What lives there |
 | --- | --- |
 | `packages/bricky` | The core: geometry, catalog, model format, provenance, passes, renders, CLI |
 | `packages/bricky-mcp` | The MCP server, a thin adapter over `bricky.service` |
+| `packages/bricky-bench` | The benchmark runner: workspaces, Claude Code, scores |
+| `bench` | The benchmark's projects, and the runs it keeps |
 | `examples` | Build scripts to try, including Stonehenge and the Elizabeth Tower |
 
 ## Development

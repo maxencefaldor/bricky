@@ -1,0 +1,17 @@
+title = "A lighthouse from one picture"
+difficulty = 6
+max_turns = 80
+minutes = 40
+prompt = """
+Rebuild the lighthouse in `inputs/lighthouse.png` as closely as you can: the same shape, size,
+colours and details. The picture is all you have, with no plans and no measurements: judge sizes
+by counting the studs you can see.
+"""
+
+[[generate]]
+kind = "render"
+file = "inputs/lighthouse.png"
+view = "iso"
+caption = "A lighthouse"
+width = 1200
+height = 1000

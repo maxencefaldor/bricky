@@ -42,6 +42,9 @@ def build() -> ModelBuilder:
   `builder.catalog.find(family="plate", size=(1, 6))`. List colours with
   `uv run bricky colors gray`; names follow BrickLink, such as `Dark Bluish Gray`.
 - Give important parts a `name=`; the report and the pictures label parts by name.
+- To compare with a target (a plan, layers or another model), `from bricky import cells`:
+  `cells(builder.build())` maps every filled cell `(x, y, z)`, in studs, studs and plates, to the
+  element and colour that fill it.
 - `print()` freely: the build shows what the script printed.
 
 ## Reading the feedback

@@ -14,3 +14,6 @@ models/*.bricky.json
 models/*.bricky.map.json
 models/*.png
 models/*.html
+
+# What benchmark runs write
+bench/runs/

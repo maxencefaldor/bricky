@@ -1,0 +1,44 @@
+pixel-heart: the cells it fills, one plate level at a time from the ground up.
+
+A cell is 1 x 1 stud and 1 plate tall; z counts plates, so a brick fills three levels.
+Each level is a plan seen from above, north up: x grows to the right (east) and y grows
+upward (north), both in studs. '.' is an empty cell; every other character is a colour:
+
+  B  Black (11)
+  W  White (1)
+  R  Red (5)
+  D  Dark Red (59)
+
+x runs from 0 to 11, y from 0 to 11, and z from 0 to 1.
+
+z = 0
+y\x  0         1
+     012345678901
+ 11  BBBBBBBBBBBB
+ 10  BBBBBBBBBBBB
+  9  BBBBBBBBBBBB
+  8  BBBBBBBBBBBB
+  7  BBBBBBBBBBBB
+  6  BBBBBBBBBBBB
+  5  BBBBBBBBBBBB
+  4  BBBBBBBBBBBB
+  3  BBBBBBBBBBBB
+  2  BBBBBBBBBBBB
+  1  BBBBBBBBBBBB
+  0  BBBBBBBBBBBB
+
+z = 1
+y\x  0         1
+     012345678901
+ 11  WWWWWWWWWWWW
+ 10  WWRRWWWWRRWW
+  9  WRWRRWWRRRRW
+  8  RWRRRRRRRRRD
+  7  RRRRRRRRRRRD
+  6  RRRRRRRRRRRD
+  5  WRRRRRRRRRDW
+  4  WWRRRRRRRDWW
+  3  WWWRRRRRDWWW
+  2  WWWWRRRDWWWW
+  1  WWWWWRDWWWWW
+  0  WWWWWWWWWWWW

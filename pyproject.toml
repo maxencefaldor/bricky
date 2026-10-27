@@ -3,11 +3,13 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 bricky = { workspace = true }
+bricky-bench = { workspace = true }
 bricky-mcp = { workspace = true }
 
 [dependency-groups]
 dev = [
   "bricky",
+  "bricky-bench",
   "bricky-mcp",
   "hypothesis>=6.170",
   "pytest>=9.1",
@@ -19,7 +21,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py315"
-src = ["packages/bricky/src", "packages/bricky-mcp/src"]
+src = ["packages/bricky/src", "packages/bricky-bench/src", "packages/bricky-mcp/src"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -35,7 +37,8 @@ ignore = [
 "**/tests/**" = ["ANN", "D", "INP001", "PLR2004", "S101"]
 # Build scripts are models written as code: numbers are their content, helpers stay small.
 "examples/**" = ["C901", "D103", "FBT001", "INP001", "PLR0911", "PLR0913", "PLR0917", "PLR2004", "T201"]
-"packages/bricky/src/bricky/cli.py" = ["T201"] # a command line prints
+"bench/**" = ["C901", "D103", "FBT001", "INP001", "PLR0911", "PLR0913", "PLR0917", "PLR2004", "T201"]
+"packages/*/src/*/cli.py" = ["T201"] # a command line prints
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

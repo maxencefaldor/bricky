@@ -1,0 +1,12 @@
+title = "A brick wall"
+difficulty = 1
+max_turns = 30
+minutes = 15
+prompt = """
+Build a straight brick wall in running bond: 8 studs long along x, 1 stud thick and 6 bricks tall,
+standing on the ground so that it fills x 0 to 8 and y 0 to 1.
+
+The bottom course is four 1 x 2 bricks laid end to end. The course above starts and ends with a
+1 x 1 brick, so its joints sit over the middle of the bricks below, and the courses alternate like
+that to the top. The five lower courses are Red and the top course is White.
+"""
