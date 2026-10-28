@@ -41,7 +41,7 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
 - **Tools:** use the standard, official, established tool in each category.
   That means uv, ruff, ty, rumdl, pytest with Hypothesis, pydantic and pydantic-settings, the official MCP SDK, and Playwright with three.js for renders.
 - **Format and lint:** bricky follows [toolchain](https://github.com/maxencefaldor/toolchain): ruff's default format at 88 columns, every ruff rule, every ty rule as an error, and Markdown one sentence per line.
-  `.editorconfig` is the toolchain's, verbatim; `.rumdl.toml` is too, followed by the docs' MkDocs flavor.
+  `.editorconfig` is the toolchain's, verbatim; `.rumdl.toml` is too, followed by the settings bricky's docs need.
   A rule is switched off only in `pyproject.toml`, as narrowly as it can be, with its reason beside it.
 - **Python:** 3.15 only.
   Use modern syntax: PEP 695 generics and `type` aliases.

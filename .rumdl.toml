@@ -47,3 +47,7 @@ flavor = "mkdocs"
 
 [MD033]
 allowed-elements = ["div"]
+
+# The gallery links to the 3D viewers that docs/gallery.py writes when the docs are published.
+[per-file-ignores]
+"docs/gallery.md" = ["MD057"]
