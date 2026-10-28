@@ -57,7 +57,7 @@ from bricky.provenance import Provenance
 from bricky.render import Clip, Renderer, View, build_scene, write_html
 from bricky.runner import RunResult
 from bricky.settings import Settings
-from bricky.units import to_plates, to_studs
+from bricky.units import STUD, to_plates, to_studs
 
 _PROFILE_HELP: Final = (
     "Profile to run, such as 'digital' or 'physical'; defaults to the configured one."
@@ -997,6 +997,11 @@ class CatalogShowResult(BaseModel):
     info: PartInfo
     colors: tuple[str, ...] = Field(description="Names of the colors the part comes in.")
     anti_studs: int | None = Field(description="Number of anti-studs; null without a shape.")
+    connectors: tuple[str, ...] = Field(
+        default=(),
+        description="Where the part's studs and anti-studs are, as text: maps of its top and its "
+        "underside, north up, then the connectors off those maps.",
+    )
     images: tuple[Image, ...] = ()
 
     def describe(self) -> str:
@@ -1018,6 +1023,7 @@ class CatalogShowResult(BaseModel):
             )
             if info.note:
                 lines.append(f"  {info.note}")
+            lines.extend(self.connectors)
         if self.colors:
             lines.append(f"colors ({len(self.colors)}): {', '.join(self.colors)}")
         lines.extend(_describe_images(self.images))
@@ -1057,8 +1063,48 @@ async def catalog_show(request: CatalogShowRequest, session: Session) -> Catalog
         anti_studs=None
         if part is None
         else sum(connector.kind is ConnectorKind.ANTI_STUD for connector in part.connectors),
+        connectors=() if part is None else _connector_maps(part),
         images=images,
     )
+
+
+def _connector_maps(part: Part) -> tuple[str, ...]:
+    """Maps of a part's top studs and underside anti-studs, north up, and its other connectors.
+
+    Each map has one character per stud square of the footprint: ``o`` where a stud stands, or an
+    anti-stud opens, at the square's center, and ``.`` elsewhere.
+    """
+    width, length = part.footprint
+    top: set[tuple[int, int]] = set()
+    underside: set[tuple[int, int]] = set()
+    others: list[str] = []
+    for connector in part.connectors:
+        position = connector.position
+        square = ((position.x - STUD // 2) // STUD, (position.y - STUD // 2) // STUD)
+        on_grid = position.x % STUD == STUD // 2 and position.y % STUD == STUD // 2
+        if on_grid and connector.normal == UP and position.z == part.size.z:
+            top.add(square)
+        elif on_grid and connector.normal == DOWN and position.z == 0:
+            underside.add(square)
+        else:
+            kind = "stud" if connector.kind is ConnectorKind.STUD else "anti-stud"
+            facing = next(name for name, axis in AXES.items() if axis == connector.normal)
+            others.append(
+                f"  {kind} facing {facing} at x {to_studs(position.x):g}, "
+                f"y {to_studs(position.y):g}, z {to_plates(position.z):g}"
+            )
+
+    def drawn(squares: set[tuple[int, int]]) -> list[str]:
+        return [
+            "    " + " ".join("o" if (x, y) in squares else "." for x in range(width))
+            for y in reversed(range(length))
+        ]
+
+    lines = ["top studs, north up:", *drawn(top), "underside anti-studs, north up:"]
+    lines += drawn(underside)
+    if others:
+        lines += ["other connectors:", *others]
+    return tuple(lines)
 
 
 class CatalogVerifyRequest(BaseModel):
@@ -1116,9 +1162,9 @@ class PassesResult(BaseModel):
     def describe(self) -> str:
         """Return the result as text."""
         installed = {info.name for info in self.installed}
-        rows = [
-            f"{info.name:<14} {', '.join(info.codes):<12} {info.summary}" for info in self.installed
-        ]
+        table = [[info.name, ", ".join(info.codes), info.summary] for info in self.installed]
+        widths = [max((len(cells[i]) for cells in table), default=0) for i in range(2)]
+        rows = [_row(cells, widths) for cells in table]
         rows.append("")
         for profile, names in self.profiles.items():
             marked = ", ".join(

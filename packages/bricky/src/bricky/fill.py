@@ -11,12 +11,15 @@ below it and no supported neighbor still gets a part; the checks then report it 
 """
 
 from collections import defaultdict
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from typing import Final
 
 type Square = tuple[int, int]
 """A stud square, ``(x, y)`` in studs."""
+
+type MadeIn = Callable[[str, int | str], bool]
+"""Whether a part, by id, comes in a color, by id or name."""
 
 BRICKS: Final[dict[tuple[int, int], str]] = {
     (1, 1): "3005",
@@ -73,11 +76,15 @@ class Placement:
     color: int | str
 
 
-def plan_fill(voxels: Mapping[tuple[int, int, int], int | str]) -> list[Placement]:
+def plan_fill(
+    voxels: Mapping[tuple[int, int, int], int | str], *, made_in: MadeIn | None = None
+) -> list[Placement]:
     """Return the bricks and plates that fill exactly the given voxels, bottom level first.
 
     Args:
         voxels: The color of every voxel to fill, keyed ``(x, y, z)`` in studs, studs and plates.
+        made_in: Whether a part comes in a color; the fill then uses only parts that do, and a
+            1 x 1 part where none does. Every part is allowed when omitted.
 
     Examples:
         >>> wall = {(x, 0, z): "Red" for x in range(4) for z in range(3)}
@@ -98,39 +105,16 @@ def plan_fill(voxels: Mapping[tuple[int, int, int], int | str]) -> list[Placemen
                 for square, color in level.items()
                 if all(levels.get(z + k, {}).get(square) == color for k in range(1, COURSE))
             }
-            bricks = _pack(whole, z, BRICKS, along_x=(z // COURSE) % 2 == 0, below=below)
+            along_x = (z // COURSE) % 2 == 0
+            bricks = _Packer(whole, z, BRICKS, along_x, below, made_in).pack()
             placements += bricks
             for brick in bricks:
                 for square in _squares(brick, BRICKS):
                     for k in range(COURSE):
                         bricked[z + k].add(square)
         rest = {square: color for square, color in level.items() if square not in bricked[z]}
-        placements += _pack(rest, z, PLATES, along_x=z % 2 == 1, below=below)
+        placements += _Packer(rest, z, PLATES, z % 2 == 1, below, made_in).pack()
     return placements
-
-
-def _pack(
-    squares: Mapping[Square, int | str],
-    z: int,
-    parts: Mapping[tuple[int, int], str],
-    *,
-    along_x: bool,
-    below: set[Square] | None,
-) -> list[Placement]:
-    """Cover same-colored squares of one level with the largest parts that fit and rest on below.
-
-    Squares that overhang go first, since few parts can hold them; the rest follow in rows along
-    the chosen axis, each covered by a part whose corner is that square.
-    """
-    packer = _Packer(dict(squares), z, parts, along_x=along_x, below=below)
-    order = sorted(packer.free, key=lambda square: (square[1], square[0]) if along_x else square)
-    for start in order:
-        if below is not None and start not in below and start in packer.free:
-            packer.cover(start, anywhere=True)
-    for start in order:
-        if start in packer.free and not packer.cover(start, anywhere=False):
-            packer.take(start, 1, 1, (1, 1))  # nothing below holds it: a 1 x 1 part, floating
-    return packer.placed
 
 
 @dataclass(slots=True)
@@ -142,12 +126,30 @@ class _Packer:
     parts: Mapping[tuple[int, int], str]
     along_x: bool
     below: set[Square] | None
+    made_in: MadeIn | None
     placed: list[Placement] = field(default_factory=list)
+
+    def pack(self) -> list[Placement]:
+        """Cover every square with the largest parts that fit and rest on the level below.
+
+        Squares that overhang go first, since few parts can hold them; the rest follow in rows
+        along the chosen axis, each covered by a part whose corner is that square.
+        """
+        order = sorted(self.free, key=lambda square: square[::-1] if self.along_x else square)
+        for start in order:
+            if self.below is not None and start not in self.below and start in self.free:
+                self.cover(start, anywhere=True)
+        for start in order:
+            if start in self.free and not self.cover(start, anywhere=False):
+                self.take(start, 1, 1, (1, 1))  # nothing below holds it: a 1 x 1 part, floating
+        return self.placed
 
     def cover(self, start: Square, *, anywhere: bool) -> bool:
         """Place the largest part over ``start`` that fits; return whether one did."""
         color = self.free[start]
         for short, long in sorted(self.parts, key=_area, reverse=True):
+            if self.made_in is not None and not self.made_in(self.parts[short, long], color):
+                continue
             shapes = (long, short), (short, long)
             for width, depth in dict.fromkeys(shapes if self.along_x else shapes[::-1]):
                 for corner in _corners(start, width, depth, anywhere=anywhere):

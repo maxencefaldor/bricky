@@ -38,8 +38,10 @@ def build() -> ModelBuilder:
   rotated bounding box of what you place, a part or a whole component.
 - Sizes read x by y when a part is unrotated: Brick 2 x 4 (`3001`) is 2 studs along x and 4 along
   y, and `R90` makes it 4 along x. `bricky parts` and `bricky catalog show` print sizes that way.
-- `rotation`: `R0`, `R90`, `R180` or `R270` about the vertical axis. Any of the 24 grid rotations
-  can be named by where the part's x and y axes go: `+x+z` stands a part up with its top facing -y.
+- `rotation`: `R0`, `R90`, `R180` or `R270` about the vertical axis, counter-clockwise seen from
+  above: `R90` turns the part's x axis to +y. Any of the 24 grid rotations can be named by where the
+  part's x and y axes go. To stand a part up, its top then faces: `+x+z` → -y, `-x+z` → +y,
+  `+y+z` → +x, `-y+z` → -x; `+x-y` turns it upside down.
 - Parts that face a way say so in `uv run bricky parts slope`: unrotated, slopes fall toward -y
   (the front), bricks with side studs list the faces their studs are on, arches span along y.
   Rotate them with `rotation`, for example `R180` for a slope falling toward +y.

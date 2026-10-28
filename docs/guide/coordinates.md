@@ -49,9 +49,16 @@ front.
 ![A Slope 45 2 x 2 in each rotation](../images/rotations.png)
 
 A rotation can also be named by where the part's own x and y axes go, which reaches all 24 grid
-rotations. `+x+y` is the identity, `+y-x` is `R90`, and `+x+z` stands a part up so that its top
-faces -y. Building sideways uses these rotations; see
-[Build scripts](scripts.md#building-sideways).
+rotations: `+x+y` is the identity, and `+y-x` is `R90`. Building sideways stands parts up (see
+[Build scripts](scripts.md#building-sideways)):
+
+| Rotation | The part's top faces |
+| --- | --- |
+| `+x+z` | -y, the front |
+| `-x+z` | +y, the back |
+| `+y+z` | +x, east |
+| `-y+z` | -x, west |
+| `+x-y` | down: upside down |
 
 ## Half a stud off the grid
 

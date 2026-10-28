@@ -70,6 +70,12 @@ The element's body reaches below the ground plane, z = 0.
 
 ![A brick sunk two plates below the ground](../images/underground.png)
 
+### W104 Color never made
+
+BrickLink lists the colors each part has come in, and the element's color is not among them: the
+part and the color both exist, but never together. The warning names the part and the color once,
+with every element that uses them. `builder.fill` picks only parts made in each color.
+
 ### E201 Overlap
 
 The bodies of two parts share positive volume. Faces that only touch do not count, and studs belong
@@ -96,9 +102,9 @@ once, with all its elements.
 ## Passes and profiles
 
 ```text
-collision      E201, E202        Parts sharing space, and studs blocked by parts with no anti-stud.
-connectivity   E301              Groups of parts with no connected path to the ground.
-schema         E101, E102, E103  Unknown parts and colors, and parts below the ground plane.
+collision     E201, E202              Parts sharing space, and studs blocked by parts with no ...
+connectivity  E301                    Groups of parts with no connected path to the ground.
+schema        E101, E102, E103, W104  Unknown parts and colors, parts below the ground plane, ...
 
 digital (default): schema, collision, connectivity
 ```

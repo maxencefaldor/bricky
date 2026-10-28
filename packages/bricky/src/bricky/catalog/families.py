@@ -31,7 +31,7 @@ from bricky.catalog.models import (
     SideStudsShape,
     SlopeShape,
 )
-from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Solid, Vector
+from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Pose, Rotation, Solid, Vector
 from bricky.units import PLATE, STUD
 
 BLOCK_HEIGHTS: Final[dict[Family, int]] = {Family.BRICK: 3, Family.PLATE: 1, Family.TILE: 1}
@@ -55,7 +55,7 @@ def build_part(entry: CatalogPart, shape: Shape) -> Part:
     solids, connectors, note = _geometry(shape)
     bounds = Box.bounding(solid.bounds for solid in solids)
     if isinstance(shape, BoxesShape):
-        bounds = Box(ORIGIN, Vector(*shape.size))
+        bounds = Box(ORIGIN, Vector(*shape.size)).transformed(_upright(shape))
     elif bounds.min != ORIGIN:  # pragma: no cover - every family builds from the origin
         message = f"part {entry.id}: its bounding box starts at {bounds.min}, not at the origin"
         raise ValueError(message)
@@ -276,13 +276,27 @@ def _arch(shape: ArchShape) -> Geometry:
 
 
 def _boxes(shape: BoxesShape) -> Geometry:
-    """A body of boxes, with studs and anti-studs where the shape lists them."""
-    solids = [Box(Vector(x0, y0, z0), Vector(x1, y1, z1)) for x0, y0, z0, x1, y1, z1 in shape.boxes]
+    """A body of boxes, with studs and anti-studs where the shape lists them, rotated as named."""
+    pose = _upright(shape)
+    solids = [
+        Box(Vector(x0, y0, z0), Vector(x1, y1, z1)).transformed(pose)
+        for x0, y0, z0, x1, y1, z1 in shape.boxes
+    ]
     connectors = _anti_studs(shape.anti_studs)
     connectors += [
         Connector(ConnectorKind.STUD, Vector(x, y, z), AXES[axis]) for x, y, z, axis in shape.studs
     ]
-    return solids, connectors, f"converted from {shape.source}, as it is oriented there"
+    connectors = [connector.transformed(pose) for connector in connectors]
+    if shape.rotation == "R0":
+        return solids, connectors, f"converted from {shape.source}, as it is oriented there"
+    return solids, connectors, f"converted from {shape.source}, rotated {shape.rotation}"
+
+
+def _upright(shape: BoxesShape) -> Pose:
+    """The pose that applies a converted shape's rotation and keeps its corner at the origin."""
+    rotation = Rotation.parse(shape.rotation)
+    rotated = Box(ORIGIN, Vector(*shape.size)).transformed(Pose(rotation))
+    return Pose(rotation, -rotated.min)
 
 
 def _distinct(points: Sequence[tuple[int, int]]) -> Profile:
