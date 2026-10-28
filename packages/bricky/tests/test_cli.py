@@ -244,7 +244,8 @@ def test_show_maps_a_sloped_top_and_draws_the_part_outside_the_workspace(
     assert "height over" not in capsys.readouterr().out
 
 
-def test_help_writes_choices_as_the_values_the_command_line_accepts(capsys):
+def test_help_writes_choices_as_the_values_the_command_line_accepts(capsys, monkeypatch):
+    monkeypatch.setenv("PYTHON_COLORS", "0")  # argparse colors help where CI forces color
     assert run("render", "--help") == 0
     out = capsys.readouterr().out
     assert "--views list[{sheet,perspective,perspective-south-west," in out
