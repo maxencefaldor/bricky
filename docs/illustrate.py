@@ -629,7 +629,13 @@ function photograph(scene, options) {
   ground.receiveShadow = true;
   three.add(ground);
 
-  // Frame the model: move the target to center it, then the camera to fill the image.
+  // Frame the model and its shadow: center them, then move the camera to fill the image.
+  // Each corner of the model's box casts its shadow along the sunlight, onto the ground.
+  const floor = model.bounds.min.y;
+  const framed = corners(model.bounds).flatMap((corner) => [
+    corner,
+    corner.clone().addScaledVector(light, -(corner.y - floor) / light.y),
+  ]);
   const camera = new THREE.PerspectiveCamera(
     LENS, width / height, radius / 100, radius * 100,
   );
@@ -639,8 +645,8 @@ function photograph(scene, options) {
   for (let step = 0; step < 12; step++) {
     aim(camera, target, azimuth, distance);
     let left = Infinity, right = -Infinity, low = Infinity, high = -Infinity;
-    for (const corner of corners(model.bounds)) {
-      const point = corner.project(camera);
+    for (const corner of framed) {
+      const point = corner.clone().project(camera);
       left = Math.min(left, point.x);
       right = Math.max(right, point.x);
       low = Math.min(low, point.y);

@@ -32,7 +32,7 @@ The four lines below come from `examples/broken.py`, which makes three mistakes:
 builder.place("3001", at=(0, 0, 0), color="Red", id="base")  # Brick 2 x 4
 builder.place("3001", at=(1, 0, 0), color="Blue", id="overlap")  # shares space
 builder.place("3003", at=(0.5, 0, 3), color="White", id="offset")  # half a stud off
-builder.place("3022", at=(4, 2, 6), color="Tan", id="floating")  # touches nothing
+builder.place("3022", at=(4, 2, 9), color="Tan", id="floating")  # touches nothing
 ```
 
 The report reads like compiler output, and every element it names points back at the script:

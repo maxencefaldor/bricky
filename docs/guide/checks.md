@@ -14,7 +14,7 @@ The example `examples/broken.py` makes three mistakes: an overlap, a brick half 
 builder.place("3001", at=(0, 0, 0), color="Red", id="base")  # Brick 2 x 4
 builder.place("3001", at=(1, 0, 0), color="Blue", id="overlap")  # shares space
 builder.place("3003", at=(0.5, 0, 3), color="White", id="offset")  # half a stud off
-builder.place("3022", at=(4, 2, 6), color="Tan", id="floating")  # touches nothing
+builder.place("3022", at=(4, 2, 9), color="Tan", id="floating")  # touches nothing
 ```
 
 ```text
@@ -34,7 +34,7 @@ error[E202]: 4 studs of overlap push into offset, which has no anti-stud there
    = offset: Brick 2 x 2 (3003), White, examples/broken.py:15 in build()
 
 error[E301]: 1 element floats: no chain of stud connections leads to the ground
-  --> x 4..6  y 2..4  z 6..7
+  --> x 4..6  y 2..4  z 9..10
    = floating: Plate 2 x 2 (3022), Tan, examples/broken.py:16 in build()
 
 error[E301]: 1 element floats: no chain of stud connections leads to the ground
