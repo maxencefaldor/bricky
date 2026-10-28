@@ -70,7 +70,9 @@ The picture marks the same elements, so the agent sees where they are:
   rulers. Highlights select elements by id or by script function; clips open models up.
 - **Changes between builds.** Each build counts what changed since the last one, by script line,
   and outlines new and changed elements.
-- **Voxels.** `voxels(model)` maps every voxel a model fills, to compare it with a target exactly.
+- **Voxels, both ways.** `builder.fill(voxels)` lays bricks and plates over a voxel drawing in
+  staggered courses, and `voxels(model)` maps every voxel a model fills, to compare it with a
+  target exactly.
 - **Three front ends, one definition.** The `bricky` command line, an MCP server, and a skill for
   Claude Code, all from the same request models.
 - **A benchmark.** Ten projects, from a brick wall to Notre-Dame de Paris, scored voxel by voxel.

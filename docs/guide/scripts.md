@@ -62,6 +62,30 @@ instance. The colonnade below highlights `i2/*`, its second column:
 
 ![The colonnade example, its second column highlighted](../images/colonnade.png)
 
+## Filling voxels
+
+Many shapes are easiest to draw as voxels: which color fills each stud square, one plate tall.
+`builder.fill(voxels)` covers such a drawing with bricks and plates. Bricks go where three plate
+levels of a course share a color, plates everywhere else, each part as large as fits. Courses
+alternate direction, so joints stagger, and every part rests on the level below.
+
+```python
+from math import hypot
+
+tower = {
+    (x, y, z): "White" if z // 3 % 4 == 3 else "Red"
+    for x in range(-6, 7)
+    for y in range(-6, 7)
+    for z in range(24)
+    if 4 <= hypot(x, y) < 6.5
+}
+builder.fill(tower, id="tower")  # ids such as tower.4.-2.9: the prefix, then the corner
+```
+
+![A round tower drawn as voxels and filled with bricks and plates](../images/fill.png)
+
+`plan_fill` in `bricky.fill` returns the same parts as data, to inspect or adjust before placing.
+
 ## Building sideways
 
 Bricks with studs on their sides hold parts rotated to face them. A tile or plate rotated `+x+z`
