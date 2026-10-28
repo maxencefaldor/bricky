@@ -1,8 +1,8 @@
 """A standalone viewer: one HTML file people open in a browser to orbit a model.
 
 The page embeds the scene and bricky's viewer module, and loads three.js from jsDelivr, so it stays
-small and needs a network connection when opened. Renders for agents never use it: they run offline
-in headless Chromium (see :mod:`bricky.render.browser`).
+small and needs a network connection when opened. Renders for agents run offline in headless
+Chromium instead (see :mod:`bricky.render.browser`).
 """
 
 import json
@@ -17,9 +17,10 @@ from bricky.files import write_file
 from bricky.render.scene import Scene
 
 THREE_VERSION: Final = "0.186.1"
-"""three.js version vendored for renders and loaded by the standalone viewer."""
+"""The three.js version vendored for renders and loaded by the standalone viewer."""
 
-_CDN: Final = f"https://cdn.jsdelivr.net/npm/three@{THREE_VERSION}/"
+_THREE_PACKAGE: Final = f"https://cdn.jsdelivr.net/npm/three@{THREE_VERSION}/"
+"""The three.js package on jsDelivr, which the standalone viewer loads."""
 
 _PAGE: Final = Template("""\
 <!doctype html>
@@ -73,15 +74,18 @@ _PAGE: Final = Template("""\
 <script type="module">
 $viewer
 const scene = JSON.parse(document.getElementById("scene").textContent);
-const ui = await mount(document.getElementById("stage"), scene);
+const viewer = await mount(document.getElementById("stage"), scene);
 for (const button of document.querySelectorAll("[data-view]")) {
-  button.addEventListener("click", () => ui.look(button.dataset.view));
+  button.addEventListener("click", () => viewer.look(button.dataset.view));
 }
 const clip = document.getElementById("clip");
 const height = document.getElementById("clip-height");
-clip.max = String(ui.topPlates);
+clip.max = String(viewer.topPlates);
 clip.value = clip.max;
-const show = () => { height.textContent = clip.value + " plates"; ui.clip(Number(clip.value)); };
+const show = () => {
+  height.textContent = clip.value + " plates";
+  viewer.clip(Number(clip.value));
+};
 clip.addEventListener("input", show);
 show();
 </script>
@@ -103,8 +107,8 @@ def write_html(scene: Scene, path: Path) -> Path:
     """
     imports = {
         "imports": {
-            "three": _CDN + "build/three.module.js",
-            "three/addons/": _CDN + "examples/jsm/",
+            "three": _THREE_PACKAGE + "build/three.module.js",
+            "three/addons/": _THREE_PACKAGE + "examples/jsm/",
         }
     }
     page = _PAGE.substitute(

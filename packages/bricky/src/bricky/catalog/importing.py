@@ -1,20 +1,20 @@
 """Build a catalog from its sources: BrickLink for what exists, names and LDraw for shapes.
 
-Each source does what it is best at:
+Each source supplies what it knows best:
 
 - **BrickLink**, the LEGO Group's marketplace, lists every part and color: ids, names,
   categories, and the colors each part comes in (:mod:`bricky.catalog.bricklink`).
 - **Names**: a part whose official name follows a pattern, such as "Slope 45 2 x 4", gets that
   family's shape, exact and oriented by bricky's conventions (:mod:`bricky.catalog.names`).
 - **Printed parts** take the shape of the part they are printed on.
-- **LDraw**, the community library of part shapes, gives every other part its shape, converted
-  into boxes and connectors (:mod:`bricky.catalog.ldraw`).
+- **LDraw**, the LDraw.org Parts Library, gives every other part its shape, converted into boxes
+  and connectors (:mod:`bricky.catalog.ldraw`).
 
-Without BrickLink's downloads, the parts come from LDraw alone, named as LDraw names them, and the
-colors from the sample catalog. Where a part has both a shape from its name and an LDraw file, the
-two are compared. They agree for almost every part, which checks both; where they disagree, the
-name has hidden a detail that changes the part, so the part takes LDraw's shape, and the
-disagreement is reported.
+An import without BrickLink's downloads takes the parts from LDraw alone, with LDraw's names, and
+the colors from the sample catalog. The import compares the two shapes of a part that has both a
+shape from its name and an LDraw file. The two agree for almost every part, which checks both. A
+disagreement means the name hides a detail that changes the part: the part then takes LDraw's
+shape, and the import reports the disagreement.
 """
 
 import re
@@ -34,17 +34,17 @@ from bricky.catalog.models import CatalogPart, Color, ConnectorKind, Part, Shape
 from bricky.errors import BrickyError
 
 _PRINTED: Final = re.compile(r"p[a-z]{0,3}\d")
-"""How printed parts are numbered: the base part's number, then p, maybe letters, and digits."""
+"""The suffix of a printed part's id after its base part's id: p, up to three letters, a digit."""
 
 
 class Coverage(BaseModel):
-    """What an import found: parts and colors, where each part's shape came from, and checks."""
+    """What an import found: parts and colors, the source of each part's shape, and the checks."""
 
-    sources: tuple[str, ...] = Field(description="The sources read, with their dates.")
+    sources: tuple[str, ...] = Field(description="The sources read, with their dates or releases.")
     parts: int = Field(description="Parts imported.")
     shaped: int = Field(description="Parts with a shape, which can be placed.")
     by_source: dict[str, int] = Field(
-        description="Shaped parts by where the shape came from: 'name', 'printed' or 'LDraw'."
+        description="Shaped parts by the source of their shape: 'name', 'printed' or 'LDraw'."
     )
     by_family: dict[str, int] = Field(description="Shaped parts by family.")
     unshaped_by_category: dict[str, int] = Field(
@@ -52,14 +52,15 @@ class Coverage(BaseModel):
     )
     colors: int = Field(description="Colors imported.")
     skipped_colors: tuple[str, ...] = Field(
-        default=(), description="Colors left out, with why: no RGB value, or a repeated name."
+        default=(),
+        description="Colors left out, each with its reason: no RGB value, or a repeated name.",
     )
     ldraw_failures: dict[str, int] = Field(
         default_factory=dict,
-        description="LDraw files that could not be converted, by reason, most first.",
+        description="LDraw files the import failed to convert, counted by reason, most first.",
     )
     compared: int = Field(
-        default=0, description="Parts shaped from their name that LDraw also has, compared."
+        default=0, description="Parts shaped from their name and compared with their LDraw file."
     )
     disagreements: tuple[str, ...] = Field(
         default=(),
@@ -68,13 +69,13 @@ class Coverage(BaseModel):
 
 
 type Progress = Callable[[int, int], None]
-"""Told how many parts have been looked at, out of how many."""
+"""A callback that receives the count of the part being shaped and the total number of parts."""
 
 
 def import_catalog(
     bricklink: Downloads | None, ldraw: Library | None, progress: Progress | None = None
 ) -> tuple[CatalogFile, Coverage]:
-    """Build a catalog file from BrickLink's downloads, an LDraw library, or both.
+    """Build a catalog file and its coverage from BrickLink's downloads, an LDraw library, or both.
 
     Raises:
         BrickyError: If neither source is given.
@@ -104,7 +105,7 @@ def import_catalog(
 
 @dataclass(slots=True)
 class _Shaping:
-    """Gives parts their shapes from LDraw, and keeps count of where every shape came from."""
+    """Gives parts their LDraw shapes and records the source of every shape."""
 
     origin: dict[str, str] = field(default_factory=dict)
     failures: Counter[str] = field(default_factory=Counter)
@@ -112,7 +113,7 @@ class _Shaping:
     disagreements: list[str] = field(default_factory=list)
 
     def shape(self, entries: dict[str, CatalogPart], key: str, ldraw: Library | None) -> None:
-        """Note where a part's shape comes from, converting it from LDraw to shape or check it."""
+        """Record the source of a part's shape, converting its LDraw file to shape or check it."""
         entry = entries[key]
         if entry.base is not None:
             self.origin[key] = "printed"
@@ -169,11 +170,11 @@ class _Shaping:
 
 
 def _name_printed_parts(entries: dict[str, CatalogPart], ldraw: Library | None) -> None:
-    """Name the part each printed part is printed on, as its base, so it takes that shape.
+    """Set each printed part's base to the part it is printed on, so it takes that part's shape.
 
-    A printed part's number is its base part's number followed by p, letters and digits, such as
+    A printed part's id is its base part's id followed by p, letters and digits, such as
     3068bpb0001 for a print on 3068b, and its name starts with the base part's name. Both must
-    hold, and the base part must have a shape: from its name, or from LDraw.
+    hold. The base part must itself be unprinted and have a shape, from its name or from LDraw.
     """
     for key, entry in entries.items():
         if entry.shape is not None:
@@ -188,7 +189,7 @@ def _name_printed_parts(entries: dict[str, CatalogPart], ldraw: Library | None) 
 
 
 def _ldraw_number(library: Library, entry: CatalogPart) -> str | None:
-    """The LDraw file for a catalog part: its own number, else one of its other numbers."""
+    """Return a catalog part's LDraw number: its own id, else the first alternate id LDraw has."""
     for number in (entry.id, *entry.alternates):
         if number in library:
             return number
@@ -196,10 +197,10 @@ def _ldraw_number(library: Library, entry: CatalogPart) -> str | None:
 
 
 def _difference(entry: CatalogPart, named: Shape, converted: Shape) -> str:
-    """How a part's shape from its name and from LDraw differ, or nothing when they agree.
+    """Describe how a part's shapes from its name and from LDraw differ; empty when they agree.
 
-    They are compared by what does not depend on orientation: the size of the body, in either
-    order across, and the numbers of studs and anti-studs.
+    The comparison uses what orientation leaves unchanged: the body's size, with its two horizontal
+    sides in either order, and the numbers of studs and anti-studs.
     """
     a, b = build_part(entry, named), build_part(entry, converted)
     facts = [_facts(a), _facts(b)]
@@ -209,7 +210,7 @@ def _difference(entry: CatalogPart, named: Shape, converted: Shape) -> str:
 
 
 def _facts(part: Part) -> tuple[tuple[int, int], int, int, int]:
-    studs = sum(c.kind is ConnectorKind.STUD for c in part.connectors)
+    studs = sum(connector.kind is ConnectorKind.STUD for connector in part.connectors)
     across = tuple(sorted((part.size.x, part.size.y)))
     return (across[0], across[1]), part.size.z, studs, len(part.connectors) - studs
 
@@ -220,7 +221,7 @@ def _describe(facts: tuple[tuple[int, int], int, int, int]) -> str:
 
 
 def _reason(error: str) -> str:
-    """An error without the part number, so failures group by reason."""
+    """Remove the part number from an error, so failures group by reason."""
     return re.sub(r"LDraw part \S+ ", "", re.sub(r"which \S+ uses", "which a part uses", error))
 
 

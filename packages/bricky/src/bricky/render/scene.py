@@ -1,9 +1,10 @@
-"""What a render draws: a model resolved into boxes, meshes, studs, colors and marks.
+"""Scenes: a model resolved into the boxes, meshes, studs, colors and marks a render draws.
 
-A scene is plain data in base units (0.4 mm), shaped as compact arrays so a large model crosses into
-the browser quickly. Elements made only of boxes are drawn as boxes; elements with other solids,
-such as slopes and round parts, are drawn as meshes: corners, faces and the edges worth outlining.
-Building a scene is pure Python; :mod:`bricky.render.browser` draws it.
+A scene is plain data in base units (0.4 mm), laid out as compact arrays so a large model crosses
+into the browser quickly. An element made only of boxes appears as boxes. An element with other
+solids, such as a slope or a round part, appears as a mesh: its corners, its faces and the edges
+worth outlining. :func:`build_scene` is pure Python, and :mod:`bricky.render.browser` draws its
+result.
 """
 
 import fnmatch
@@ -29,13 +30,13 @@ from bricky.units import PLATE, STUD, STUD_HEIGHT, plates, studs, to_plates, to_
 
 
 class View(StrEnum):
-    """A picture of a model."""
+    """One picture of a scene."""
 
     SHEET = "sheet"
     """The perspective, front, right and top views on one image."""
 
     PERSPECTIVE = "perspective"
-    """In perspective, from the south-east, above."""
+    """In perspective, from above the south-east."""
 
     FRONT = "front"
     """Orthographic, looking north, with x and z rulers."""
@@ -54,12 +55,20 @@ class View(StrEnum):
 
 
 class Flag(IntFlag):
-    """How an element is drawn."""
+    """How a render draws an element."""
 
     HIGHLIGHT = 1
+    """Chosen by a highlight selector."""
+
     GHOST = 2
+    """Drawn faintly: outside a highlight, and named by no error or warning."""
+
     ERROR = 4
+    """Named by an error."""
+
     WARNING = 8
+    """Named by a warning."""
+
     CHANGED = 16
     """New or changed since the last build."""
 
@@ -71,13 +80,13 @@ _UNKNOWN_RGB: Final = "#FF00FF"
 
 
 class Clip(BaseModel):
-    """Keep only what lies on one side of a plane, to look inside a model."""
+    """A plane and the side of it that a render keeps, to look inside a model."""
 
     model_config = ConfigDict(frozen=True)
 
     axis: Literal["x", "y", "z"]
     keep: Literal["below", "above"]
-    value: int = Field(description="Position of the plane, in base units.")
+    value: int = Field(description="The plane's position along the axis, in base units.")
 
     @classmethod
     def parse(cls, text: str) -> Clip:
@@ -89,7 +98,8 @@ class Clip(BaseModel):
         match = _CLIP.fullmatch(text.strip())
         if match is None:
             message = (
-                f"cannot read clip {text!r}: write an axis, a comparison and a number, like 'z<130'"
+                f"cannot read clip {text!r}: a clip is an axis, a comparison and a number, "
+                "such as 'z<130'"
             )
             raise BrickyError(message)
         axis, operator, number = match.groups()
@@ -124,7 +134,7 @@ class Label(BaseModel):
 
 
 class Mark(BaseModel):
-    """A box outlined on top of everything, such as a diagnostic's region."""
+    """A diagnostic's region: a box outlined over everything else."""
 
     box: tuple[int, int, int, int, int, int] = Field(description="Corners, in base units.")
     text: str
@@ -132,7 +142,7 @@ class Mark(BaseModel):
 
 
 class Mesh(BaseModel):
-    """An element drawn from its faces, for elements that are not just boxes."""
+    """An element drawn by its faces, for an element with solids other than boxes."""
 
     element: int = Field(description="Index into Scene.elements.")
     vertices: list[int] = Field(description="x, y, z of every corner, one after another.")
@@ -150,19 +160,22 @@ class Scene(BaseModel):
     name: str
     title: str = Field(description="One line describing the model, shown above the views.")
     colors: list[SceneColor]
-    elements: list[tuple[int, int]] = Field(description="Per element: color index, flags.")
+    elements: list[tuple[int, int]] = Field(
+        description="Per element: its color's index in colors, and its flags."
+    )
     uids: list[str] = Field(description="Per element: its uid.")
     boxes: list[tuple[int, int, int, int, int, int, int, int]] = Field(
         description=(
             "Per box: x0, y0, z0, x1, y1, z1, element index, and a mask of the faces to draw "
-            "(bits -x +x -y +y -z +z); faces pressed flat against opaque neighbors are left out."
+            "(bits -x +x -y +y -z +z) that leaves out faces pressed flat against opaque neighbors."
         )
     )
     meshes: list[Mesh] = Field(
-        default_factory=list, description="Elements that are not just boxes, by their faces."
+        default_factory=list, description="Elements with solids other than boxes, by their faces."
     )
     studs: list[tuple[int, int, int, int, int]] = Field(
-        description="Per stud: x, y, z of its base, axis code (+x -x +y -y +z -z), element index."
+        description="Per stud not seated in an anti-stud: x, y, z of its base, axis code "
+        "(+x -x +y -y +z -z), element index."
     )
     labels: list[Label] = Field(default_factory=list)
     marks: list[Mark] = Field(default_factory=list)
@@ -187,25 +200,26 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
 
     Args:
         model: The model.
-        catalog: Catalog to resolve parts and colors against.
-        provenance: Where the build script placed each element; needed by ``@`` selectors.
-        report: A check report whose errors and warnings are marked on the elements they name.
-        highlight: Selectors for elements to highlight; the rest are drawn faintly. A selector is a
-            uid pattern such as ``"lintel*"`` or ``"tower/*"``, or ``@`` followed by a function
-            name, a file or a file and line of the build script, such as ``"@horseshoe"`` or
-            ``"@stonehenge.py:142"``.
-        clips: Planes that clip the model, to look inside it.
-        changed: Uids of elements that are new or changed since the last build, to mark.
-        cull: Leave out faces pressed against opaque neighbors. Viewers that clip the model
-            interactively set it to false, since buried faces can come into view there.
+        catalog: The catalog that resolves parts and colors.
+        provenance: The script lines that placed each element; ``@`` selectors need it.
+        report: A report whose errors and warnings mark the elements they name.
+        highlight: Selectors of the elements to highlight; a render draws the rest faintly. A
+            selector is a uid pattern such as ``"lintel*"`` or ``"tower/*"``, or ``@`` followed
+            by a function name, a file, or a file and line of the build script, such as
+            ``"@horseshoe"`` or ``"@stonehenge.py:142"``.
+        clips: The clips that keep part of the model, to look inside it.
+        changed: The uids of elements new or changed since the last build, to mark.
+        cull: Whether to leave out faces pressed against opaque neighbors. A viewer that clips
+            the model interactively sets it to false, as clipping can bring buried faces into view.
 
     Raises:
-        BrickyError: If the model has no elements to draw, or a selector matches nothing.
+        BrickyError: If the model has no element to draw, a selector matches nothing, or the clips
+            keep nothing.
     """
     world = build_world(model, catalog)
     elements = world.elements
     if not elements:
-        message = "nothing to render: the model has no parts the catalog can place"
+        message = "nothing to render: the model has no element the catalog can place"
         raise BrickyError(message)
     colors, color_index = _colors(catalog, elements)
     flags = [Flag(0)] * len(elements)
@@ -316,7 +330,7 @@ def _boxes(  # noqa: PLR0913 - keyword-only options, one per concern
     cull: bool,
     skip: set[int],
 ) -> list[tuple[int, int, int, int, int, int, int, int]]:
-    """Every box of every element not drawn as a mesh, with the mask of faces worth drawing."""
+    """Return every box of every element not drawn as a mesh, with the mask of its visible faces."""
     solids = [
         (solid, i)
         for i, element in enumerate(elements)
@@ -325,7 +339,8 @@ def _boxes(  # noqa: PLR0913 - keyword-only options, one per concern
         if isinstance(solid, Box)
     ]
     if cull:
-        # Only elements that are opaque, drawn solid and wholly kept by the clips hide a face.
+        # A box hides a face only when its element is opaque and drawn in full, and the clips keep
+        # all of the box.
         opaque = [
             _color_type(catalog, elements[i].color) is not ColorType.TRANSPARENT
             and not flags[i] & Flag.GHOST
@@ -342,11 +357,12 @@ def _boxes(  # noqa: PLR0913 - keyword-only options, one per concern
 
 
 _CREASE: Final = 0.94
-"""Faces meeting at a cosine below this, about 20 degrees, fold visibly: their edge is drawn."""
+"""The cosine below which two faces' normals mark a visible fold, about 20 degrees apart: the mesh
+outlines the edge between them."""
 
 
 def _mesh(index: int, element: PlacedElement) -> Mesh:
-    """An element's solids as one surface: the faces two solids share are inside, and left out."""
+    """Return an element's solids as one surface, leaving out the faces two solids share."""
     faces: list[tuple[tuple[int, int, int], ...]] = []
     for solid in element.solids:
         convex = solid if isinstance(solid, Convex) else solid.as_convex()
@@ -368,7 +384,7 @@ def _mesh(index: int, element: PlacedElement) -> Mesh:
     ]
     return Mesh(
         element=index,
-        vertices=[c for point in corners for c in point],
+        vertices=[coordinate for point in corners for coordinate in point],
         faces=indexed,
         edges=edges,
     )
@@ -384,7 +400,7 @@ def _newell(points: Sequence[tuple[int, int, int]]) -> tuple[int, int, int]:
 
 
 def _unit(vector: tuple[int, int, int]) -> tuple[float, float, float]:
-    length = sqrt(sum(c * c for c in vector)) or 1.0
+    length = sqrt(sum(component * component for component in vector)) or 1.0
     return vector[0] / length, vector[1] / length, vector[2] / length
 
 
@@ -393,19 +409,25 @@ def _dot(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
 
 
 def _exposed_studs(world: World) -> list[tuple[int, int, int, int, int]]:
-    """Every stud not seated in another element's anti-stud, where it would be hidden."""
+    """Return every stud that no other element's anti-stud hides."""
     anti_studs = anti_stud_index(world)
     return [
-        (c.position.x, c.position.y, c.position.z, _AXIS_CODES[c.normal], i)
+        (
+            connector.position.x,
+            connector.position.y,
+            connector.position.z,
+            _AXIS_CODES[connector.normal],
+            i,
+        )
         for i, element in enumerate(world.elements)
-        for c in element.connectors
-        if c.kind is ConnectorKind.STUD
-        and not any(j != i for j in anti_studs.get((c.position, -c.normal), ()))
+        for connector in element.connectors
+        if connector.kind is ConnectorKind.STUD
+        and not any(j != i for j in anti_studs.get((connector.position, -connector.normal), ()))
     ]
 
 
 def _clipped(bounds: Box, clips: Sequence[Clip]) -> Box:
-    """Shrink the bounds to what the clips keep, so views frame what is left to see.
+    """Shrink the bounds to what the clips keep, so the views frame what remains.
 
     Raises:
         BrickyError: If the clips keep nothing.
@@ -490,21 +512,21 @@ def _frames(provenance: Provenance, model: Model, uid: str) -> Iterator[Frame]:
         yield from source.frames
 
 
-def _frame_matcher(spec: str) -> Callable[[Frame], bool]:
-    file, _, line = spec.rpartition(":")
+def _frame_matcher(target: str) -> Callable[[Frame], bool]:
+    file, _, line = target.rpartition(":")
     if file and line.isdigit():
         number = int(line)
         return lambda frame: frame.line == number and _same_file(frame.file, file)
-    if spec.endswith(".py"):
-        return lambda frame: _same_file(frame.file, spec)
-    return lambda frame: frame.function == spec
+    if target.endswith(".py"):
+        return lambda frame: _same_file(frame.file, target)
+    return lambda frame: frame.function == target
 
 
 def _same_file(recorded: str, wanted: str) -> bool:
     """Whether a recorded script path is the wanted one, matching whole trailing path segments."""
-    recorded_parts = recorded.replace("\\", "/").split("/")
-    wanted_parts = wanted.replace("\\", "/").split("/")
-    return recorded_parts[-len(wanted_parts) :] == wanted_parts
+    recorded_segments = recorded.replace("\\", "/").split("/")
+    wanted_segments = wanted.replace("\\", "/").split("/")
+    return recorded_segments[-len(wanted_segments) :] == wanted_segments
 
 
 ALL_FACES: Final = 0b111111
@@ -512,13 +534,13 @@ ALL_FACES: Final = 0b111111
 
 
 def _color_type(catalog: Catalog, color_id: int) -> ColorType:
-    """The type of a color, treating unknown colors as solid."""
+    """Return the type of a color, treating an unknown color as solid."""
     color = catalog.color(color_id)
     return color.type if color is not None else ColorType.SOLID
 
 
 def _kept(box: Box, clip: Clip) -> bool:
-    """Whether a box lies wholly on the side of a clip plane that stays visible."""
+    """Whether a box lies wholly on the side of a clip's plane that the clip keeps."""
     axis = "xyz".index(clip.axis)
     if clip.keep == "below":
         return tuple(box.max)[axis] <= clip.value
@@ -528,8 +550,8 @@ def _kept(box: Box, clip: Clip) -> bool:
 def visible_faces(boxes: Sequence[Box], opaque: Sequence[bool]) -> list[int]:
     """Return, per box, a mask of the faces not pressed flat against opaque boxes.
 
-    Bit ``2 * axis`` is the low face along that axis and bit ``2 * axis + 1`` the high face. A face
-    is hidden when the opaque boxes whose opposite faces lie in the same plane cover it entirely.
+    Bit ``2 * axis`` is the low face along that axis and bit ``2 * axis + 1`` the high face. The
+    opaque boxes whose opposite faces lie in a face's plane hide the face when they cover it whole.
     """
     corners = [(tuple(box.min), tuple(box.max)) for box in boxes]
     # Opaque faces by plane (axis, which side of their box, coordinate), in buckets of a grid.
@@ -586,27 +608,34 @@ def _covered(
 ) -> bool:
     """Whether the union of rectangles covers a face rectangle, by coordinate compression."""
     u0, v0, u1, v1 = face
-    touching = [r for r in rectangles if r[0] < u1 and u0 < r[2] and r[1] < v1 and v0 < r[3]]
+    touching = [
+        rectangle
+        for rectangle in rectangles
+        if rectangle[0] < u1 and u0 < rectangle[2] and rectangle[1] < v1 and v0 < rectangle[3]
+    ]
     if not touching:
         return False
     us = sorted(
         {
             u0,
             u1,
-            *(min(max(r[0], u0), u1) for r in touching),
-            *(min(max(r[2], u0), u1) for r in touching),
+            *(min(max(rectangle[0], u0), u1) for rectangle in touching),
+            *(min(max(rectangle[2], u0), u1) for rectangle in touching),
         }
     )
     vs = sorted(
         {
             v0,
             v1,
-            *(min(max(r[1], v0), v1) for r in touching),
-            *(min(max(r[3], v0), v1) for r in touching),
+            *(min(max(rectangle[1], v0), v1) for rectangle in touching),
+            *(min(max(rectangle[3], v0), v1) for rectangle in touching),
         }
     )
     for a, b in pairwise(us):
         for c, d in pairwise(vs):
-            if not any(r[0] <= a and b <= r[2] and r[1] <= c and d <= r[3] for r in touching):
+            if not any(
+                rectangle[0] <= a and b <= rectangle[2] and rectangle[1] <= c and d <= rectangle[3]
+                for rectangle in touching
+            ):
                 return False
     return True

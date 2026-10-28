@@ -1,26 +1,27 @@
-"""Shapes from the LDraw parts library: a part's body as boxes, and its studs and anti-studs.
+"""Shapes from the LDraw.org Parts Library: a part's body as boxes, its studs and its anti-studs.
 
-LDraw describes each part as a surface, triangles and quads, plus references to other files
-(subparts and primitives), each placed by a 3 x 4 transform. Its unit, the LDraw unit, is 0.4 mm:
-bricky's base unit, so coordinates carry over one to one. Its y axis points down.
+LDraw describes each part as a surface of triangles and quads, plus references to other files
+(subparts and primitives), each placed by a 3 x 4 transform. The LDraw unit is 0.4 mm, bricky's
+base unit, so coordinates carry over one to one. LDraw's y axis points down.
 
-:func:`ldraw_shape` converts one part:
+:func:`ldraw_shape` converts one part in six steps:
 
-1. **Flatten.** Follow every reference, composing transforms, into triangles in the part's frame.
-   A reference to a stud primitive, such as ``stud.dat``, becomes a stud: where its base sits and
-   which way it points. Stud geometry is not body: bricky's studs are connectors.
+1. **Flatten.** Follow every reference, composing transforms, down to triangles in the part's
+   frame. A reference to a stud primitive, such as ``stud.dat``, becomes a stud: where its base
+   sits and which way it points. The body leaves out stud surfaces: bricky's studs are connectors.
 2. **Rotate.** LDraw (x, y, z) becomes bricky (x, z, -y), so LDraw's down becomes bricky's -z.
-3. **Voxelize.** Sample the body every 2 units (0.8 mm). A sample is inside when rays along x, y
-   and z, at least two of the three, cross the surface an odd number of times.
-4. **Anti-studs.** On the bottom face, at every stud position, where the part leaves an opening a
-   stud fits into, walled in on all four sides.
-5. **Fill.** The openings over anti-studs become body, as bricky's families model them: a stud
+3. **Sample.** Sample the body every 2 units (0.8 mm). A sample lies inside when at least two of
+   the three rays from it, along +x, +y and +z, cross the surface an odd number of times.
+4. **Anti-studs.** Find an anti-stud at every stud position of the bottom face where the part
+   leaves an opening a stud fits into, walled in on all four sides.
+5. **Fill.** Fill the openings over anti-studs with body, as bricky's families model them: a stud
    pushing in anywhere else hits the part.
-6. **Merge** the samples into as few boxes as possible, from the minimum corner at the origin.
+6. **Merge.** Merge the samples into boxes, greedily, measured from the minimum corner at the
+   origin.
 
-The result is exact on the 2-unit grid, which holds every wall, height and stud of ordinary parts;
-curved surfaces become steps. The part's size is its surface's bounding box, so a round part fills
-its square. Parts are converted as LDraw orients them.
+The result is exact on the 2-unit grid, which holds every wall, height and stud of ordinary parts.
+Curved surfaces become steps. The part's size is its surface's bounding box, so a round part fills
+its square. Each part keeps the orientation LDraw gives it.
 """
 
 import re
@@ -40,11 +41,12 @@ type Floats = NDArray[np.float64]
 type Mask = NDArray[np.bool_]
 
 VOXEL: Final = 2
-"""Sampling step, in LDraw units (and base units): 0.8 mm, which divides every stud position."""
+"""The sampling step, in LDraw units and base units alike: 0.8 mm, which divides every stud
+position."""
 
 _STUD_ROOM: Final = 4
-"""How high above an anti-stud's position the part must be open, and how wide around it: the
-stud is 4 units tall, and the narrowest openings that grip one are 4 units wide."""
+"""How high above an anti-stud's position, and how wide around it, the part must be open: a stud
+is 4 units tall, and the narrowest openings that grip one are 4 units wide."""
 
 STUD_PRIMITIVES: Final = frozenset(
     {
@@ -58,8 +60,8 @@ STUD_PRIMITIVES: Final = frozenset(
         "stud15.dat",
     }
 )
-"""LDraw primitives that draw a stud a part can connect with, standing on the primitive's origin
-and pointing along its -y axis. Tubes under parts, such as ``stud3.dat`` and ``stud4.dat``, are
+"""The LDraw primitives that draw a stud, standing on the primitive's origin and pointing along
+its -y axis. The primitives for tubes under parts, such as ``stud3.dat`` and ``stud4.dat``, draw
 body."""
 
 _FOLDERS: Final = ("parts", "p", "models", "unofficial/parts", "unofficial/p")
@@ -67,7 +69,7 @@ _TO_BRICKY: Final = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]
 """LDraw (x, y, z) to bricky (x, z, -y): a proper rotation, y down becoming z up."""
 
 _JITTER: Final = np.array([0.0137, 0.0071, 0.0193])
-"""Shifts the samples off the grid lines that edges of the surface run along."""
+"""An offset that moves the samples off the grid lines that the surface's edges run along."""
 
 _STUD: Final = 20
 _HALF_STUD: Final = 10
@@ -82,7 +84,7 @@ _FACES: Final = {"3": 11, "4": 14}
 """Fields of a triangle line and a quad line: type, color and 9 or 12 numbers."""
 
 _TILE: Final = 32
-"""Rays are cast in tiles of 32 x 32, each against only the triangles over it."""
+"""The side of the square tiles of rays, each tile tested against only the triangles over it."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,10 +92,10 @@ class Flat:
     """A file flattened in its own frame: body triangles and studs."""
 
     triangles: Floats
-    """Shape (n, 3, 3): n triangles of three corners."""
+    """An (n, 3, 3) array: n triangles of three corners."""
 
     studs: Floats
-    """Shape (m, 2, 3): each stud's base and its unit direction."""
+    """An (m, 2, 3) array: each stud's base and its unit direction."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +110,7 @@ class PartFile:
 
 
 class Library:
-    """An LDraw library folder: ``parts``, ``p`` and their subfolders, looked up without case."""
+    """An LDraw library folder: ``parts``, ``p`` and their subfolders, looked up ignoring case."""
 
     def __init__(self, root: Path) -> None:
         if not root.is_dir():
@@ -167,7 +169,7 @@ class Library:
 
     @cached_property
     def release(self) -> str:
-        """The library's release: its newest update, such as ``2024-05``."""
+        """The library's release, from its newest update, such as ``release 2024-05``."""
         updates = [self.header(number).update for number in self._parts]
         newest = max((u for u in updates if u), default=None)
         return f"release {newest}" if newest else "unknown release"
@@ -204,7 +206,7 @@ class Library:
             triangles=np.concatenate(triangles) if triangles else np.zeros((0, 3, 3)),
             studs=np.concatenate(studs) if studs else np.zeros((0, 2, 3)),
         )
-        if chain:  # files other parts use are kept; a part converted once is not
+        if chain:  # keep the files that others reference; each part is converted once
             self._flat[key] = flat
         return flat
 
@@ -215,7 +217,7 @@ class Library:
         triangles: list[Floats],
         studs: list[Floats],
     ) -> None:
-        """Place a referenced file: a stud primitive becomes a stud, anything else is flattened."""
+        """Place a referenced file: a stud primitive becomes a stud, and any other file flattens."""
         matrix, offset = _transform(fields[2:14])
         name = " ".join(fields[14:]).replace("\\", "/").casefold()
         if name.rsplit("/", 1)[-1] in STUD_PRIMITIVES:
@@ -233,10 +235,10 @@ class Library:
 
 
 def ldraw_parts(library: Library) -> dict[str, CatalogPart]:
-    """Every part the library lists, by number, named and categorized as LDraw does it.
+    """Return every part the library lists, by number, with LDraw's names and categories.
 
-    Files whose description starts with "~" (moved, obsolete or parts of parts), "=" (aliases)
-    or "_" (variants in a fixed color) are left out. Shapes are added by the import.
+    The list skips files whose description starts with "~" (moved, obsolete or parts of parts),
+    "=" (aliases) or "_" (variants in a fixed color). The import adds the shapes.
     """
     parts: dict[str, CatalogPart] = {}
     for number in sorted(library.numbers):
@@ -254,7 +256,8 @@ def ldraw_shape(library: Library, number: str) -> BoxesShape:
     """Convert an LDraw part into a shape: its body as boxes, its studs and its anti-studs.
 
     Raises:
-        BrickyError: If the part is missing, references a missing file, or has no body.
+        BrickyError: If the part is missing, references a missing file or itself, or encloses no
+            volume.
     """
     flat = library.flatten(number)
     triangles = _snap(flat.triangles @ _TO_BRICKY.T)
@@ -288,34 +291,35 @@ class _Rays:
     """Rays along one axis through every sample: surface crossings beyond each, and in all."""
 
     beyond: NDArray[np.int16]
-    """Shape (nx, ny, nz): crossings from the sample toward +axis."""
+    """Per sample: the crossings from the sample toward +axis."""
 
     total: NDArray[np.int16]
-    """Shape (nx, ny, nz): crossings along the whole ray through the sample."""
+    """Per sample: the crossings along the whole ray through the sample."""
 
     @classmethod
     def cast(cls, triangles: Floats, counts: NDArray[np.int_], axis: int) -> _Rays:
         """Cast a ray along ``axis`` through every column of samples and count its crossings.
 
-        Rays are cast in square tiles, each against only the triangles whose shadow reaches the
-        tile; each ray's crossings are then sorted, so counting those beyond every sample is a
+        The rays go in square tiles, each tested against only the triangles whose shadow reaches
+        the tile. Sorting each ray's crossings then makes counting those beyond every sample a
         binary search.
         """
         centers = [(np.arange(int(n)) + 0.5) * VOXEL + _JITTER[i] for i, n in enumerate(counts)]
         u, v = (a for a in range(3) if a != axis)
-        nu, nv = len(centers[u]), len(centers[v])
-        p0 = triangles[:, 0]
-        d, e = triangles[:, 1] - p0, triangles[:, 2] - p0
-        det = d[:, u] * e[:, v] - d[:, v] * e[:, u]
-        keep = np.abs(det) > _FLAT
-        p0, d, e, det = p0[keep], d[keep], e[keep], det[keep]
+        size_u, size_v = len(centers[u]), len(centers[v])
+        origin = triangles[:, 0]
+        edge_a, edge_b = triangles[:, 1] - origin, triangles[:, 2] - origin
+        determinant = edge_a[:, u] * edge_b[:, v] - edge_a[:, v] * edge_b[:, u]
+        keep = np.abs(determinant) > _FLAT
+        origin, edge_a, edge_b = origin[keep], edge_a[keep], edge_b[keep]
+        determinant = determinant[keep]
         corners = triangles[keep]
         low_u, high_u = corners[:, :, u].min(axis=1), corners[:, :, u].max(axis=1)
         low_v, high_v = corners[:, :, v].min(axis=1), corners[:, :, v].max(axis=1)
         rays: list[NDArray[np.int64]] = []
         depths: list[Floats] = []
-        for i0 in range(0, nu, _TILE):
-            for j0 in range(0, nv, _TILE):
+        for i0 in range(0, size_u, _TILE):
+            for j0 in range(0, size_v, _TILE):
                 tile_u, tile_v = centers[u][i0 : i0 + _TILE], centers[v][j0 : j0 + _TILE]
                 near = (
                     (high_u >= tile_u[0])
@@ -327,22 +331,28 @@ class _Rays:
                     continue
                 grid_u, grid_v = np.meshgrid(tile_u, tile_v, indexing="ij")
                 ids = (
-                    np.arange(i0, i0 + len(tile_u))[:, None] * nv + np.arange(j0, j0 + len(tile_v))
+                    np.arange(i0, i0 + len(tile_u))[:, None] * size_v
+                    + np.arange(j0, j0 + len(tile_v))
                 ).ravel()
-                q0, qd, qe, qdet = p0[near], d[near], e[near], det[near]
-                wu = grid_u.ravel()[:, None] - q0[None, :, u]
-                wv = grid_v.ravel()[:, None] - q0[None, :, v]
-                a = (wu * qe[None, :, v] - wv * qe[None, :, u]) / qdet[None]
-                b = (qd[None, :, u] * wv - qd[None, :, v] * wu) / qdet[None]
-                ray, tri = np.nonzero((a >= 0) & (b >= 0) & (a + b <= 1))
-                a, b = a[ray, tri], b[ray, tri]
-                depths.append(q0[tri, axis] + a * qd[tri, axis] + b * qe[tri, axis])
+                near_origin, near_a, near_b = origin[near], edge_a[near], edge_b[near]
+                denominator = determinant[near][None]
+                offset_u = grid_u.ravel()[:, None] - near_origin[None, :, u]
+                offset_v = grid_v.ravel()[:, None] - near_origin[None, :, v]
+                a = (offset_u * near_b[None, :, v] - offset_v * near_b[None, :, u]) / denominator
+                b = (near_a[None, :, u] * offset_v - near_a[None, :, v] * offset_u) / denominator
+                ray, triangle = np.nonzero((a >= 0) & (b >= 0) & (a + b <= 1))
+                a, b = a[ray, triangle], b[ray, triangle]
+                depths.append(
+                    near_origin[triangle, axis]
+                    + a * near_a[triangle, axis]
+                    + b * near_b[triangle, axis]
+                )
                 rays.append(ids[ray])
         hit_rays = np.concatenate(rays) if rays else np.zeros(0, dtype=np.int64)
         hit_depths = np.concatenate(depths) if depths else np.zeros(0)
         span = float(counts.max() * VOXEL + 4 * VOXEL)
         keys = np.sort(hit_rays * span + hit_depths)
-        all_rays = np.arange(nu * nv)
+        all_rays = np.arange(size_u * size_v)
         starts = np.searchsorted(keys, all_rays * span, side="left")
         ends = np.searchsorted(keys, (all_rays + 1) * span, side="left")
         queries = all_rays[:, None] * span + centers[axis][None, :]
@@ -350,19 +360,19 @@ class _Rays:
             queries.shape
         )
         total = np.broadcast_to((ends - starts)[:, None], beyond.shape)
-        shape = (nu, nv, len(centers[axis]))
+        dimensions = (size_u, size_v, len(centers[axis]))
         order = [u, v, axis]
         return cls(
-            beyond=np.moveaxis(beyond.reshape(shape).astype(np.int16), [0, 1, 2], order),
-            total=np.moveaxis(total.reshape(shape).astype(np.int16), [0, 1, 2], order),
+            beyond=np.moveaxis(beyond.reshape(dimensions).astype(np.int16), [0, 1, 2], order),
+            total=np.moveaxis(total.reshape(dimensions).astype(np.int16), [0, 1, 2], order),
         )
 
 
 def _walled(along_x: _Rays, along_y: _Rays) -> Mask:
-    """Bottom samples with the part's surface on all four sides: in an opening, not outside.
+    """Return the bottom samples with the part's surface on all four sides: those in an opening.
 
-    Walls are found by rays along x and y through the bottom samples, in both directions, so a
-    wall thinner than the sampling still counts.
+    Rays along x and y through the bottom samples find the walls in both directions, so a wall
+    thinner than the sampling step still counts.
     """
     sides = [
         along_x.beyond[:, :, 0] > 0,
@@ -374,7 +384,7 @@ def _walled(along_x: _Rays, along_y: _Rays) -> Mask:
 
 
 def _cavity(material: Mask, walled: Mask) -> Mask:
-    """Openings at the bottom, walled in, up to the part above them: they become body.
+    """Return the walled openings at the bottom, up to the part above them, to fill with body.
 
     Only columns with material above count, so a hole straight through the part stays open.
     """
@@ -390,15 +400,15 @@ def _snap(points: Floats) -> Floats:
 
 
 def _anti_studs(material: Mask, walled: Mask) -> Iterator[tuple[int, int]]:
-    """Stud positions on the bottom face with an opening a stud goes into.
+    """Yield the stud positions on the bottom face with an opening a stud fits into.
 
-    Stud positions are every 20 units from 10 in, on both axes. Around the position, the bottom
-    must be walled in and free of material from the bottom face up to a stud's height.
+    Stud positions lie every 20 units from 10 in, on both axes. The bottom around each one must be
+    walled in and free of material from the bottom face up to a stud's height.
     """
-    nx, ny, _ = material.shape
+    size_x, size_y, _ = material.shape
     reach, depth = _STUD_ROOM // VOXEL // 2, _STUD_ROOM // VOXEL
-    for x in range(_HALF_STUD, nx * VOXEL, _STUD):
-        for y in range(_HALF_STUD, ny * VOXEL, _STUD):
+    for x in range(_HALF_STUD, size_x * VOXEL, _STUD):
+        for y in range(_HALF_STUD, size_y * VOXEL, _STUD):
             i, j = x // VOXEL, y // VOXEL
             near = (slice(i - reach, i + reach), slice(j - reach, j + reach))
             free = ~material[*near, :depth].any() and walled[near].all()
@@ -407,7 +417,7 @@ def _anti_studs(material: Mask, walled: Mask) -> Iterator[tuple[int, int]]:
 
 
 def _studs(studs: Floats, low: Floats) -> Iterator[tuple[int, int, int, str]]:
-    """Studs on grid axes, in bricky's frame from the minimum corner; others are left out."""
+    """Yield the studs on grid points and grid axes, in bricky's frame from the minimum corner."""
     for base, up in studs:
         position = _snap(_TO_BRICKY @ base - low)
         direction = _TO_BRICKY @ up
@@ -416,7 +426,7 @@ def _studs(studs: Floats, low: Floats) -> Iterator[tuple[int, int, int, str]]:
         if not on_axis or np.any(np.abs(position - np.round(position)) > _ON_GRID):
             continue
         sign = "+" if direction[axis] > 0 else "-"
-        x, y, z = (round(float(c)) for c in position)
+        x, y, z = (round(float(coordinate)) for coordinate in position)
         yield (x, y, z, sign + "xyz"[axis])
 
 
@@ -464,7 +474,8 @@ def _find_folder(root: Path, folder: str) -> Path | None:
     current = root
     for name in folder.split("/"):
         match = next(
-            (p for p in current.iterdir() if p.is_dir() and p.name.casefold() == name), None
+            (path for path in current.iterdir() if path.is_dir() and path.name.casefold() == name),
+            None,
         )
         if match is None:
             return None

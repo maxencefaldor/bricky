@@ -1,17 +1,17 @@
 """Import BrickLink's catalog: every part and every color, from BrickLink's own downloads.
 
 BrickLink, the LEGO Group's marketplace, publishes its whole catalog as XML files at
-https://www.bricklink.com/catalogDownload.asp, for members who are signed in:
+https://www.bricklink.com/catalogDownload.asp, for signed-in members:
 
-- **Catalog Items**, item type Parts: every part's item number, name and category.
+- **Catalog Items**, item type Parts: every part's id, name and category.
 - **Colors**: every color's id, name, RGB value and type.
 - **Categories**: every category's id and name.
-- **Codes**: the colors each part comes in, with LEGO's element number for each.
+- **Codes**: the colors each part comes in, with the LEGO Group's number for each.
 
-:func:`read_downloads` finds these files in a folder by what they hold, whatever they are called,
-and :func:`bricklink_parts` converts them into catalog colors and parts, each part shaped when its
-name describes a shape bricky has a family for (see :mod:`bricky.catalog.names`).
-:mod:`bricky.catalog.importing` puts this together with shapes from LDraw.
+:func:`read_downloads` finds these files in a folder by their contents, whatever their names.
+:func:`bricklink_parts` converts them into catalog colors and parts, and gives each part the shape
+its name describes, when bricky has a family for it (see :mod:`bricky.catalog.names`).
+:mod:`bricky.catalog.importing` combines them with shapes from LDraw.
 """
 
 import html
@@ -30,7 +30,7 @@ from bricky.catalog.names import shape_from_name
 from bricky.errors import BrickyError
 
 DOWNLOAD_PAGE: Final = "https://www.bricklink.com/catalogDownload.asp"
-"""Where signed-in BrickLink members download the catalog."""
+"""The page where signed-in BrickLink members download the catalog."""
 
 
 class BrickLinkColor(BaseModel):
@@ -38,7 +38,7 @@ class BrickLinkColor(BaseModel):
 
     id: int
     name: str
-    rgb: str = Field(description="Hex RGB without the '#', as BrickLink writes it.")
+    rgb: str = Field(description="Hexadecimal RGB without the '#', as BrickLink writes it.")
     type: str = Field(description="BrickLink's color type, such as 'Solid' or 'Transparent'.")
 
 
@@ -49,7 +49,7 @@ class BrickLinkItem(BaseModel):
     id: str
     name: str
     category: int
-    alternates: tuple[str, ...] = Field(default=(), description="Other item numbers.")
+    alternates: tuple[str, ...] = Field(default=(), description="Other ids of the item.")
 
 
 class BrickLinkCode(BaseModel):
@@ -57,12 +57,12 @@ class BrickLinkCode(BaseModel):
 
     item_type: str
     item_id: str
-    color: str = Field(description="Color name.")
-    code: str = Field(description="LEGO's element number for the item in that color.")
+    color: str = Field(description="The color's name.")
+    code: str = Field(description="The LEGO Group's number for the item in that color.")
 
 
 class Downloads(BaseModel):
-    """BrickLink's catalog downloads, read."""
+    """BrickLink's catalog downloads, as read from their files."""
 
     colors: tuple[BrickLinkColor, ...]
     categories: dict[int, str]
@@ -79,8 +79,8 @@ def read_downloads(folder: Path) -> Downloads:
     """Read BrickLink's catalog downloads from a folder, recognizing each file by its contents.
 
     Raises:
-        BrickyError: If the folder is missing, a file is not valid XML, or the Parts or Colors
-            download is not there.
+        BrickyError: If the folder is missing, a file is not valid XML, two files hold the same
+            download, or the folder lacks the Parts or the Colors download.
     """
     if not folder.is_dir():
         message = f"no such folder: {folder}"
@@ -106,48 +106,50 @@ def read_downloads(folder: Path) -> Downloads:
         return Downloads(
             colors=tuple(
                 BrickLinkColor(
-                    id=int(r["COLOR"]),
-                    name=r["COLORNAME"],
-                    rgb=r.get("COLORRGB", ""),
-                    type=r.get("COLORTYPE", ""),
+                    id=int(record["COLOR"]),
+                    name=record["COLORNAME"],
+                    rgb=record.get("COLORRGB", ""),
+                    type=record.get("COLORTYPE", ""),
                 )
-                for r in records["colors"]
+                for record in records["colors"]
             ),
-            categories={int(r["CATEGORY"]): r["CATEGORYNAME"] for r in records["categories"]},
+            categories={
+                int(record["CATEGORY"]): record["CATEGORYNAME"] for record in records["categories"]
+            },
             parts=tuple(
                 BrickLinkItem(
-                    type=r["ITEMTYPE"],
-                    id=r["ITEMID"],
-                    name=r["ITEMNAME"],
-                    category=r["CATEGORY"],
-                    alternates=tuple(r.get("ALTITEMIDS", "").replace(",", " ").split()),
+                    type=record["ITEMTYPE"],
+                    id=record["ITEMID"],
+                    name=record["ITEMNAME"],
+                    category=record["CATEGORY"],
+                    alternates=tuple(record.get("ALTITEMIDS", "").replace(",", " ").split()),
                 )
-                for r in records[_PARTS]
-                if r.get("ITEMTYPE") == "P"
+                for record in records[_PARTS]
+                if record.get("ITEMTYPE") == "P"
             ),
             codes=tuple(
                 BrickLinkCode(
-                    item_type=r["ITEMTYPE"],
-                    item_id=r["ITEMID"],
-                    color=r["COLOR"],
-                    code=r.get("CODENAME", ""),
+                    item_type=record["ITEMTYPE"],
+                    item_id=record["ITEMID"],
+                    color=record["COLOR"],
+                    code=record.get("CODENAME", ""),
                 )
-                for r in records["codes"]
+                for record in records["codes"]
             ),
             files={kind: path for kind, (path, _) in found.items()},
         )
     except (KeyError, ValueError) as error:
-        message = f"a BrickLink download in {folder} is missing a field or has a bad value: {error}"
+        message = f"a BrickLink download in {folder} lacks a field or has an invalid value: {error}"
         raise BrickyError(message) from None
 
 
 def bricklink_parts(
     downloads: Downloads,
 ) -> tuple[list[Color], tuple[str, ...], dict[str, CatalogPart]]:
-    """BrickLink's colors, the colors it left out and why, and its parts, by item number.
+    """Return BrickLink's colors, the colors left out with their reasons, and its parts by id.
 
     Each part gets the shape its name describes, if any, and the colors the Codes download lists
-    for it. Parts and colors keep BrickLink's order.
+    for it. Parts keep BrickLink's order, and colors are sorted by id.
     """
     colors, skipped = _colors(downloads.colors)
     color_ids = {color.name.casefold(): color.id for color in colors}
@@ -171,13 +173,13 @@ def bricklink_parts(
 
 
 def downloaded(downloads: Downloads) -> str:
-    """When the downloads were made, by the newest file: a date such as ``2026-10-28``."""
+    """Return the date of the downloads, from the newest file, such as ``2026-10-28``."""
     newest = max(path.stat().st_mtime for path in downloads.files.values())
     return datetime.fromtimestamp(newest, UTC).date().isoformat()
 
 
 def color_type(bricklink_type: str, name: str) -> ColorType:
-    """Map a BrickLink color type to bricky's, seeing transparency in the name too.
+    """Map a BrickLink color type to bricky's, reading transparency from the name too.
 
     BrickLink gives some see-through colors another type, such as "Glitter Trans-Clear", so a name
     containing "Trans-" counts as transparent whatever its type.
@@ -194,7 +196,7 @@ def _colors(found: Iterable[BrickLinkColor]) -> tuple[list[Color], tuple[str, ..
     colors: list[Color] = []
     skipped: list[str] = []
     names: set[str] = set()
-    for color in sorted(found, key=lambda c: c.id):
+    for color in sorted(found, key=lambda color: color.id):
         rgb = color.rgb.strip().upper()
         if color.id < 1:
             continue  # BrickLink's "(Not Applicable)", for items that have no color
