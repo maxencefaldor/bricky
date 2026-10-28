@@ -40,7 +40,7 @@ def source_map_path(model_path: Path) -> Path:
 def write_file(path: Path, data: bytes) -> Path:
     """Write an output file, creating its folder if needed, and return its path.
 
-    bricky writes every file through this function: models, source maps, pictures and
+    bricky writes every file through this function: models, source maps, images and
     viewers.
 
     Raises:

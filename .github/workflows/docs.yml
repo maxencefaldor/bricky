@@ -32,6 +32,8 @@ jobs:
         run: |
           uv run python docs/commands.py
           git diff --exit-code docs/reference/cli.md
+      - name: Write the gallery's 3D viewers
+        run: uv run python docs/gallery.py
       - name: Build
         run: uv run zensical build --clean
       - name: Keep the site for Pages

@@ -127,7 +127,7 @@ def test_instances_put_the_rotated_corner_at_the_given_point(
     assert bounds.min == Vector(x * STUD, y * STUD, z * PLATE)
 
 
-def test_parts_and_components_turn_the_same_way() -> None:
+def test_parts_and_components_rotate_the_same_way() -> None:
     one = ModelBuilder()
     one.place("3001", at=(3, 5, 0), rotation="R90", color="Red")
     two = ModelBuilder()

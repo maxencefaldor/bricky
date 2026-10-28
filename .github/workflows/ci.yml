@@ -49,7 +49,7 @@ jobs:
           enable-cache: true
       - name: Install
         run: uv sync
-      - name: Cache the browser renders draw in
+      - name: Cache the browser bricky renders in
         id: browser
         uses: actions/cache@v6
         with:
@@ -82,7 +82,7 @@ jobs:
           for script in examples/*.py; do
             uv run bricky build "$script" || [ "$script" = examples/broken.py ]
           done
-      - name: Keep the models and their pictures
+      - name: Keep the models and their images
         uses: actions/upload-artifact@v7
         with:
           name: examples

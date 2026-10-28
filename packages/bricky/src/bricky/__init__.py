@@ -3,7 +3,7 @@
 
 Write a model with :class:`ModelBuilder`, then check it with :func:`check_model` or the
 ``bricky`` command line. :func:`voxels` returns the voxels a model fills, for comparison
-with a target.
+with a plan.
 
 LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse
 this project.

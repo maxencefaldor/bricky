@@ -58,7 +58,7 @@ def test_another_part_under_the_same_id_is_added_and_removed() -> None:
     assert (result.filled, result.emptied, result.recolored) == (0, 2 * 4 * 2, 0)
 
 
-def test_a_part_turned_onto_itself_is_unchanged_and_one_turned_round_is_not() -> None:
+def test_a_part_rotated_onto_itself_is_unchanged_and_one_rotated_round_is_not() -> None:
     before, after = ModelBuilder("m"), ModelBuilder("m")
     before.place("3003", at=(0, 0, 0), color="Red", id="square")  # Brick 2 x 2
     before.place("3040", at=(4, 0, 0), color="Red", id="slope")  # Slope 45 2 x 1

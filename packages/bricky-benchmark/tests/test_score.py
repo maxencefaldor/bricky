@@ -47,7 +47,7 @@ def test_partial_overlap_is_intersection_over_union() -> None:
     assert fidelity.shape == 3 / 5
 
 
-def test_levels_line_up_on_the_ground() -> None:
+def test_layers_line_up_on_the_ground() -> None:
     lifted = {(x, y, z + 4): c for (x, y, z), c in L_SHAPE.items()}
     assert compare(lifted, L_SHAPE).shape == 1.0
 

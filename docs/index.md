@@ -1,120 +1,116 @@
 ---
+title: bricky
 description: A compiler-style toolkit that lets AI agents design buildable LEGO® models.
+hide:
+  - navigation
+  - toc
 ---
+
+<div class="bricky-hero" markdown>
+
+<div class="bricky-hero-text" markdown>
 
 # bricky
 
-bricky lets AI agents design buildable LEGO® models.
-An agent writes a model as a Python build script.
-bricky runs the script, places every part in exact geometry, checks that the model holds together, and draws it.
-Every answer states facts the agent can act on: each diagnostic names the script line behind its parts, and every picture carries rulers in studs and plates.
+A compiler-style toolkit that lets AI agents design buildable LEGO® models.
+{ .bricky-tagline }
 
-![The Elizabeth Tower example: perspective, front, right and top views, with rulers in studs and plates](images/elizabeth-tower.png)
+An agent writes a model as a Python build script.
+In return, bricky places every part in exact geometry, checks that the model holds together, and renders it.
+
+[Get started](get-started.md){ .md-button .md-button--primary } [Gallery in 3D](gallery.md){ .md-button }
+
+</div>
+
+![The Colosseum example, 44,968 elements, rotating 360 degrees](images/turntable.webp){ .bricky-hero-image }
+
+</div>
 
 ## The loop
 
-An agent works like a programmer with a compiler and a camera.
+An agent builds like a programmer with a compiler and a camera: it writes, builds, reads, and fixes until the report says `0 errors` and the images show the intended model.
 
 ```mermaid
 flowchart LR
-    script["Build script<br/>models/tower.py"] -->|bricky build| model["Model<br/>exact geometry"]
+    script["Build script"] -->|bricky build| model["Model"]
     model --> report["Report<br/>diagnostics by script line"]
-    model --> picture["Picture<br/>four views with rulers"]
-    report --> fix["Agent edits the script"]
-    picture --> fix
+    model --> image["Images<br/>four views with rulers"]
+    report --> fix["The agent edits the script"]
+    image --> fix
     fix --> script
 ```
 
-The loop ends when the report says `0 errors` and the pictures show the intended model.
+## What an agent gets
 
-## What bricky gives an agent
+<div class="grid cards bricky-cards" markdown>
 
-<div class="grid cards" markdown>
+-   ![A slope in each of four rotations](images/rotations.png)
 
--   **Exact geometry**
+    **[Exact geometry](guide/coordinates.md)**
 
-    ---
+    Every length is a whole number of 0.4 mm units, so every overlap test is exact.
 
-    Every length is a whole number of 0.4 mm units.
-    Positions, the 24 grid rotations and every overlap test are exact.
+-   ![One part of each family on a baseplate](images/families.png)
 
-    ![A slope in four rotations](images/rotations.png)
+    **[Real parts](guide/parts.md)**
 
-    [Coordinates](guide/coordinates.md)
+    Every BrickLink part and color, with exact shapes for the common families.
 
--   **Real parts**
+-   ![The broken example, every element a diagnostic names tinted red](images/card-checks.png)
 
-    ---
+    **[Checks that state facts](guide/checks.md)**
 
-    Parts and colors carry their BrickLink ids.
-    Bricks, plates, tiles, slopes, round parts, arches, jumpers and bricks with side studs get exact shapes; LDraw shapes every other part.
+    Each diagnostic says what is wrong, where, and which script line placed the elements.
 
-    ![One part of each family](images/families.png)
+-   ![Stonehenge with its horseshoe highlighted](images/card-images.png)
 
-    [Parts and colors](guide/parts.md)
+    **[Images that measure](guide/images.md)**
 
--   **Checks that state facts**
+    Every build renders four views with rulers in studs and plates.
 
-    ---
+-   ![A tower whose top two courses changed, outlined in purple](images/changes.png)
 
-    Overlapping parts, blocked studs, floating groups: each diagnostic says what is wrong, where, which elements, and the script line that placed them.
+    **[Changes between builds](guide/checks.md#changes-between-builds)**
 
-    ![The broken example, every named element tinted red](images/broken.png)
+    Each build counts what changed since the last one, by script line.
 
-    [Checks](guide/checks.md)
+-   ![A slope and an arch beside the voxels they fill](images/voxels.png)
 
--   **Pictures that measure**
+    **[Voxels](guide/voxels.md)**
 
-    ---
-
-    Every build draws a perspective view and three orthographic views with rulers.
-    Highlights pick out elements by id or by script function; clips open the model up.
-
-    ![Stonehenge, its horseshoe highlighted](images/highlight.png)
-
-    [Pictures](guide/pictures.md)
-
--   **Changes between builds**
-
-    ---
-
-    Each build reports what changed since the last one, by script line, and outlines new and changed elements in purple.
-
-    ![A tower whose top levels changed](images/changes.png)
-
-    [Changes](guide/checks.md#changes-since-the-last-build)
-
--   **Voxels**
-
-    ---
-
-    `voxels(model)` maps every stud-square, plate-tall voxel a model fills, to compare a model with a plan or a reference exactly.
-
-    ![A slope and an arch beside their voxels](images/voxels.png)
-
-    [Voxels](guide/voxels.md)
+    Models fill voxels one stud square and one plate tall, so comparisons are exact.
 
 </div>
 
 ## Install
 
-bricky needs [uv](https://docs.astral.sh/uv/), which installs Python 3.15 and every tool from the lock file.
+Installing bricky takes [uv](https://docs.astral.sh/uv/), which installs Python 3.15 and every dependency:
 
 ```sh
-git clone https://github.com/maxencefaldor/bricky
-cd bricky
+git clone https://github.com/maxencefaldor/bricky && cd bricky
 uv sync
-uv run playwright install chromium  # the browser renders draw in, once per machine
-uv run bricky build examples/cottage.py
+uv run playwright install chromium       # the browser bricky renders in, once per machine
+uv run bricky build examples/cottage.py  # build, check and render the cottage
 ```
 
-[Get started](get-started.md) walks through a first model.
-Agents connect through the [command line](reference/cli.md), the [MCP server](agents/mcp.md) or the [skill](agents/skill.md).
+## Where next
 
-## Status
+<div class="grid cards bricky-links" markdown>
 
-bricky is pre-alpha.
-The model format, the catalog and the checks work end to end; the benchmark in [`benchmark/`](agents/benchmark.md) measures how well agents build with them.
+-   **[Get started](get-started.md)**
 
-LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this project.
-Part shapes converted from the [LDraw.org Parts Library](https://library.ldraw.org) are licensed under CC BY 4.0.
+    Build a wall, break it and fix it, in five minutes.
+
+-   **[Connect an agent](agents/connect.md)**
+
+    Reach bricky from Claude Code or any harness, through the command line or MCP.
+
+-   **[Gallery](gallery.md)**
+
+    Orbit every example in 3D, from a tower to the Colosseum.
+
+-   **[Benchmark](agents/benchmark.md)**
+
+    Ten projects that measure how well an agent builds.
+
+</div>

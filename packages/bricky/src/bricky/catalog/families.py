@@ -7,8 +7,8 @@ units (see :mod:`bricky.units`) and puts the minimum corner of the part's boundi
 at the origin.
 
 A body that is not a box is a union of convex solids with integer corners. A few flat
-facets draw each curved surface, with their corners on the grid: close to the real part,
-and exact.
+facets approximate each curved surface, with their corners on the grid: close to the
+real part, and exact.
 """
 
 from collections.abc import Iterable, Sequence
@@ -205,7 +205,7 @@ def _inverted_slope(shape: InvertedSlopeShape) -> Geometry:
 def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
     """A smooth, studless top curving down from the back to a low front lip (y = 0).
 
-    The curve is a quarter ellipse, flat at the back and steep at the front, drawn as a
+    The curve is a quarter ellipse, flat at the back and steep at the front, built as a
     few facets with corners on whole base units. The underside is hollow, so every row
     has an anti-stud: a curved slope sits flat on studs.
     """

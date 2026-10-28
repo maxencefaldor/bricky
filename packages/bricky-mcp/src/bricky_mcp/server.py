@@ -3,9 +3,9 @@
 
 The server generates every tool from a request model in :mod:`bricky.service`, so tool
 arguments, defaults and descriptions match the ``bricky`` command line exactly. Each
-tool answers with the same text the CLI prints, the result as structured content, and,
-for builds and renders, the pictures themselves, so the agent sees the model without
-another call.
+tool answers with the same text the command line prints, the result as structured
+content, and, for builds and renders, the images themselves, so the agent sees the model
+without another call.
 
 The server holds one :class:`bricky.service.Session` for its lifetime, which keeps the
 render browser warm between calls. The service runs each build script in a process of
@@ -40,13 +40,13 @@ bricky builds, checks and renders LEGO® models written as Python build scripts.
 
 Workflow: write a script that defines build() and returns a bricky.ModelBuilder, then
 call build_model on it. build_model returns diagnostics, each naming the script line
-that placed its elements, and a picture of the model: perspective, front, right and top
+that placed its elements, and an image of the model: perspective, front, right and top
 views, with rulers in studs and plates. From the second build on, the result also counts
-what changed since the last build, by script line, and the picture outlines new and
+what changed since the last build, by script line, and the image outlines new and
 changed elements. Read everything, fix the script, and build again until the report has
-no errors and the pictures show the intended model. render_model looks closer: it
-highlights elements by uid or by script function, clips the model open, or draws other
-views.
+no errors and the images show the intended model. render_model looks closer: it
+highlights elements by uid or by script function, clips the model open, or renders
+other views.
 
 Coordinates: x points east and y north, both in studs; z points up, in plates (a brick
 is 3 plates). `at` is the minimum corner of the rotated bounding box of what a script
@@ -54,9 +54,9 @@ places, a part or a component. Rotations 'R0', 'R90', 'R180' and 'R270' rotate a
 vertical axis. A rotation can also name where the part's x and y axes go, which reaches
 all 24 grid rotations: '+x+z' stands a part up facing -y. search_parts and search_colors
 find ids. search_parts also says which way a part faces unrotated, such as a slope
-falling toward -y, and show_part describes one part and can draw it. Scripts can place
+falling toward -y, and show_part describes one part and can render it. Scripts can place
 only parts with a shape. explain_code gives the exact rule behind a diagnostic. In a
-script, bricky.voxels(model) maps every voxel a model fills, to compare with a target.
+script, bricky.voxels(model) maps every voxel a model fills, to compare with a plan.
 """
 
 READ_ONLY: Final = ToolAnnotations(read_only_hint=True, open_world_hint=False)
@@ -79,7 +79,7 @@ class Described(Protocol):
 
 @runtime_checkable
 class Pictured(Protocol):
-    """A result that carries pictures."""
+    """A result that carries images."""
 
     images: Sequence[service.Image]
 

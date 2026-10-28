@@ -1,7 +1,13 @@
 # Build scripts
 
-A build script is a Python file that defines `build()` and returns a `ModelBuilder` (or a finished `Model`).
-Scripts are ordinary Python: loops, functions and data drive the model, and `print()` output appears in the build's report.
+A build script describes a model as ordinary Python, so loops, functions and data can generate it.
+
+## The script
+
+A build script is a Python file that defines `build()` and returns a `ModelBuilder`.
+Python supplies what a model needs to repeat itself: loops for courses, functions for features that recur, and data for anything measured.
+The build runs the script in its own process with a time limit, so a script that hangs or crashes never stops bricky.
+Anything the script prints appears in the report.
 
 ```python
 from bricky import ModelBuilder
@@ -14,7 +20,7 @@ def build() -> ModelBuilder:
         if level % 2 == 0:
             builder.place("3001", at=(0, 0, z), color="Red")
             builder.place("3001", at=(2, 0, z), color="Red")
-        else:  # each level rotates a quarter turn, so every brick bridges the two below
+        else:  # each level rotates 90 degrees, so every brick bridges the two below
             builder.place("3001", at=(0, 0, z), rotation="R90", color="White")
             builder.place("3001", at=(0, 2, z), rotation="R90", color="White")
     return builder
@@ -22,25 +28,24 @@ def build() -> ModelBuilder:
 
 ![The tower example: crossed courses of bricks 2 x 4](../images/tower.png)
 
-`bricky build` runs the script in a child process with a time limit, so a script that hangs or crashes never takes the tool down with it.
-
 ## Placing parts
 
-`builder.place(part, at=(x, y, z), color=..., rotation="R0", id=None)` places one part and returns its id.
+A call to `builder.place(part, at=(x, y, z), color=..., rotation="R0", id=None)` places one part and returns its id:
 
-- `part` is a part id such as `"3001"`, or any other BrickLink number of the same part.
-- `at` is the minimum corner of the rotated part, in studs, studs and plates (see [Coordinates](coordinates.md)).
-- `color` is a color name or id.
-- `rotation` is `R0`, `R90`, `R180`, `R270`, or any of the 24 grid rotations.
-- `id` names the element.
-  Unnamed elements get `e1`, `e2` and so on, in placing order.
+| Argument | Meaning |
+| --- | --- |
+| `part` | A BrickLink part id, such as `"3001"`, or any other number of the same part |
+| `at` | The minimum corner of the rotated part, in studs and plates (see [Coordinates](coordinates.md)) |
+| `color` | A color name or id |
+| `rotation` | `R0`, `R90`, `R180`, `R270`, or any of the 24 grid rotations |
+| `id` | The element's name; unnamed elements get `e1`, `e2` and so on, in the order they are placed |
 
-Give the elements that matter an id: the report and the pictures label elements by id, and `--highlight` selects them by id pattern.
+Elements that matter deserve an id: the report and the images label elements by id, and `--highlight` selects them by id.
 
 ## Components and instances
 
-A component stores a group of parts once; instances place copies of it.
-A change to the component changes every copy.
+A component stores a group of parts once, and each instance places a copy of it.
+One definition keeps every copy identical: a change to the component changes every instance.
 
 ```python
 column = builder.component("column")
@@ -51,20 +56,20 @@ for index in range(4):
     builder.instance("column", at=(index * 4, 0, 0))
 ```
 
-`at` works for instances exactly as for parts: the minimum corner of the rotated component.
+The `at` of an instance is the minimum corner of the rotated component, exactly as for a part.
 Components may hold instances of other components.
-An element inside an instance has a uid that joins the ids of the instances that hold it, such as `i2/e3`: the third element of the second instance.
+An element inside an instance has a uid that joins the ids of the instances that hold it: `i2/e3` is the third element of the second instance.
 The colonnade below highlights `i2/*`, its second column:
 
 ![The colonnade example, its second column highlighted](../images/colonnade.png)
 
 ## Filling voxels
 
-Many shapes are easiest to draw as voxels: which color fills each stud square, one plate tall.
-`builder.fill(voxels)` covers such a drawing with bricks and plates.
-Bricks go where three plate levels of a course share a color, plates everywhere else, each part as large as fits.
-Courses alternate direction, so joints stagger, and every part rests on the level below.
-Overhangs, and the squares beside them, take plates that reach back to what holds them, so floors span between walls and cornices stand out from them.
+Curves, domes and anything copied from a plan are easiest to describe as voxels: the color that fills each stud square, one plate tall.
+A call to `builder.fill(voxels)` covers such a plan with bricks and plates, each part as large as fits.
+Bricks go where the three layers of a course share a color, and plates go everywhere else.
+Courses alternate direction so that joints stagger, and every part rests on the layer below.
+Overhangs take plates that reach back to the parts that hold them, so floors span between walls and cornices stand out from them.
 
 ```python
 from math import hypot
@@ -82,10 +87,10 @@ tower = {
 builder.fill(tower, id="tower")  # ids such as tower.4.-2.9: the prefix, then the corner
 ```
 
-![A round tower drawn as voxels and filled with bricks and plates](../images/fill.png)
+![A round tower described as voxels and filled with bricks and plates](../images/fill.png)
 
-`plan_fill` in `bricky.fill` returns the same parts as data, to inspect or adjust before placing.
-[The Colosseum](../examples.md#colosseum) fills 242,576 voxels this way.
+The function `plan_fill` in `bricky.fill` returns the same parts as data, to inspect or adjust before placing them.
+[The Colosseum](../gallery.md) fills 242,576 voxels this way.
 
 ## Building sideways
 
@@ -94,30 +99,23 @@ A tile or plate rotated `+x+z` faces -y, so its underside grips a side stud that
 
 ```python
 builder.place("87087", at=(0, 1, 4), color="White")  # Brick 1 x 1, stud on its side
-builder.place(
-    "3070", at=(0, 0.6, 4.5), rotation="+x+z", color="Blue"
-)  # Tile 1 x 1, upright
+builder.place("3070", at=(0, 0.6, 4.5), rotation="+x+z", color="Blue")  # Tile 1 x 1
 ```
 
-The tile's bounding box is 0.4 studs deep (a plate's height) and one stud tall (2.5 plates), so its minimum corner sits 0.4 studs in front of the brick and half a plate above its base, so the tile ends flush with the brick's top.
+The upright tile is 0.4 studs deep, a plate's height, and one stud tall, 2.5 plates.
+Its minimum corner therefore sits 0.4 studs in front of the brick and half a plate above its base, so the tile ends flush with the top of the brick.
 
 ![A tile and a plate held sideways by studs on the sides of bricks](../images/sideways.png)
 
-## The cottage
-
-`examples/cottage.py` puts the families together: walls in running bond, an arch over the door, a roof of slopes with a ridge of cheese slopes, a sign on a side stud, a lamp post on a jumper, and a round bush.
-
-![The cottage example](../images/cottage.png)
-
 ## What a build writes
 
-`bricky build models/name.py` writes three files beside the script:
+A build of `models/name.py` writes three files beside the script:
 
 | File | Holds |
 | --- | --- |
 | `name.bricky.json` | The model: part ids, colors and poses, nothing else |
 | `name.bricky.map.json` | The source map: the script lines that placed each element |
-| `name.png` | The picture: four views with rulers |
+| `name.png` | The sheet: four views with rulers |
 
-The source map is tied to the model's exact bytes, so a stale map is ignored rather than trusted.
-`bricky check` and `bricky render` read both files.
+The source map records the SHA-256 hash of its model file, so a map left over from an older model is ignored rather than trusted.
+The commands `bricky check` and `bricky render` read both files.

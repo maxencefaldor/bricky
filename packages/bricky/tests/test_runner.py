@@ -88,7 +88,7 @@ def test_child_processes_capture_what_scripts_print(tmp_path: Path) -> None:
     assert not output.truncated
 
 
-def test_child_output_is_cut_at_the_limit(tmp_path: Path) -> None:
+def test_child_output_stops_at_the_limit(tmp_path: Path) -> None:
     text = MODEL.replace(
         "    return builder", "    print('x' * 5000)\n    return builder"
     )
@@ -122,7 +122,7 @@ def test_hard_crashes_are_reported(tmp_path: Path) -> None:
         run_child(script)
 
 
-def test_results_cut_short_are_reported(tmp_path: Path) -> None:
+def test_results_stopped_short_are_reported(tmp_path: Path) -> None:
     text = (
         "import os\nimport sys\nfrom pathlib import Path\n\n\n"
         "def build():\n"

@@ -1,6 +1,6 @@
-// The bricky viewer draws a scene with three.js.
+// The bricky viewer renders a scene with three.js.
 //
-// One module serves two readers. Headless Chromium calls `load` and `draw` to make the pictures an
+// One module serves two readers. Headless Chromium calls `load` and `draw` to make the images an
 // agent reads after every build: orthographic views with rulers, a perspective view, and the marks
 // and labels of diagnostics. The standalone HTML viewer calls `mount` to let people orbit the same
 // scene.

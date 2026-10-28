@@ -147,15 +147,15 @@ def test_missing_files_exit_2(
     assert "no such model file" in capsys.readouterr().err
 
 
-def test_build_draws_a_picture_and_render_looks_closer_beside_it(
+def test_build_renders_a_sheet_and_render_looks_closer_beside_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     script = tmp_path / "tower.py"
     script.write_text(TOWER)
     assert run("build", str(script)) == 0
-    picture = tmp_path / "tower.png"
-    assert f"sheet: {picture}" in capsys.readouterr().out
-    sheet = picture.read_bytes()
+    image = tmp_path / "tower.png"
+    assert f"sheet: {image}" in capsys.readouterr().out
+    sheet = image.read_bytes()
     assert sheet.startswith(b"\x89PNG")
     model = str(tmp_path / "tower.bricky.json")
     look = ("--views", "front", "--highlight", "@build", "--clip", "z<3", "--html")
@@ -164,7 +164,7 @@ def test_build_draws_a_picture_and_render_looks_closer_beside_it(
     front = tmp_path / "tower.front.png"
     assert front.read_bytes().startswith(b"\x89PNG")
     assert f"front: {front}" in out
-    assert picture.read_bytes() == sheet
+    assert image.read_bytes() == sheet
     viewer = tmp_path / "tower.html"
     assert f"viewer: {viewer}" in out
     assert '"clips":[{"axis":"z","keep":"below","value":24}]' in viewer.read_text()
@@ -240,17 +240,17 @@ def test_the_catalog_is_imported_and_looked_into(
         "shape: tile, 2 x 2 studs (x by y, unrotated), 1 plate tall, "
         "0 studs, 4 anti-studs" in out
     )
-    picture = tmp_path / "brick.png"
-    assert run("catalog", "show", "3001", "--render", "--output", str(picture)) == 0
+    image = tmp_path / "brick.png"
+    assert run("catalog", "show", "3001", "--render", "--output", str(image)) == 0
     assert "colors (2): White, Red" in capsys.readouterr().out
-    assert picture.read_bytes().startswith(b"\x89PNG")
+    assert image.read_bytes().startswith(b"\x89PNG")
     assert run("catalog", "verify") == 0
     assert "checked 5 parts: 0 problems" in capsys.readouterr().out
     assert run("parts", "brick", "--shapeless") == 0
     shapeless = r"\n3700 +Technic, Brick 1 x 2 with Hole +no shape: cannot be placed\n"
     assert re.search(shapeless, capsys.readouterr().out)
     assert run("catalog", "show", "3700", "--render") == 2
-    assert "part 3700 has no shape to draw" in capsys.readouterr().err
+    assert "part 3700 has no shape to render" in capsys.readouterr().err
 
 
 def test_shapes_come_from_ldraw_for_parts_no_name_describes(
@@ -279,10 +279,10 @@ def test_shapes_come_from_ldraw_for_parts_no_name_describes(
     )
 
 
-def test_show_maps_a_sloped_top_and_draws_the_part_outside_the_workspace(
+def test_show_maps_a_sloped_top_and_renders_the_part_outside_the_workspace(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(service, "PART_PICTURES", tmp_path / "parts")
+    monkeypatch.setattr(service, "PART_IMAGES", tmp_path / "parts")
     monkeypatch.chdir(tmp_path)
     assert run("catalog", "show", "3039", "--render") == 0  # Slope 45 2 x 2
     out = capsys.readouterr().out

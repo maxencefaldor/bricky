@@ -90,7 +90,7 @@ def test_check_model_answers_with_text_and_a_structured_report(tmp_path: Path) -
     assert result.structured_content["diagnostics"][0]["code"] == "E301"
 
 
-def test_build_model_returns_the_report_and_the_picture(tmp_path: Path) -> None:
+def test_build_model_returns_the_report_and_the_image(tmp_path: Path) -> None:
     script = tmp_path / "m.py"
     script.write_text(SCRIPT)
     result = call("build_model", {"script": str(script), "views": ["front"]})
@@ -116,7 +116,7 @@ def test_build_model_returns_the_report_and_the_picture(tmp_path: Path) -> None:
     assert again.structured_content["report"]["errors"] == 0
 
 
-def test_render_model_returns_one_picture_per_view(tmp_path: Path) -> None:
+def test_render_model_returns_one_image_per_view(tmp_path: Path) -> None:
     builder = ModelBuilder("m")
     builder.place("3001", at=(0, 0, 0), color="Red", id="base")
     path = tmp_path / "m.bricky.json"

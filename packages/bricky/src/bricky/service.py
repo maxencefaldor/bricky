@@ -1,8 +1,9 @@
 # Copyright 2026 Maxence Faldor
 """The service layer: every command, defined once.
 
-Each command is a request model plus an async function. The CLI runs them, the MCP
-server awaits them, and Python callers can do either, so every front-end shares one set
+Each command is a request model plus an async function. The command line runs them,
+the MCP server awaits them, and Python callers can do either, so every front end shares
+one set
 of argument names, defaults and descriptions. A :class:`Session` carries the settings
 and a warm renderer between commands.
 
@@ -70,7 +71,7 @@ _MAX_DIAGNOSTICS_HELP: Final = (
     "Maximum diagnostics to return; defaults to the configured cap."
 )
 _VIEWS_HELP: Final = (
-    "Views to draw: sheet (perspective, front, right and top on one image), "
+    "Views to render: sheet (perspective, front, right and top on one image), "
     "perspective (from the south-east), perspective-south-west, "
     "perspective-north-west, perspective-north-east, front, back, left, right or top."
 )
@@ -80,9 +81,9 @@ _LISTED_LINES: Final = 10
 _LISTED_CATEGORIES: Final = 25
 _LISTED_DISAGREEMENTS: Final = 40
 _FALLBACK_COLOR: Final = 86
-"""Light Bluish Gray: `catalog show` draws a part in it when the catalog lists none."""
-PART_PICTURES: Final = user_cache_path("bricky", appauthor=False) / "parts"
-"""Where `catalog show --render` draws parts by default: out of every workspace."""
+"""Light Bluish Gray: `catalog show` renders a part in it when no color is listed."""
+PART_IMAGES: Final = user_cache_path("bricky", appauthor=False) / "parts"
+"""Where `catalog show --render` renders parts by default: out of every workspace."""
 
 
 class Session:
@@ -103,7 +104,7 @@ class Session:
         self._lock = asyncio.Lock()
 
     async def __aenter__(self) -> Self:
-        """Return the session; its renderer starts when a command first draws."""
+        """Return the session; its renderer starts when a command first renders."""
         return self
 
     async def __aexit__(self, *_: object) -> None:
@@ -131,7 +132,7 @@ class Session:
 
 
 class Image(BaseModel):
-    """A rendered picture of a model."""
+    """A rendered image of a model."""
 
     view: View
     path: Path = Field(description="The PNG file.")
@@ -347,7 +348,7 @@ class BuildResult(BaseModel):
         description="The check report; null when checking is off."
     )
     images: tuple[Image, ...] = Field(
-        description="Rendered pictures; empty when rendering is off."
+        description="Rendered images; empty when rendering is off."
     )
     seconds: Timings
 
@@ -373,7 +374,7 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
     """Run a script in its own process, save its model and source map, check and render.
 
     When an earlier build saved a model at the same path, the result says what changed
-    since, and the pictures mark the new and changed elements.
+    since, and the images mark the new and changed elements.
 
     Raises:
         BrickyError: If the script is missing, fails, times out or returns no model, or
@@ -615,7 +616,7 @@ def _with_output(message: str, output: ScriptOutput) -> str:
 
 
 class RenderRequest(BaseModel):
-    """Render pictures of a model file."""
+    """Render images of a model file."""
 
     model: CliPositionalArg[Path] = Field(
         description="Path to a .bricky.json model file."
@@ -624,7 +625,7 @@ class RenderRequest(BaseModel):
     highlight: list[str] = Field(
         default_factory=list,
         description=(
-            "Elements to highlight, drawing the rest faintly: uid patterns such as "
+            "Elements to highlight, rendering the rest faintly: uid patterns such as "
             "'lintel*', or '@' and a function, file or file:line of the build script, "
             "such as '@horseshoe'."
         ),
@@ -650,26 +651,26 @@ class RenderRequest(BaseModel):
         description=(
             "Image file to write; with several views, each file name gets the view's "
             "name added. Defaults to <model>.<view>.png beside the model, so renders "
-            "keep the picture a build drew."
+            "keep the sheet a build rendered."
         ),
     )
     html: bool = Field(
         default=False,
         description=(
             "Also write a standalone HTML viewer people can orbit and clip, "
-            "highlighted like the pictures."
+            "highlighted like the images."
         ),
     )
 
 
 class RenderResult(BaseModel):
-    """Pictures of a model."""
+    """Images of a model."""
 
     images: tuple[Image, ...]
     html: Path | None = Field(description="The standalone viewer, when requested.")
     report: Report | None = Field(
         description=(
-            "The check report whose diagnostics the pictures mark; "
+            "The check report whose diagnostics the images mark; "
             "null when checking is off."
         )
     )
@@ -691,7 +692,7 @@ class RenderResult(BaseModel):
 
 
 async def render(request: RenderRequest, session: Session) -> RenderResult:
-    """Render pictures of a model file.
+    """Render images of a model file.
 
     Raises:
         BrickyError: If the file is missing or invalid, a selector or clip is invalid,
@@ -765,7 +766,7 @@ async def _render(  # noqa: PLR0913 - keyword-only options, one per concern
     changed: Sequence[str] = (),
     size: tuple[int, int] = (_WIDTH, _HEIGHT),
 ) -> tuple[Image, ...]:
-    """Draw ``views`` of a model, writing each to the path at its index in ``paths``."""
+    """Render ``views`` of a model, each to the path at the same index in ``paths``."""
     scene = await asyncio.to_thread(
         build_scene,
         model,
@@ -778,8 +779,8 @@ async def _render(  # noqa: PLR0913 - keyword-only options, one per concern
     )
     renderer = await session.renderer()
     width, height = size
-    pictures = await renderer.render(scene, views, width=width, height=height)
-    await asyncio.to_thread(_write_images, paths, pictures)
+    images = await renderer.render(scene, views, width=width, height=height)
+    await asyncio.to_thread(_write_images, paths, images)
     return tuple(
         Image(view=view, path=path, width=width, height=height)
         for view, path in zip(views, paths, strict=True)
@@ -1139,12 +1140,13 @@ class CatalogShowRequest(BaseModel):
         description="BrickLink item number, such as '3001'."
     )
     render: bool = Field(
-        default=False, description="Also draw the part, in the first color it comes in."
+        default=False,
+        description="Also render the part, in the first color it comes in.",
     )
     output: Path | None = Field(
         default=None,
         description=(
-            "Image file for the drawing; defaults to <part>.png in bricky's cache "
+            "Image file to write; defaults to <part>.png in bricky's cache "
             "folder, outside the workspace."
         ),
     )
@@ -1208,10 +1210,10 @@ class CatalogShowResult(BaseModel):
 async def catalog_show(
     request: CatalogShowRequest, session: Session
 ) -> CatalogShowResult:
-    """Describe one catalog part, and draw it when asked.
+    """Describe one catalog part, and render it when asked.
 
     Raises:
-        BrickyError: If the catalog does not list the part, or it has no shape to draw.
+        BrickyError: If the catalog does not list the part, or the part has no shape.
     """
     catalog = session.catalog
     entry = catalog.entry(request.part)
@@ -1230,13 +1232,13 @@ async def catalog_show(
     images: tuple[Image, ...] = ()
     if request.render:
         if part is None:
-            message = f"part {entry.id} has no shape to draw"
+            message = f"part {entry.id} has no shape to render"
             raise BrickyError(message)
         color = next(iter(entry.colors), _FALLBACK_COLOR)
         model = Model(
             name=entry.id, elements=(Element(id=entry.id, part=entry.id, color=color),)
         )
-        path = request.output or PART_PICTURES / f"{entry.id}.png"
+        path = request.output or PART_IMAGES / f"{entry.id}.png"
         path.parent.mkdir(parents=True, exist_ok=True)
         images = await _render(
             session,
@@ -1290,14 +1292,14 @@ def _connector_maps(part: Part) -> tuple[str, ...]:
                 f"y {to_studs(position.y):g}, z {to_plates(position.z):g}"
             )
 
-    def drawn(squares: set[tuple[int, int]]) -> list[str]:
+    def plotted(squares: set[tuple[int, int]]) -> list[str]:
         return [
             "    " + " ".join("o" if (x, y) in squares else "." for x in range(width))
             for y in reversed(range(length))
         ]
 
-    lines = ["top studs, north up:", *drawn(top), "underside anti-studs, north up:"]
-    lines += drawn(underside)
+    lines = ["top studs, north up:", *plotted(top), "underside anti-studs, north up:"]
+    lines += plotted(underside)
     if others:
         lines += ["other connectors:", *others]
     return tuple(lines)
@@ -1523,9 +1525,9 @@ def _load(path: Path) -> tuple[Model, Provenance | None]:
     return load_model(path), load_source_map(path)
 
 
-def _write_images(paths: Sequence[Path], pictures: Sequence[bytes]) -> None:
-    for path, picture in zip(paths, pictures, strict=True):
-        write_file(path, picture)
+def _write_images(paths: Sequence[Path], images: Sequence[bytes]) -> None:
+    for path, image in zip(paths, images, strict=True):
+        write_file(path, image)
 
 
 def _part_info(catalog: Catalog, entry: CatalogPart) -> PartInfo:

@@ -70,7 +70,7 @@ def test_reports_without_provenance_still_name_parts_and_colors() -> None:
     assert "by source line" not in text
 
 
-def test_long_element_lists_are_cut_in_text_but_complete_in_data() -> None:
+def test_long_element_lists_are_shortened_in_text_but_complete_in_data() -> None:
     builder = ModelBuilder("m")
     for z in range(5, 30, 3):
         builder.place("3003", at=(0, 0, z), color="Red")

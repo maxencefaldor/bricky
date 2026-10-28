@@ -90,7 +90,7 @@ def compare(
     """Match a model's voxels to a reference's, over each rotation and three alignments.
 
     For each rotation, the comparison shifts the rotated model so its bounding box's low
-    corner, high corner or center meets the reference's; levels always line up by the
+    corner, high corner or center meets the reference's; layers always line up by the
     low corner. The candidate with the most voxels filled in both models wins, and the
     most voxels filled in the same color in both breaks ties.
     """
@@ -153,7 +153,7 @@ def _shifts(
             reference_low, reference_high, low, high, strict=True
         )
     )
-    # The ground stays the ground: levels line up by the low corner.
+    # The ground stays the ground: layers line up by the low corner.
     return {(shift[0], shift[1], by_low[2]) for shift in (by_low, by_high, by_center)}
 
 

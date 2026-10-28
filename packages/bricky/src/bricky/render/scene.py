@@ -1,11 +1,11 @@
 # Copyright 2026 Maxence Faldor
-"""Scenes: a model resolved into boxes, meshes, studs, colors and marks a render draws.
+"""Scenes: a model resolved into the boxes, meshes, studs, colors and marks to render.
 
 A scene is plain data in base units (0.4 mm), laid out as compact arrays so a large
 model crosses into the browser quickly. An element made only of boxes appears as boxes.
 An element with other solids, such as a slope or a round part, appears as a mesh: its
 corners, its faces and the edges worth outlining. :func:`build_scene` is pure Python,
-and :mod:`bricky.render.browser` draws its result.
+and :mod:`bricky.render.browser` renders its result.
 """
 
 import fnmatch
@@ -31,7 +31,7 @@ from bricky.units import PLATE, STUD, STUD_HEIGHT, plates, studs, to_plates, to_
 
 
 class View(StrEnum):
-    """One picture of a scene."""
+    """One image of a scene."""
 
     SHEET = "sheet"
     """The perspective, front, right and top views on one image."""
@@ -65,13 +65,13 @@ class View(StrEnum):
 
 
 class Flag(IntFlag):
-    """How a render draws an element."""
+    """How the renderer shows an element."""
 
     HIGHLIGHT = 1
     """Chosen by a highlight selector."""
 
     GHOST = 2
-    """Drawn faintly: outside a highlight, and named by no error or warning."""
+    """Rendered faintly: outside a highlight, and named by no error or warning."""
 
     ERROR = 4
     """Named by an error."""
@@ -163,7 +163,7 @@ class Mark(BaseModel):
 
 
 class Mesh(BaseModel):
-    """An element drawn by its faces, for an element with solids other than boxes."""
+    """An element rendered by its faces, for an element with solids other than boxes."""
 
     element: int = Field(description="Index into Scene.elements.")
     vertices: list[int] = Field(
@@ -180,7 +180,7 @@ class Mesh(BaseModel):
 
 
 class Scene(BaseModel):
-    """Everything a render draws, in base units (0.4 mm)."""
+    """Everything to render, in base units (0.4 mm)."""
 
     name: str
     title: str = Field(
@@ -194,7 +194,7 @@ class Scene(BaseModel):
     boxes: list[tuple[int, int, int, int, int, int, int, int]] = Field(
         description=(
             "Per box: x0, y0, z0, x1, y1, z1, element index, and a mask of the faces "
-            "to draw (bits -x +x -y +y -z +z) that leaves out faces pressed flat "
+            "to render (bits -x +x -y +y -z +z) that leaves out faces pressed flat "
             "against opaque neighbors."
         )
     )
@@ -230,17 +230,18 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
     changed: Sequence[str] = (),
     cull: bool = True,
 ) -> Scene:
-    """Resolve a model into the scene a render draws.
+    """Resolve a model into the scene to render.
 
     Args:
         model: The model.
         catalog: The catalog that resolves parts and colors.
         provenance: The script lines that placed each element; ``@`` selectors need it.
         report: A report whose errors and warnings mark the elements they name.
-        highlight: Selectors of the elements to highlight; a render draws the rest
-            faintly. A selector is a uid pattern such as ``"lintel*"`` or ``"tower/*"``,
-            or ``@`` followed by a function name, a file, or a file and line of the
-            build script, such as ``"@horseshoe"`` or ``"@stonehenge.py:142"``.
+        highlight: Selectors of the elements to highlight; the renderer shows the
+            rest faintly. A selector is a uid pattern such as ``"lintel*"`` or
+            ``"tower/*"``, or ``@`` followed by a function name, a file, or a file and
+            line of the build script, such as ``"@horseshoe"`` or
+            ``"@stonehenge.py:142"``.
         clips: The clips that keep part of the model, to look inside it.
         changed: The uids of elements new or changed since the last build, to mark.
         cull: Whether to leave out faces pressed against opaque neighbors. A viewer that
@@ -248,8 +249,8 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
             faces into view.
 
     Raises:
-        BrickyError: If the model has no element to draw, a selector matches nothing, or
-            the clips keep nothing.
+        BrickyError: If the model has no element to render, a selector matches
+            nothing, or the clips keep nothing.
     """
     world = build_world(model, catalog)
     elements = world.elements
@@ -359,9 +360,9 @@ def _highlight(
     flags: list[Flag],
     labels: list[Label],
 ) -> None:
-    """Highlight the chosen elements and draw the others faintly.
+    """Highlight the chosen elements and render the others faintly.
 
-    Elements that a diagnostic marks stay drawn in full.
+    Elements that a diagnostic marks stay rendered in full.
     """
     for i in range(len(elements)):
         if i in chosen:
@@ -384,7 +385,7 @@ def _boxes(  # noqa: PLR0913 - keyword-only options, one per concern
     cull: bool,
     skip: set[int],
 ) -> list[tuple[int, int, int, int, int, int, int, int]]:
-    """Return every box of every element not drawn as a mesh.
+    """Return every box of every element not rendered as a mesh.
 
     Each box comes with the mask of its visible faces.
     """
@@ -396,8 +397,8 @@ def _boxes(  # noqa: PLR0913 - keyword-only options, one per concern
         if isinstance(solid, Box)
     ]
     if cull:
-        # A box hides a face only when its element is opaque and drawn in full, and the
-        # clips keep all of the box.
+        # A box hides a face only when its element is opaque and rendered in full, and
+        # the clips keep all of the box.
         opaque = [
             _color_type(catalog, elements[i].color) is not ColorType.TRANSPARENT
             and not flags[i] & Flag.GHOST
@@ -521,7 +522,7 @@ def _clipped(bounds: Box, clips: Sequence[Clip]) -> Box:
             if len(clips) == 1
             else f"the clips {listed} leave"
         )
-        message = f"{which} nothing of the model to draw"
+        message = f"{which} nothing of the model to render"
         raise BrickyError(message)
     return Box(Vector(*low), Vector(*high))
 
@@ -619,7 +620,7 @@ def _same_file(recorded: str, wanted: str) -> bool:
 
 
 ALL_FACES: Final = 0b111111
-"""Face mask with every face drawn."""
+"""Face mask with every face rendered."""
 
 
 def _color_type(catalog: Catalog, color_id: int) -> ColorType:

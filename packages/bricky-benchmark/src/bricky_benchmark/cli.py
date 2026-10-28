@@ -56,7 +56,7 @@ class ListCommand(_Selection):
 
 
 class PrepareCommand(_Selection):
-    """Write the pictures and voxel plans each project generates from its reference."""
+    """Write the images and layer plans each project generates from its reference."""
 
     async def cli_cmd(self) -> None:
         """Run the command."""

@@ -1,0 +1,272 @@
+/* bricky's docs: LEGO® colors, headings with character, cards that line up. */
+
+@import url("https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&display=swap");
+
+:root {
+  --bricky-red: #c91a09;
+  --bricky-blue: #0055bf;
+  --bricky-yellow: #f2cd37;
+  --bricky-green: #237841;
+  --bricky-panel: #ffffff;
+  --bricky-stud: rgb(201 26 9 / 7%);
+  --bricky-terminal: #16181d;
+  --bricky-terminal-ink: #e6edf3;
+}
+
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color: var(--bricky-red);
+  --md-primary-fg-color--light: #e0412f;
+  --md-primary-fg-color--dark: #a01405;
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgb(255 255 255 / 70%);
+  --md-typeset-a-color: var(--bricky-red);
+}
+
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: var(--bricky-blue);
+  --md-accent-fg-color--transparent: rgb(0 85 191 / 10%);
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: rgb(255 255 255 / 70%);
+}
+
+[data-md-color-scheme="slate"] {
+  --bricky-stud: rgb(255 255 255 / 5%);
+  --md-typeset-a-color: #ff6b5e;
+}
+
+[data-md-color-scheme="slate"][data-md-color-accent="custom"] {
+  --md-accent-fg-color: #6ea8ff;
+  --md-accent-fg-color--transparent: rgb(110 168 255 / 12%);
+}
+
+/* A stripe of the four classic brick colors under the header. */
+.md-header::after {
+  content: "";
+  display: block;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--bricky-red) 0 25%,
+    var(--bricky-yellow) 25% 50%,
+    var(--bricky-blue) 50% 75%,
+    var(--bricky-green) 75% 100%
+  );
+}
+
+/* Headings */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-family: Rubik, var(--md-text-font-family), sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+}
+
+/* Images in prose sit on a white panel, which keeps them calm in dark mode. */
+.md-typeset p > img,
+.md-typeset .tabbed-block img {
+  background: var(--bricky-panel);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.75rem;
+}
+
+/* Reports read like a terminal, in both color schemes. */
+.md-typeset .language-text.highlight pre > code {
+  background: var(--bricky-terminal);
+  color: var(--bricky-terminal-ink);
+  border-radius: 0.6rem;
+}
+
+.md-typeset .language-text.highlight .md-clipboard {
+  color: rgb(230 237 243 / 45%);
+}
+
+/* The home page's hero: text beside a turning model, on a field of studs. */
+.bricky-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 2rem;
+  align-items: center;
+  margin: 0 0 2.5rem;
+  padding: 2.5rem 2.25rem;
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle, var(--bricky-stud) 6px, transparent 6.5px) 0 0 / 24px 24px,
+    var(--md-code-bg-color);
+}
+
+.md-typeset .bricky-hero h1 {
+  margin: 0 0 0.25rem;
+  font-size: 3.4rem;
+  line-height: 1;
+  color: var(--bricky-red);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .bricky-hero h1 {
+  color: #ff6b5e;
+}
+
+.md-typeset .bricky-tagline {
+  margin-top: 0.5rem;
+  font-family: Rubik, var(--md-text-font-family), sans-serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset .bricky-hero .md-button {
+  margin: 0.5rem 0.5rem 0 0;
+}
+
+.md-typeset .bricky-hero-image {
+  display: block;
+  width: 100%;
+  border-radius: 1rem;
+  background: var(--bricky-panel);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 12%);
+}
+
+@media screen and (max-width: 59.9375em) {
+  .bricky-hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 1.75rem 1.25rem;
+  }
+
+  .md-typeset .bricky-hero h1 {
+    font-size: 2.6rem;
+  }
+}
+
+/* Cards: an image in a fixed frame on top, so every card lines up; the title links the card. */
+.md-typeset .grid.cards.bricky-cards > ul > li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 0.6rem;
+  overflow: hidden;
+  border-top: 6px solid var(--bricky-brick, var(--bricky-red));
+  border-radius: 0.9rem;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li:nth-child(4n + 2) {
+  --bricky-brick: var(--bricky-blue);
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li:nth-child(4n + 3) {
+  --bricky-brick: var(--bricky-yellow);
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li:nth-child(4n + 4) {
+  --bricky-brick: var(--bricky-green);
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 14%);
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li > p {
+  margin: 0.6rem 1rem 0;
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li > p:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--bricky-panel);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li > p:first-child img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  border: 0;
+  border-radius: 0;
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(2) {
+  font-family: Rubik, var(--md-text-font-family), sans-serif;
+  font-size: 1.05em;
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(2) a {
+  color: var(--md-default-fg-color);
+  text-decoration: none;
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(2) a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+/* Links after the title, such as a gallery card's "Open in 3D", stay clickable above the card's link. */
+.md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(n + 4) {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  padding-top: 0.6rem;
+  font-size: 0.9em;
+}
+
+/* Text-only cards for "Where next", two by two. */
+.md-typeset .grid.cards.bricky-links {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media screen and (max-width: 44.9375em) {
+  .md-typeset .grid.cards.bricky-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.md-typeset .grid.cards.bricky-links > ul > li {
+  position: relative;
+  border-left: 4px solid var(--bricky-red);
+  border-radius: 0.6rem;
+}
+
+.md-typeset .grid.cards.bricky-links > ul > li > p:first-child {
+  font-family: Rubik, var(--md-text-font-family), sans-serif;
+  font-size: 1.05em;
+}
+
+.md-typeset .grid.cards.bricky-links > ul > li > p:first-child a {
+  color: var(--md-default-fg-color);
+  text-decoration: none;
+}
+
+.md-typeset .grid.cards.bricky-links > ul > li > p:first-child a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.md-typeset .grid.cards.bricky-links > ul > li:hover {
+  box-shadow: 0 8px 20px rgb(0 0 0 / 12%);
+}
+
+.md-typeset .grid.cards.bricky-links > ul > li:nth-child(4n + 2) {
+  border-left-color: var(--bricky-blue);
+}
+
+.md-typeset .grid.cards.bricky-links > ul > li:nth-child(4n + 3) {
+  border-left-color: var(--bricky-yellow);
+}
+
+.md-typeset .grid.cards.bricky-links > ul > li:nth-child(4n + 4) {
+  border-left-color: var(--bricky-green);
+}

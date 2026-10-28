@@ -1,6 +1,6 @@
 # Checks
 
-`check_model` runs the passes of a profile over a model and returns a report.
+A check runs the passes of a profile over a model and returns a report.
 
 ::: bricky.check.check_model
 

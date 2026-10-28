@@ -5,7 +5,7 @@ Each project is a folder under ``benchmark/projects``, named ``NN-name``:
 
 - ``project.toml``: the title, difficulty (1 to 10), prompt and budget, and any inputs
   to generate from the reference (see :class:`ProjectFile`).
-- ``inputs/``: everything the agent receives besides the prompt: pictures, descriptions,
+- ``inputs/``: everything the agent receives besides the prompt: images, descriptions,
   blueprints, scripts. The runner copies this folder into the agent's workspace.
 - ``reference.py``, optional: a build script for the model the project asks for. The
   agent never sees the reference. The runner scores a project with a reference by
@@ -34,13 +34,13 @@ class _FileModel(BaseModel):
 
 
 class Render(_FileModel):
-    """A picture of the reference, drawn by bricky's renderer."""
+    """An image of the reference, rendered by bricky's renderer."""
 
     kind: Literal["render"]
     file: str = Field(
         description="Path of the PNG to write, relative to the project folder."
     )
-    view: View = Field(default=View.SHEET, description="The view to draw.")
+    view: View = Field(default=View.SHEET, description="The view to render.")
     caption: str | None = Field(
         default=None,
         description="Text for the line above the views, replacing bricky's summary, "
@@ -51,14 +51,15 @@ class Render(_FileModel):
 
 
 class Layers(_FileModel):
-    """The reference's voxels as text: one plan per plate level, with a color legend."""
+    """The reference's voxels as text: one plan per layer, with a color legend."""
 
     kind: Literal["layers"]
     file: str = Field(
         description="Path of the text file to write, relative to the project folder."
     )
-    levels: tuple[int, ...] | None = Field(
-        default=None, description="Plate levels to write, all of them when omitted."
+    heights: tuple[int, ...] | None = Field(
+        default=None,
+        description="Heights of the layers to write, every layer when omitted.",
     )
 
 

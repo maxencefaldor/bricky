@@ -1,5 +1,5 @@
 # Copyright 2026 Maxence Faldor
-"""Draw scenes with three.js in headless Chromium, through Playwright's asyncio API.
+"""Render scenes with three.js in headless Chromium, through Playwright's asyncio API.
 
 The renderer serves its page and the vendored three.js from package data on a private
 origin and refuses every other request, so renders work offline and never touch the
@@ -30,7 +30,7 @@ _LAUNCH_ARGUMENTS: Final = ("--enable-unsafe-swiftshader",)
 
 
 class Renderer:
-    """Draws scenes with three.js in headless Chromium.
+    """Renders scenes with three.js in headless Chromium.
 
     Launching the browser and compiling shaders take the most time, so a renderer keeps
     one page open for every render. A renderer starts once and serves many renders, as
@@ -94,10 +94,10 @@ class Renderer:
     async def render(
         self, scene: Scene, views: Sequence[View], *, width: int, height: int
     ) -> list[bytes]:
-        """Draw each view of a scene and return PNG images, in the same order.
+        """Render each view of a scene and return PNG images, in the same order.
 
         Raises:
-            BrickyError: If the browser cannot start or the page fails to draw.
+            BrickyError: If the browser cannot start or the page fails to render.
         """
         async with self._lock:
             page = await self._open_page()

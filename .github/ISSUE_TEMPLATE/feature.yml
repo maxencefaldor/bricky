@@ -6,7 +6,7 @@ body:
     id: need
     attributes:
       label: What an agent needs
-      description: The model or the situation, and what bricky should report or draw.
+      description: The model or the situation, and what bricky should report or render.
     validations:
       required: true
   - type: textarea

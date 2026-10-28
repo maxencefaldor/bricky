@@ -5,9 +5,9 @@ Prompt: "Build the Elizabeth Tower (Big Ben) in London." References: Wikipedia, 
 Ben": 96 m tall, 12 m square base, four 6.9 m dials centered 54.9 m up, gilded dial
 surrounds, a cast-iron spire, the Ayrton Light above the belfry.
 
-The script draws the tower as voxels, one stud square and one plate tall, then fills
-them with bricks and plates (``builder.fill``). x runs along the south face, y along the
-east face, and z points up, in plates.
+The script describes the tower as voxels, one stud square and one plate tall, then fills
+them with bricks and plates (``builder.fill``). The x axis runs along the south face, y
+along the east face, and z points up, in plates.
 """
 
 from bricky import ModelBuilder
@@ -135,7 +135,7 @@ def tower(x: int, y: int, z: int) -> Color:
 
 
 def build() -> ModelBuilder:
-    """Draw the tower as voxels and fill them with bricks and plates."""
+    """Describe the tower as voxels and fill them with bricks and plates."""
     builder = ModelBuilder("elizabeth_tower")
     voxels = {
         (x, y, z): color

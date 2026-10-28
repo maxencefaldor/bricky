@@ -138,11 +138,11 @@ def test_the_standalone_viewer_embeds_the_scene(tmp_path: Path) -> None:
     assert "export async function mount" in page
 
 
-def test_the_renderer_draws_every_view_at_the_requested_size() -> None:
+def test_the_renderer_renders_every_view_at_the_requested_size() -> None:
     scene = build_scene(stack().build(), default_catalog())
     views = [View.SHEET, View.FRONT, View.TOP]
 
-    async def draw() -> list[bytes]:
+    async def render_images() -> list[bytes]:
         async with Renderer(Settings().render_browser) as renderer:
             first = await renderer.render(scene, views, width=640, height=480)
             again = await renderer.render(
@@ -150,12 +150,12 @@ def test_the_renderer_draws_every_view_at_the_requested_size() -> None:
             )
         return [*first, *again]
 
-    images = asyncio.run(draw())
+    images = asyncio.run(render_images())
     assert [png_size(image) for image in images] == [(640, 480)] * 3 + [(320, 240)]
     assert all(len(image) > 5000 for image in images)
 
 
-def test_the_perspectives_from_each_corner_draw_different_pictures() -> None:
+def test_the_perspectives_from_each_corner_render_different_images() -> None:
     builder = ModelBuilder("corner")
     builder.place("3001", at=(0, 0, 0), color="Red")
     builder.place(
@@ -164,11 +164,11 @@ def test_the_perspectives_from_each_corner_draw_different_pictures() -> None:
     scene = build_scene(builder.build(), default_catalog())
     corners = [view for view in View if view.value.startswith("perspective")]
 
-    async def draw() -> list[bytes]:
+    async def render_images() -> list[bytes]:
         async with Renderer(Settings().render_browser) as renderer:
             return await renderer.render(scene, corners, width=320, height=240)
 
-    images = asyncio.run(draw())
+    images = asyncio.run(render_images())
     assert len(corners) == 4
     assert all(png_size(image) == (320, 240) for image in images)
     assert len(set(images)) == len(corners)
@@ -193,20 +193,20 @@ def test_elements_that_are_not_boxes_become_meshes() -> None:
     assert all(0 <= corner < corners for corner in arch.edges)
 
 
-def test_meshes_are_drawn_as_their_own_profile() -> None:
+def test_meshes_are_rendered_as_their_own_profile() -> None:
     def front(part: str) -> bytes:
         builder = ModelBuilder("one")
         builder.place(part, at=(0, 0, 0), color="Red")
         scene = build_scene(builder.build(), default_catalog())
 
-        async def draw() -> bytes:
+        async def render_images() -> bytes:
             async with Renderer(Settings().render_browser) as renderer:
                 (image,) = await renderer.render(
                     scene, [View.RIGHT], width=400, height=300
                 )
             return image
 
-        return asyncio.run(draw())
+        return asyncio.run(render_images())
 
     # A Slope 45 2 x 2 and a Brick 2 x 2 share their bounding box, but not their side
     # view.

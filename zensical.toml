@@ -9,32 +9,35 @@ exclude_docs = """
 *.py
 __pycache__/
 """
-copyright = "LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this project."
+copyright = "LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this project. Part shapes converted from the LDraw.org Parts Library are licensed under CC BY 4.0."
+extra_css = ["assets/bricky.css"]
 nav = [
   { "Home" = "index.md" },
   { "Get started" = "get-started.md" },
   { "Guide" = [
     { "Coordinates" = "guide/coordinates.md" },
-    { "Parts and colors" = "guide/parts.md" },
     { "Build scripts" = "guide/scripts.md" },
+    { "Parts and colors" = "guide/parts.md" },
     { "Checks" = "guide/checks.md" },
-    { "Pictures" = "guide/pictures.md" },
+    { "Images" = "guide/images.md" },
     { "Voxels" = "guide/voxels.md" },
-    { "The catalog" = "guide/catalog.md" },
+    { "Catalog" = "guide/catalog.md" },
   ] },
   { "Agents" = [
-    { "MCP server" = "agents/mcp.md" },
-    { "Skill" = "agents/skill.md" },
+    { "Connect an agent" = "agents/connect.md" },
     { "Benchmark" = "agents/benchmark.md" },
   ] },
-  { "Examples" = "examples.md" },
+  { "Gallery" = "gallery.md" },
   { "Reference" = [
     { "Command line" = "reference/cli.md" },
-    { "Models" = "reference/models.md" },
-    { "Checks" = "reference/checks.md" },
-    { "Catalog" = "reference/catalog.md" },
-    { "Geometry" = "reference/geometry.md" },
-    { "Renders" = "reference/render.md" },
+    { "Diagnostic codes" = "reference/codes.md" },
+    { "Python API" = [
+      { "Models" = "reference/models.md" },
+      { "Catalog" = "reference/catalog.md" },
+      { "Checks" = "reference/checks.md" },
+      { "Geometry" = "reference/geometry.md" },
+      { "Rendering" = "reference/rendering.md" },
+    ] },
   ] },
   { "Contributing" = "contributing.md" },
 ]
@@ -59,27 +62,30 @@ features = [
 
 [[project.theme.palette]]
 media = "(prefers-color-scheme)"
+primary = "custom"
+accent = "custom"
 toggle.icon = "lucide/sun-moon"
 toggle.name = "Switch to light mode"
 
 [[project.theme.palette]]
 media = "(prefers-color-scheme: light)"
 scheme = "default"
-primary = "red"
-accent = "amber"
+primary = "custom"
+accent = "custom"
 toggle.icon = "lucide/sun"
 toggle.name = "Switch to dark mode"
 
 [[project.theme.palette]]
 media = "(prefers-color-scheme: dark)"
 scheme = "slate"
-primary = "red"
-accent = "amber"
+primary = "custom"
+accent = "custom"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to system preference"
 
 # Listing extensions replaces Zensical's defaults, which leave out snippets: the docs use only these.
 [project.markdown_extensions]
+attr_list = {}
 md_in_html = {}
 toc.permalink = true
 pymdownx.highlight.anchor_linenums = true

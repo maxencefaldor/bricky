@@ -38,7 +38,7 @@ def test_references_build_without_errors(project: Project) -> None:
     assert report.ok, [d.message for d in report.diagnostics]
     for item in project.spec.generate:
         if isinstance(item, Layers):
-            expected = layers_text(run.model, default_catalog(), item.levels)
+            expected = layers_text(run.model, default_catalog(), item.heights)
             assert (project.path / item.file).read_text() == expected
 
 
@@ -52,7 +52,7 @@ def test_projects_are_chosen_by_name_or_number() -> None:
         load_projects(root, ("42",))
 
 
-def test_pictures_are_captioned_so_they_give_no_counts_away() -> None:
+def test_images_are_captioned_so_they_give_no_counts_away() -> None:
     renders = [
         item for p in PROJECTS for item in p.spec.generate if isinstance(item, Render)
     ]

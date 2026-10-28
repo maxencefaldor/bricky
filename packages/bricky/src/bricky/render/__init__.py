@@ -1,14 +1,14 @@
 # Copyright 2026 Maxence Faldor
-"""Renders: pictures of a model, for the agent building it and the people reviewing it.
+"""Rendering: images of a model, for the agent building it and the people reviewing it.
 
 A render is the richest feedback a build gets. The report states whether a model is
-valid; the pictures show whether it looks as intended. :func:`build_scene` resolves a
-model into a scene of plain data, :class:`Renderer` draws its views with three.js in
+valid; the images show whether it looks as intended. :func:`build_scene` resolves a
+model into a scene of plain data, :class:`Renderer` renders its views with three.js in
 headless Chromium, and :func:`write_html` writes a standalone viewer that people can
 orbit.
 
 Every orthographic view carries rulers in studs and plates, so a position read off the
-picture is a position to write in the build script.
+image is a position to write in the build script.
 """
 
 from bricky.render.browser import Renderer

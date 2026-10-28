@@ -1,7 +1,7 @@
-toadstool: the voxels it fills, one plate level at a time from the ground up.
+toadstool: the voxels it fills, one layer at a time from the ground up.
 
-A voxel is 1 x 1 stud and 1 plate tall; z counts plates, so a brick fills three levels.
-Each level is a plan seen from above, north up: x grows to the right (east) and y grows
+A voxel is 1 x 1 stud and 1 plate tall; z counts plates, so a brick fills three layers.
+Each layer is a plan seen from above, north up: x grows to the right (east) and y grows
 upward (north), both in studs. '.' is an empty voxel; every other character is a color:
 
   G  Green (6)

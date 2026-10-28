@@ -1,7 +1,13 @@
 # Voxels
 
-A voxel is one stud square and one plate tall: the grid parts are placed on.
-`voxels(model)` maps every voxel a model fills to the element and color that fill it, keyed `(x, y, z)` in studs, studs and plates, the units of `at`.
+Voxels describe a model as a set of grid cells, so two models, or a model and a plan, compare exactly.
+
+## What a voxel is
+
+A voxel is one stud square and one plate tall, the grid that parts are placed on.
+An element fills a voxel when the voxel's center lies inside the element's body.
+Each voxel of a valid model therefore belongs to at most one element, and studs fill none.
+The function `voxels(model)` maps every voxel a model fills, keyed `(x, y, z)` in the units of `at`, to the element and color that fill it:
 
 ```pycon
 >>> from bricky import ModelBuilder, voxels
@@ -15,30 +21,24 @@ A voxel is one stud square and one plate tall: the grid parts are placed on.
 ('e1', 5)
 ```
 
-An element fills a voxel when the voxel's center lies inside its body.
-Every voxel therefore belongs to at most one element of a valid model, and studs fill none.
-Below, a slope and an arch stand beside their voxels, rebuilt from 1 x 1 plates: the slope fills its back row three plates high and its front row two; the arch fills its legs and the span above the opening.
+Below, a slope and an arch stand beside their voxels, rebuilt from plates 1 x 1.
+The slope fills its back row three plates high and its front row two; the arch fills its legs and the span above the opening.
 
 ![A slope and an arch beside the voxels they fill](../images/voxels.png)
 
-## Comparing with a target
+## Comparing models
 
-Voxels make comparisons exact and short.
-A script can check a model against a plan, a layer drawing or another model in a few lines:
+Two sets of voxels compare with set operations, so a script can check its model against a plan in a few lines.
+The example below compares a model with a plan of a wall 8 studs long and 3 bricks tall:
 
 ```python
 from bricky import voxels
 
-# A wall 8 studs long and 3 bricks tall.
-target = {(x, 0, z) for x in range(8) for z in range(9)}
+plan = {(x, 0, z) for x in range(8) for z in range(9)}
 filled = set(voxels(builder.build()))
-missing, extra = target - filled, filled - target
+missing, extra = plan - filled, filled - plan
 ```
 
-`missing` holds the voxels the plan fills and the model does not, and `extra` the reverse.
-
-The [benchmark](../agents/benchmark.md) scores models this way: it compares the voxels an agent's model fills with a reference's, over every rotation about the vertical axis and the best shift.
-
-## Changes
-
-Each build compares the new model's voxels with the last build's and counts the voxels filled, emptied and recolored, beside the elements added, removed and changed (see [Checks](checks.md#changes-since-the-last-build)).
+The set `missing` holds the voxels the plan fills and the model does not, and `extra` holds the reverse.
+The [benchmark](../agents/benchmark.md) scores models the same way, over every rotation about the vertical axis and the best shift.
+Each build also counts the voxels filled, emptied and recolored since the last build (see [Checks](checks.md#changes-between-builds)).

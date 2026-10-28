@@ -1,5 +1,5 @@
 # Copyright 2026 Maxence Faldor
-"""Configuration shared by every front-end.
+"""Configuration shared by every front end.
 
 Settings come, in order of precedence, from explicit arguments, ``BRICKY_*`` environment
 variables and the ``[tool.bricky]`` table of the ``pyproject.toml`` in the working
@@ -34,7 +34,7 @@ DEFAULT_PROFILES: Final[dict[str, tuple[str, ...]]] = {
 
 
 class Settings(BaseSettings):
-    """Settings shared by every front-end."""
+    """Settings shared by every front end."""
 
     model_config = SettingsConfigDict(
         env_prefix="BRICKY_",

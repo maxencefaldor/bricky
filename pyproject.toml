@@ -43,7 +43,7 @@ ignore = [
 # report, and they run as scripts, outside any package.
 "examples/**" = ["INP001", "PLR2004", "T201"]
 "benchmark/**" = ["INP001", "PLR2004", "T201"]
-# Scripts that draw the docs' pictures and pages, and say what they wrote.
+# Scripts that render the docs' images and write their pages, and say what they wrote.
 "docs/*.py" = ["INP001", "PLR2004", "T201"]
 "packages/*/src/*/cli.py" = ["T201"] # a command line prints
 

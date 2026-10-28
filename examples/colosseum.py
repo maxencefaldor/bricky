@@ -9,9 +9,10 @@ the south shows the arcades of the second ring. Inside, the seating is gone down
 radial walls, the arena lies open over the hypogeum, and a stage of wooden boards covers
 the east end.
 
-The script draws the monument as voxels on elliptical rings, then fills them with bricks
-and plates (``builder.fill``). The half-columns are round bricks, placed one by one. x
-runs east, y north, and z up, in plates; the monument stands on a plaza of baseplates.
+The script describes the monument as voxels on elliptical rings, then fills them with
+bricks and plates (``builder.fill``). The half-columns are round bricks, placed one by
+one. The x axis runs east, y north, and z up, in plates; the monument stands on a plaza
+of baseplates.
 
 Run: ``uv run bricky build examples/colosseum.py``
 """
@@ -69,7 +70,7 @@ def depth_at(x: int, y: int) -> float:
     """How far a stud square lies inside the outer ellipse, in studs; negative outside.
 
     A square at depth 3 lies on the ellipse whose semi-axes are 3 studs shorter, so
-    equal depths draw rings of equal width, like the monument's concentric walls.
+    equal depths make rings of equal width, like the monument's concentric walls.
     """
     east, north = x + 0.5 - CENTER_X, y + 0.5 - CENTER_Y
     low, high = -6.0, OUTER_Y - 0.5

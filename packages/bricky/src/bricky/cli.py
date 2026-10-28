@@ -70,7 +70,7 @@ class CheckCommand(service.CheckRequest, _Output):
 
 
 class RenderCommand(service.RenderRequest, _Output):
-    """Render pictures of a model file."""
+    """Render images of a model file."""
 
     async def cli_cmd(self) -> None:
         """Run the command."""
@@ -217,7 +217,7 @@ class Bricky(BaseSettings):
     )
     check: CliSubCommand[CheckCommand] = Field(description="Check a model file.")
     render: CliSubCommand[RenderCommand] = Field(
-        description="Render pictures of a model file."
+        description="Render images of a model file."
     )
     parts: CliSubCommand[PartsCommand] = Field(description="Search the parts catalog.")
     colors: CliSubCommand[ColorsCommand] = Field(

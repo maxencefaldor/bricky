@@ -1,21 +1,27 @@
 # Copyright 2026 Maxence Faldor
-"""Draw every picture in bricky's docs with bricky's own renderer.
+"""Render every image in bricky's docs with bricky's own renderer.
 
 Run from the repository root: ``uv run python docs/illustrate.py``, or name figures to
-draw only those. Each figure is a small model built below, or an example script, drawn
-into ``docs/images``. Figures use the sample catalog, so anyone can draw them again; the
-figures of converted LDraw parts need an imported catalog and are skipped without one.
+render only those. Each figure is a small model built below, or an example script,
+rendered into ``docs/images``. Figures use the sample catalog, so anyone can render them
+again; the figures of converted LDraw parts need an imported catalog and are skipped
+without one. The turntable, the README's animation, shows one example rotating 360
+degrees.
 """
 
 import asyncio
+import base64
 import os
 import shutil
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
+from importlib.resources import files
 from math import hypot
 from pathlib import Path
 from typing import Final
+
+from playwright.async_api import Page, Route, async_playwright
 
 from bricky import ModelBuilder, Settings, check_model, default_catalog, voxels
 from bricky.analysis import build_world, diff_worlds
@@ -35,7 +41,7 @@ type Make = Callable[[Catalog], ModelBuilder]
 
 @dataclass(frozen=True, slots=True)
 class Figure:
-    """One picture: a model, how to draw it, and the file it goes to."""
+    """One image: a model, how to render it, and the file it goes to."""
 
     name: str
     model: Make | Path
@@ -52,7 +58,7 @@ class Figure:
     """An earlier version of the model, to outline what changed since."""
 
     imported: bool = False
-    """Draw with the imported catalog: for parts converted from LDraw."""
+    """Render with the imported catalog: for parts converted from LDraw."""
 
     buildable: bool = True
     """Whether the model has no errors.
@@ -130,9 +136,9 @@ def half_stud(catalog: Catalog) -> ModelBuilder:
     builder = ModelBuilder("jumper", catalog=catalog)
     builder.place("3020", at=(0, 0, 0), color="Dark Bluish Gray", id="base")
     builder.place("15573", at=(0, 1, 1), color="Black", id="jumper")
-    for level in range(3):
+    for course in range(3):
         builder.place(
-            "3062", at=(0, 1.5, 2 + 3 * level), color="Black", id=f"post{level}"
+            "3062", at=(0, 1.5, 2 + 3 * course), color="Black", id=f"post{course}"
         )
     builder.place("4073", at=(0, 1.5, 11), color="Trans-Yellow", id="lamp")
     builder.place("3004", at=(1, 0, 1), color="Tan", id="bench")
@@ -186,8 +192,8 @@ def colors(catalog: Catalog) -> ModelBuilder:
     builder = ModelBuilder("colors", catalog=catalog)
     for index, color in enumerate(COLORS):
         row, column = divmod(index, len(COLORS) // 2)
-        for level in range(1 + row):
-            builder.place("3941", at=(3 * column, 3 * row, 3 * level), color=color)
+        for course in range(1 + row):
+            builder.place("3941", at=(3 * column, 3 * row, 3 * course), color=color)
     return builder
 
 
@@ -253,9 +259,9 @@ def wall_fixed(catalog: Catalog) -> ModelBuilder:
 def tower_before(catalog: Catalog) -> ModelBuilder:
     """A tower of crossed bricks: the build before an edit."""
     builder = ModelBuilder("tower", catalog=catalog)
-    for level in range(6):
-        z = 3 * level
-        if level % 2 == 0:
+    for course in range(6):
+        z = 3 * course
+        if course % 2 == 0:
             builder.place("3001", at=(0, 0, z), color="Red")
             builder.place("3001", at=(2, 0, z), color="Red")
         else:
@@ -265,12 +271,12 @@ def tower_before(catalog: Catalog) -> ModelBuilder:
 
 
 def tower_after(catalog: Catalog) -> ModelBuilder:
-    """The tower after an edit: the top two levels recolored, and a tile cap added."""
+    """The tower after an edit: the top two courses recolored, and a tile cap added."""
     builder = ModelBuilder("tower", catalog=catalog)
-    for level in range(6):
-        z = 3 * level
-        top = level >= 4
-        if level % 2 == 0:
+    for course in range(6):
+        z = 3 * course
+        top = course >= 4
+        if course % 2 == 0:
             color = "Blue" if top else "Red"
             builder.place("3001", at=(0, 0, z), color=color)
             builder.place("3001", at=(2, 0, z), color=color)
@@ -285,7 +291,7 @@ def tower_after(catalog: Catalog) -> ModelBuilder:
 
 
 def filled(catalog: Catalog) -> ModelBuilder:
-    """A round tower drawn as voxels and filled with bricks and plates by ``fill``."""
+    """A round tower described as voxels and filled with bricks and plates."""
     builder = ModelBuilder("fill", catalog=catalog)
     tower = {
         (x, y, z): "White" if z // 3 % 4 == 3 else "Red"
@@ -363,7 +369,6 @@ def voxelized(catalog: Catalog) -> ModelBuilder:
 FIGURES: Final = (
     # Home and getting started
     Figure("elizabeth-tower", EXAMPLES / "elizabeth_tower.py"),
-    Figure("wall", wall),
     Figure("wall-floating", wall_floating, check=True),
     Figure("wall-fixed", wall_fixed, check=True, before=wall_floating),
     # Coordinates
@@ -373,7 +378,7 @@ FIGURES: Final = (
         "rotations",
         rotations,
         view=View.PERSPECTIVE,
-        size=(1200, 800),
+        size=(1200, 900),
         highlight=("R*",),
     ),
     Figure("sideways", sideways, view=View.PERSPECTIVE, size=(1000, 900)),
@@ -383,7 +388,7 @@ FIGURES: Final = (
         "families",
         families,
         view=View.PERSPECTIVE,
-        size=(1600, 1000),
+        size=(1200, 900),
         highlight=tuple(family for family, _, _ in FAMILIES),
     ),
     Figure("colors", colors, view=View.PERSPECTIVE, size=(1600, 700)),
@@ -396,7 +401,6 @@ FIGURES: Final = (
     Figure("cottage", EXAMPLES / "cottage.py"),
     Figure("fill", filled, view=View.PERSPECTIVE, size=(1000, 1000)),
     Figure("stonehenge", EXAMPLES / "stonehenge.py"),
-    Figure("colosseum", EXAMPLES / "colosseum.py"),
     Figure(
         "colosseum-north-west",
         EXAMPLES / "colosseum.py",
@@ -413,18 +417,43 @@ FIGURES: Final = (
         "changes",
         tower_after,
         view=View.PERSPECTIVE,
-        size=(1000, 1000),
+        size=(1200, 900),
         before=tower_before,
     ),
-    # Pictures
+    # Images
     Figure("highlight", EXAMPLES / "stonehenge.py", highlight=("@horseshoe",)),
     Figure("clip", EXAMPLES / "cottage.py", view=View.PERSPECTIVE, clips=("y>4",)),
-    Figure("clip-height", EXAMPLES / "elizabeth_tower.py", clips=("z<130",)),
     Figure("front", EXAMPLES / "cottage.py", view=View.FRONT, size=(1200, 900)),
-    Figure("top", EXAMPLES / "cottage.py", view=View.TOP, size=(1200, 900)),
     # Voxels
     Figure(
-        "voxels", voxelized, view=View.PERSPECTIVE, size=(1200, 800), buildable=False
+        "voxels", voxelized, view=View.PERSPECTIVE, size=(1200, 900), buildable=False
+    ),
+    # Cards on the home page, one perspective each in a 4:3 frame
+    Figure(
+        "card-checks",
+        EXAMPLES / "broken.py",
+        view=View.PERSPECTIVE,
+        size=(1200, 900),
+        check=True,
+    ),
+    Figure(
+        "card-images",
+        EXAMPLES / "stonehenge.py",
+        view=View.PERSPECTIVE,
+        size=(1200, 900),
+        highlight=("@horseshoe",),
+    ),
+    # The gallery's cards
+    *(
+        Figure(f"gallery-{name}", EXAMPLES / script, view=view, size=(1200, 900))
+        for name, script, view in (
+            ("tower", "tower.py", View.PERSPECTIVE),
+            ("colonnade", "colonnade.py", View.PERSPECTIVE),
+            ("cottage", "cottage.py", View.PERSPECTIVE),
+            ("stonehenge", "stonehenge.py", View.PERSPECTIVE),
+            ("elizabeth-tower", "elizabeth_tower.py", View.PERSPECTIVE),
+            ("colosseum", "colosseum.py", View.PERSPECTIVE_NORTH_WEST),
+        )
     ),
 )
 
@@ -436,7 +465,7 @@ COPIES: Final = {
     / "inputs"
     / "toadstool.png",
     "benchmark-lighthouse.png": BENCHMARK
-    / "06-lighthouse-picture"
+    / "06-lighthouse-image"
     / "inputs"
     / "lighthouse.png",
     "benchmark-castle.png": BENCHMARK / "09-castle-plans" / "inputs" / "plans.png",
@@ -455,8 +484,8 @@ async def model_of(
     return builder.build(), builder.provenance()
 
 
-async def draw(figure: Figure, renderer: Renderer, settings: Settings) -> Path | None:
-    """Draw one figure into the images folder and return its path."""
+async def render(figure: Figure, renderer: Renderer, settings: Settings) -> Path | None:
+    """Render one figure into the images folder and return its path."""
     if figure.imported and not IMPORTED_CATALOG.is_file():
         print(f"skipped {figure.name}: it needs an imported catalog")
         return None
@@ -468,7 +497,7 @@ async def draw(figure: Figure, renderer: Renderer, settings: Settings) -> Path |
     if report.errors and figure.buildable and not figure.check:
         print(
             f"warning: {figure.name} has {report.errors} errors, "
-            "which the picture leaves out"
+            "which the image leaves out"
         )
     changed: list[str] = []
     if figure.before is not None:
@@ -491,8 +520,317 @@ async def draw(figure: Figure, renderer: Renderer, settings: Settings) -> Path |
     return path
 
 
+# --------------------------------------------------------------------------------------
+# Turntable: the README's animation
+
+
+@dataclass(frozen=True, slots=True)
+class Turntable:
+    """An animation of a model rotating 360 degrees about the vertical axis.
+
+    The camera looks down from 30 degrees above the horizon, as in the perspective
+    views. The camera keeps one distance for the whole rotation, so the model keeps its
+    size. The animation loops forever.
+    """
+
+    name: str
+    script: Path
+    """The example script that builds the model."""
+
+    size: tuple[int, int] = (720, 420)
+    frames: int = 96
+    period: float = 7.2
+    """Seconds one full rotation takes."""
+
+    start: float = 35
+    """The first frame's azimuth, in degrees from the south toward the east.
+
+    The perspective view looks from 35, the south-east.
+    """
+
+    quality: float = 0.75
+    """The WebP quality of each frame, from 0 to 1."""
+
+    supersample: int = 2
+    """How many times larger each frame renders before it shrinks, to smooth edges."""
+
+
+TURNTABLE: Final = Turntable("turntable", EXAMPLES / "colosseum.py")
+
+TURNTABLE_ORIGIN: Final = "https://turntable.invalid/"
+"""The private origin the turntable's page loads bricky's render assets from."""
+
+RENDER_ASSETS: Final = files("bricky.render").joinpath("assets")
+BACKGROUND: Final = "#ffffff"
+WEBP_URL: Final = "data:image/webp;base64,"
+
+TURNTABLE_PAGE: Final = """\
+import * as THREE from "three";
+import { buildModel } from "./viewer.js";
+
+// The camera and lights match the renderer's perspective views: a 24-degree lens
+// 30 degrees up, a sky light, and a sun left of the camera that casts shadows.
+const LENS = 24;
+const ELEVATION = THREE.MathUtils.degToRad(30);
+const SUN = new THREE.Vector3(-0.55, 1.1, 0.75);
+const SOUTH_EAST = THREE.MathUtils.degToRad(35);
+const UP = new THREE.Vector3(0, 1, 0);
+const FILL = 0.92;
+const STUD = 8; // millimeters
+
+let state = null;
+
+function aim(camera, target, azimuth, distance) {
+  const across = Math.cos(ELEVATION);
+  camera.position.set(
+    Math.sin(azimuth) * across, Math.sin(ELEVATION), Math.cos(azimuth) * across,
+  );
+  camera.position.multiplyScalar(distance).add(target);
+  camera.lookAt(target);
+  camera.updateMatrixWorld();
+}
+
+function corners(box) {
+  const points = [];
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) points.push(new THREE.Vector3(x, y, z));
+    }
+  }
+  return points;
+}
+
+function setup(scene, { width, height, supersample, frames, start, background }) {
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true, preserveDrawingBuffer: true,
+  });
+  renderer.setPixelRatio(1);
+  renderer.setSize(width * supersample, height * supersample, false);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.setClearColor(background, 1);
+  const three = new THREE.Scene();
+  const sun = new THREE.DirectionalLight(0xffffff, 2.1);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.6;
+  three.add(new THREE.HemisphereLight(0xffffff, 0x8d949e, 1.45), sun, sun.target);
+  const model = buildModel(scene);
+  three.add(model.root);
+  const center = model.bounds.getCenter(new THREE.Vector3());
+  const radius = model.bounds.getSize(new THREE.Vector3()).length();
+  sun.target.position.copy(center);
+  Object.assign(sun.shadow.camera, {
+    left: -radius, right: radius, top: radius, bottom: -radius,
+    near: radius * 0.1, far: radius * 4,
+  });
+  sun.shadow.camera.updateProjectionMatrix();
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(radius * 6, radius * 6),
+    new THREE.ShadowMaterial({ opacity: 0.16 }),
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(center.x, model.bounds.min.y - 0.02, center.z);
+  ground.receiveShadow = true;
+  three.add(ground);
+
+  // One distance for every frame keeps the model's size as it rotates. The target moves
+  // only along the axis of rotation, which stays in the middle of the frame.
+  const camera = new THREE.PerspectiveCamera(
+    LENS, width / height, radius / 100, radius * 100,
+  );
+  const azimuths = Array.from(
+    { length: frames }, (_, i) => THREE.MathUtils.degToRad(start + (360 * i) / frames),
+  );
+  const half = Math.tan(THREE.MathUtils.degToRad(LENS) / 2);
+  const target = center.clone();
+  let distance = radius * 4;
+  for (let step = 0; step < 12; step++) {
+    let across = 0, low = Infinity, high = -Infinity;
+    for (const azimuth of azimuths) {
+      aim(camera, target, azimuth, distance);
+      for (const corner of corners(model.bounds)) {
+        const point = corner.project(camera);
+        across = Math.max(across, Math.abs(point.x));
+        low = Math.min(low, point.y);
+        high = Math.max(high, point.y);
+      }
+    }
+    target.y += ((low + high) / 2) * distance * half / Math.cos(ELEVATION);
+    distance *= 0.4 + 0.6 * (Math.max(across, (high - low) / 2) / FILL);
+  }
+  // Edges fade when studs are small on screen, as in the renderer's images.
+  const pixelsPerStud = (STUD / (2 * distance * half)) * height * supersample;
+  const opacity = Math.min(0.42, Math.max(0.07, 0.03 * pixelsPerStud));
+  model.edgeMaterials.plain.opacity = opacity;
+  const output = document.createElement("canvas");
+  output.width = width;
+  output.height = height;
+  const context = output.getContext("2d", { alpha: false });
+  context.imageSmoothingQuality = "high";
+  state = { renderer, three, camera, sun, center, radius, target, distance, azimuths };
+  Object.assign(state, { output, context });
+}
+
+// Render one frame and return it as a data URL, in WebP when Chromium encodes WebP.
+function frame(index, quality) {
+  const { renderer, three, camera, sun, center, radius, output, context } = state;
+  const azimuth = state.azimuths[index];
+  aim(camera, state.target, azimuth, state.distance);
+  const light = SUN.clone().applyAxisAngle(UP, azimuth - SOUTH_EAST).normalize();
+  sun.position.copy(center).addScaledVector(light, radius * 1.5);
+  renderer.render(three, camera);
+  context.drawImage(renderer.domElement, 0, 0, output.width, output.height);
+  return output.toDataURL("image/webp", quality);
+}
+
+window.turntable = { setup, frame };
+"""
+"""A module that renders the turntable's frames with ``buildModel`` of ``viewer.js``."""
+
+
+async def serve(route: Route) -> None:
+    """Answer the turntable page's requests from bricky's render assets."""
+    url = route.request.url
+    name = url.removeprefix(TURNTABLE_ORIGIN)
+    asset = RENDER_ASSETS.joinpath(*name.split("/"))
+    if not url.startswith(TURNTABLE_ORIGIN) or not asset.is_file():
+        await route.abort()
+        return
+    kind = "text/html" if name.endswith(".html") else "text/javascript"
+    await route.fulfill(body=asset.read_bytes(), content_type=kind)
+
+
+async def frame(page: Page, index: int, quality: float) -> bytes:
+    """Render one frame of the turntable on its page and return it in WebP."""
+    url = await page.evaluate(
+        "([index, quality]) => window.turntable.frame(index, quality)",
+        [index, quality],
+    )
+    if not isinstance(url, str) or not url.startswith(WEBP_URL):
+        message = "the browser cannot encode WebP"
+        raise RuntimeError(message)
+    return base64.b64decode(url.removeprefix(WEBP_URL))
+
+
+async def spin(turntable: Turntable, settings: Settings) -> Path:
+    """Render a turntable's frames in Chromium and write them as one animated WebP."""
+    run = await run_script(turntable.script, settings)
+    scene = build_scene(run.model, default_catalog())
+    width, height = turntable.size
+    options = {
+        "width": width,
+        "height": height,
+        "supersample": turntable.supersample,
+        "frames": turntable.frames,
+        "start": turntable.start,
+        "background": BACKGROUND,
+    }
+    problems: list[str] = []
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(
+            executable_path=settings.render_browser,
+            args=["--enable-unsafe-swiftshader"],
+        )
+        page = await browser.new_page()
+        page.on("pageerror", lambda error: problems.append(str(error)))
+        page.on(
+            "console",
+            lambda console: (
+                problems.append(console.text) if console.type == "error" else None
+            ),
+        )
+        await page.route("**/*", serve)
+        await page.goto(TURNTABLE_ORIGIN + "render.html")
+        await page.add_script_tag(type="module", content=TURNTABLE_PAGE)
+        await page.wait_for_function("() => window.turntable !== undefined")
+        await page.evaluate(
+            "([scene, options]) => window.turntable.setup(scene, options)",
+            [scene.model_dump(mode="json"), options],
+        )
+        images = [
+            await frame(page, index, turntable.quality)
+            for index in range(turntable.frames)
+        ]
+        await browser.close()
+    if problems:
+        message = f"the turntable's page failed: {'; '.join(problems)}"
+        raise RuntimeError(message)
+    duration = round(1000 * turntable.period / turntable.frames)
+    path = IMAGES / f"{turntable.name}.webp"
+    path.write_bytes(animated_webp(images, turntable.size, duration))
+    return path
+
+
+# The WebP container: https://developers.google.com/speed/webp/docs/riff_container
+_FRAME_CHUNKS: Final = frozenset({b"ALPH", b"VP8 ", b"VP8L"})
+"""The chunks of a still WebP that an animation frame keeps: its pixels."""
+
+_ANIMATION: Final = 0b10
+_ALPHA: Final = 0b10000
+_NO_BLENDING: Final = 0b10
+"""A frame's flags: replace the canvas under it, and leave it in place after."""
+
+_FOREVER: Final = 0
+"""The loop count of an animation that never stops."""
+
+
+def animated_webp(
+    images: Sequence[bytes], size: tuple[int, int], duration: int
+) -> bytes:
+    """Join WebP stills of one size into an animated WebP that loops forever.
+
+    Each frame keeps its still's compressed pixels and shows for ``duration``
+    milliseconds. The animation leaves out the stills' color profiles, so browsers read
+    it as sRGB, the default.
+    """
+    width, height = size
+    canvas = _three_bytes(width - 1) + _three_bytes(height - 1)
+    alpha = False
+    frames = b""
+    for image in images:
+        kept = [(name, data) for name, data in _chunks(image) if name in _FRAME_CHUNKS]
+        alpha = alpha or any(name == b"ALPH" for name, _ in kept)
+        header = _three_bytes(0) + _three_bytes(0) + canvas + _three_bytes(duration)
+        pixels = b"".join(_chunk(name, data) for name, data in kept)
+        frames += _chunk(b"ANMF", header + bytes([_NO_BLENDING]) + pixels)
+    flags = _ANIMATION | (_ALPHA if alpha else 0)
+    white = bytes([0xFF, 0xFF, 0xFF, 0xFF])
+    content = (
+        b"WEBP"
+        + _chunk(b"VP8X", bytes([flags, 0, 0, 0]) + canvas)
+        + _chunk(b"ANIM", white + _FOREVER.to_bytes(2, "little"))
+        + frames
+    )
+    return b"RIFF" + len(content).to_bytes(4, "little") + content
+
+
+def _chunks(image: bytes) -> Iterator[tuple[bytes, bytes]]:
+    """Yield the name and data of each chunk of a WebP file."""
+    if image[:4] != b"RIFF" or image[8:12] != b"WEBP":
+        message = "not a WebP file"
+        raise ValueError(message)
+    offset = 12
+    while offset + 8 <= len(image):
+        size = int.from_bytes(image[offset + 4 : offset + 8], "little")
+        yield image[offset : offset + 4], image[offset + 8 : offset + 8 + size]
+        offset += 8 + size + size % 2
+
+
+def _chunk(name: bytes, data: bytes) -> bytes:
+    """Return a chunk: its name, size and data, padded to an even size."""
+    return name + len(data).to_bytes(4, "little") + data + b"\0" * (len(data) % 2)
+
+
+def _three_bytes(value: int) -> bytes:
+    """Return a number in three bytes, little end first, as the container stores it."""
+    return value.to_bytes(3, "little")
+
+
 async def main() -> None:
-    """Draw every figure, then copy the benchmark inputs the docs show."""
+    """Render every figure and the turntable, then copy the benchmark inputs."""
     # Example scripts use the sample catalog too.
     os.environ["BRICKY_CATALOG"] = str(SAMPLE_CATALOG)
     IMAGES.mkdir(parents=True, exist_ok=True)
@@ -502,9 +840,12 @@ async def main() -> None:
         for figure in FIGURES:
             if wanted and figure.name not in wanted:
                 continue
-            path = await draw(figure, renderer, settings)
+            path = await render(figure, renderer, settings)
             if path is not None:
-                print(f"drew {path.relative_to(ROOT)}")
+                print(f"rendered {path.relative_to(ROOT)}")
+    if not wanted or TURNTABLE.name in wanted:
+        path = await spin(TURNTABLE, settings)
+        print(f"rendered {path.relative_to(ROOT)}")
     for name, source in COPIES.items():
         shutil.copyfile(source, IMAGES / name)
         print(f"copied {source.relative_to(ROOT)}")

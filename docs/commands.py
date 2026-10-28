@@ -24,15 +24,15 @@ _URL: Final = re.compile(r"(https?://[^\s<>]+?)([.,;:]?(?:\s|$))")
 INTRODUCTION: Final = """\
 # Command line
 
-`bricky` builds, checks and draws models from the shell.
+The `bricky` command builds, checks and renders models from the shell.
+
 Every command takes `--output-format json` to print its result as JSON for programs; \
 the default, `text`, is for people and agents.
-Exit status 0 means success, 1 means the model has errors (or `catalog verify` found \
-problems), and 2 means invalid arguments or a failed command.
-
+The exit status is 0 for success, 1 when the model has errors or `catalog verify` \
+finds problems, and 2 for invalid arguments or a failed command.
 Each command's options come from a request model in `bricky.service`, which the \
-[MCP server](../agents/mcp.md) shares, so a tool's arguments match its command's \
-options.
+[MCP server](../agents/connect.md#mcp-server) shares, so a tool takes the same \
+arguments as its command.
 """
 
 
@@ -98,7 +98,8 @@ def _subcommands(
         )
         if command is None or not issubclass(command, BaseModel):
             continue
-        path = f"{prefix}{name.rstrip('_')}"
+        # The command line spells fields in kebab case: json_schema is json-schema.
+        path = prefix + name.rstrip("_").replace("_", "-")
         if command is CatalogCommand:
             found.extend(_subcommands(command, path + " "))
         else:

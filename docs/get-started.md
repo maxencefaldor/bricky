@@ -1,26 +1,23 @@
 # Get started
 
-A first model: a small wall, built, broken and fixed.
-Each step shows exactly what bricky prints and draws.
+The tutorial builds a small wall, breaks it and fixes it, and shows exactly what each build prints and renders.
 
 ## Install
 
-bricky needs [uv](https://docs.astral.sh/uv/).
-uv installs Python 3.15 and every tool the project uses, at the versions in `uv.lock`.
+Python 3.15 runs bricky, and [uv](https://docs.astral.sh/uv/) installs it along with every dependency at the versions in `uv.lock`.
 
 ```sh
-git clone https://github.com/maxencefaldor/bricky
-cd bricky
+git clone https://github.com/maxencefaldor/bricky && cd bricky
 uv sync
 uv run playwright install chromium
 ```
 
-Playwright's Chromium draws the pictures.
-To use a Chromium already on the machine, set `BRICKY_RENDER_BROWSER` to its executable instead of installing one.
+Playwright's Chromium renders the images.
+To render with a Chromium already on the machine, set `BRICKY_RENDER_BROWSER` to its executable instead.
 
 ## Write a build script
 
-A build script is a Python file that defines `build()` and returns a `ModelBuilder`.
+A build script is a Python file whose `build()` returns a `ModelBuilder`.
 Save this wall as `models/wall.py`:
 
 ```python title="models/wall.py"
@@ -31,12 +28,10 @@ def build() -> ModelBuilder:
     builder = ModelBuilder("wall")
     for course in range(3):
         z = 3 * course  # a brick is three plates tall
-        if course % 2 == 0:
-            for x in (0, 4):
-                builder.place(
-                    "3010", at=(x, 0, z), rotation="R90", color="Red"
-                )  # Brick 1 x 4
-        else:  # offset courses: a 1 x 2 brick at each end
+        if course % 2 == 0:  # two bricks 1 x 4
+            builder.place("3010", at=(0, 0, z), rotation="R90", color="Red")
+            builder.place("3010", at=(4, 0, z), rotation="R90", color="Red")
+        else:  # offset joints: a brick 1 x 4 between two bricks 1 x 2
             builder.place("3004", at=(0, 0, z), rotation="R90", color="Red")
             builder.place("3010", at=(2, 0, z), rotation="R90", color="Red")
             builder.place("3004", at=(6, 0, z), rotation="R90", color="Red")
@@ -44,10 +39,10 @@ def build() -> ModelBuilder:
     return builder
 ```
 
-`place` takes a part id, the corner `at` where the part goes, a rotation and a color.
-`at` is `(x, y, z)`: x east and y north in studs, z up in plates.
-`R90` rotates a part a quarter turn about the vertical axis, so each Brick 1 x 4 runs along x.
-The last line gives the blue brick an id, so the report and the pictures name it.
+Each call to `place` names a part, the corner `at` where it goes, a rotation and a color.
+The corner reads `(x, y, z)`: east and north in studs, up in plates.
+The rotation `R90` rotates each brick 90 degrees about the vertical axis, so it runs east.
+The last call gives the blue brick an id, so the report and the images name it.
 
 ## Build it
 
@@ -55,8 +50,8 @@ The last line gives the blue brick an id, so the report and the pictures name it
 uv run bricky build models/wall.py
 ```
 
-bricky runs the script in a process of its own, saves the model, checks it and draws it.
-The first line gives the model's size; the rest states what is wrong:
+The build runs the script in a process of its own, then saves, checks and renders the model.
+The report opens with the model's size and then states what is wrong:
 
 ```text
 saved models/wall.bricky.json: 8 elements, 8 x 1 studs, 13 plates tall
@@ -72,21 +67,17 @@ checked 8 elements with profile digital (schema, collision, connectivity): 1 err
 
 rendered (open the images to see the model):
   sheet: models/wall.png
-
-time: script 0.23 s, check 0.01 s, render 1.70 s
 ```
 
-The diagnostic states a fact: the blue brick floats.
-The wall's top course ends at z = 9, and the brick starts at z = 10, one plate higher, so no stud holds it.
-The region `x 3..5  y 0..1  z 10..13` says where, in studs and plates, and the last line names the element, what it is, and the script line that placed it.
+The diagnostic states one fact: the blue brick floats.
+The top course ends at z = 9 and the brick starts at z = 10, one plate higher, so no stud holds it.
+The region after `-->` says where, in studs and plates, and the line after `=` names the element, its part, its color and the script line that placed it.
 
-The picture shows the same fact.
-The floating brick is tinted red and labeled with its code:
+The sheet shows the same fact: the floating brick is tinted red and labeled with its code.
 
 ![The wall with its floating chimney tinted red](images/wall-floating.png)
 
-The front and right views carry rulers in studs and plates, the units `at` uses.
-The gap between the chimney and the wall reads straight off the z ruler: one plate.
+The front and right views carry rulers in the units of `at`, so the one-plate gap reads straight off the z ruler.
 
 ## Fix it
 
@@ -111,14 +102,13 @@ checked 8 elements with profile digital (schema, collision, connectivity): 0 err
 ```
 
 One element changed, placed by line 15, and nothing else moved.
-The model has no errors, and the picture outlines the changed brick in purple:
+The model has no errors, and the sheet outlines the changed brick in purple:
 
-![The fixed wall](images/wall-fixed.png)
+![The fixed wall, its chimney outlined in purple](images/wall-fixed.png)
 
 ## Next steps
 
-- [Coordinates](guide/coordinates.md): studs, plates, `at` and rotations.
-- [Parts and colors](guide/parts.md): finding parts and what each family looks like.
-- [Build scripts](guide/scripts.md): components, instances, ids, and building sideways.
-- [Checks](guide/checks.md): every diagnostic code, with a picture.
-- [The examples](examples.md): a cottage, Stonehenge and the Elizabeth Tower.
+- [Coordinates](guide/coordinates.md): studs, plates, the `at` corner and rotations.
+- [Build scripts](guide/scripts.md): components, instances, filling voxels and building sideways.
+- [Parts and colors](guide/parts.md): finding parts and the shape of each family.
+- [Gallery](gallery.md): every example in 3D, from a tower to the Colosseum.

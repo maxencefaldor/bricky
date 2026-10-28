@@ -21,5 +21,6 @@ benchmark/runs/
 # Worktrees of parallel agents
 .claude/worktrees/
 
-# The docs site zensical builds
+# The docs site zensical builds, and the gallery's 3D viewers docs/gallery.py writes
 site/
+docs/gallery/*.html

@@ -6,7 +6,7 @@ body:
     id: what
     attributes:
       label: What happened
-      description: The command or tool call, and what bricky printed or drew.
+      description: The command or tool call, and what bricky printed or rendered.
       render: text
     validations:
       required: true

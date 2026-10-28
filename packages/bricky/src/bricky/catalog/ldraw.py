@@ -69,9 +69,9 @@ STUD_PRIMITIVES: Final = frozenset(
         "stud15.dat",
     }
 )
-"""The LDraw primitives that draw a stud on their origin, pointing along their -y axis.
+"""The LDraw primitives that place a stud on their origin, pointing along their -y axis.
 
-The primitives for tubes under parts, such as ``stud3.dat`` and ``stud4.dat``, draw
+The primitives for tubes under parts, such as ``stud3.dat`` and ``stud4.dat``, place
 body.
 """
 

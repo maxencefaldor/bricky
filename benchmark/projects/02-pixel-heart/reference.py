@@ -4,7 +4,7 @@
 from bricky import ModelBuilder
 
 # Rows from north (top) to south; '.' White, 'R' Red, 'D' Dark Red.
-PICTURE = """
+PIXEL_ART = """
 ............
 ..RR....RR..
 .R.RR..RRRR.
@@ -23,9 +23,9 @@ COLORS = {".": "White", "R": "Red", "D": "Dark Red"}
 
 
 def build() -> ModelBuilder:
-    """Lay the black base, then one tile per pixel of the picture."""
+    """Lay the black base, then one tile per pixel of the pixel art."""
     builder = ModelBuilder("pixel-heart")
-    rows = PICTURE.split()
+    rows = PIXEL_ART.split()
     size = len(rows)
     # The base: Black 2 x 8 and 2 x 4 plates, two studs deep, 12 studs long.
     for y in range(0, size, 2):
@@ -35,7 +35,7 @@ def build() -> ModelBuilder:
         builder.place(
             "3020", at=(8, y, 0), rotation="R90", color="Black"
         )  # Plate 2 x 4
-    # The picture: one 1 x 1 tile per pixel.
+    # The pixel art: one 1 x 1 tile per pixel.
     for row, line in enumerate(rows):
         y = size - 1 - row
         for x, pixel in enumerate(line):

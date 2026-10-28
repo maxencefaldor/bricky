@@ -1,5 +1,5 @@
 # Copyright 2026 Maxence Faldor
-"""Write a project's generated inputs from its reference: pictures and voxel plans.
+"""Write a project's generated inputs from its reference: images and plans of layers.
 
 Generated inputs are committed with the project, so every run of the benchmark gives the
 agent the same files. ``bricky-benchmark prepare`` writes them again after a reference
@@ -31,7 +31,7 @@ async def prepare(project: Project, session: Session) -> list[Path]:
 
     Raises:
         BrickyError: If the project generates inputs but has no reference, the reference
-            does not build, or a picture cannot be drawn.
+            does not build, or an image cannot be rendered.
     """
     if not project.spec.generate:
         return []
@@ -42,7 +42,7 @@ async def prepare(project: Project, session: Session) -> list[Path]:
             case Render():
                 data = await _render(model, item, session)
             case Layers():
-                data = layers_text(model, session.catalog, item.levels).encode()
+                data = layers_text(model, session.catalog, item.heights).encode()
         written.append(
             await asyncio.to_thread(write_file, project.path / item.file, data)
         )
@@ -67,16 +67,16 @@ async def _render(model: Model, item: Render, session: Session) -> bytes:
     if item.caption is not None:
         scene = scene.model_copy(update={"title": item.caption})
     renderer = await session.renderer()
-    (picture,) = await renderer.render(
+    (image,) = await renderer.render(
         scene, [item.view], width=item.width, height=item.height
     )
-    return picture
+    return image
 
 
 def layers_text(
-    model: Model, catalog: Catalog, levels: Sequence[int] | None = None
+    model: Model, catalog: Catalog, heights: Sequence[int] | None = None
 ) -> str:
-    """Describe a model's voxels as text: a color legend, then one plan per plate level.
+    """Describe a model's voxels as text: a color legend, then one plan per layer.
 
     Every plan covers the same x and y range, the model's own, so plans line up when
     read one after another. Rows run from north (top) to south, columns from west (left)
@@ -92,23 +92,20 @@ def layers_text(
     xs = [x for x, _, _ in filled]
     ys = [y for _, y, _ in filled]
     zs = sorted({z for _, _, z in filled})
-    shown = zs if levels is None else [z for z in levels if z in zs]
+    shown = zs if heights is None else [z for z in heights if z in zs]
     colors = _first_seen(filled, (min(xs), max(xs)), (min(ys), max(ys)), zs)
     names = [_color_name(catalog, color) for color in colors]
     symbols = dict(zip(colors, _symbols(names), strict=True))
 
     lines = [
-        (
-            f"{model.name}: the voxels it fills, one plate level at a time "
-            "from the ground up."
-        ),
+        (f"{model.name}: the voxels it fills, one layer at a time from the ground up."),
         "",
         (
             "A voxel is 1 x 1 stud and 1 plate tall; z counts plates, "
-            "so a brick fills three levels."
+            "so a brick fills three layers."
         ),
         (
-            "Each level is a plan seen from above, north up: "
+            "Each layer is a plan seen from above, north up: "
             "x grows to the right (east) and y grows"
         ),
         (
@@ -138,7 +135,7 @@ def _plan(
     xs: Sequence[int],
     ys: Sequence[int],
 ) -> list[str]:
-    """Draw a plate level as rows of symbols, north first, under a ruler of x values."""
+    """Write a layer as rows of symbols, north first, under a ruler of x values."""
     west, east, south, north = min(xs), max(xs), min(ys), max(ys)
     label_width = max(len(str(south)), len(str(north)), 3)
     columns = range(west, east + 1)
@@ -163,12 +160,12 @@ def _first_seen(
     filled: dict[VoxelKey, Voxel],
     x_range: tuple[int, int],
     y_range: tuple[int, int],
-    levels: Iterable[int],
+    heights: Iterable[int],
 ) -> list[int]:
-    """Color ids in reading order: level by level, north to south, then west to east."""
+    """Color ids in reading order: layer by layer, north to south, then west to east."""
     (west, east), (south, north) = x_range, y_range
     seen: dict[int, None] = {}
-    for z in levels:
+    for z in heights:
         for y in range(north, south - 1, -1):
             for x in range(west, east + 1):
                 if (voxel := filled.get((x, y, z))) is not None:
