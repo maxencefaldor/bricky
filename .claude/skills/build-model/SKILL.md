@@ -35,8 +35,8 @@ def build() -> ModelBuilder:
 
 - `at=(x, y, z)`: x east and y north in studs, z up in plates. It is the minimum corner of the
   rotated bounding box of what you place, a part or a whole component.
-- `rotation`: `R0`, `R90`, `R180` or `R270` about the vertical axis. Any of the 24 grid rotations can be
-  named by where the part's x and y axes go: `+x+z` stands a part up with its top facing -y.
+- `rotation`: `R0`, `R90`, `R180` or `R270` about the vertical axis. Any of the 24 grid rotations
+  can be named by where the part's x and y axes go: `+x+z` stands a part up with its top facing -y.
 - Parts that face a way say so in `uv run bricky parts slope`: unturned, slopes fall toward -y
   (the front), bricks with side studs list the faces their studs are on, arches span along y.
   Rotate them with `rotation`, for example `R180` for a slope falling toward +y.
