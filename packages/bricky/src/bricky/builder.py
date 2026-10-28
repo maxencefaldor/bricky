@@ -70,7 +70,7 @@ class _Scope:
         if definition is None:
             entry = self.catalog.entry(part)
             if entry is None:
-                message = f"unknown part {part!r}; search the catalog with `bricky parts <words>`"
+                message = f"unknown part {part!r}: `bricky parts <words>` searches the catalog"
             else:
                 message = (
                     f"part {part} ({entry.name}) has no shape in bricky, so it cannot be placed; "
@@ -221,7 +221,7 @@ class ComponentBuilder(_Placer):
 class ModelBuilder(_Placer):
     """Build a model in agent-friendly coordinates.
 
-    Example:
+    Examples:
         >>> builder = ModelBuilder("wall")
         >>> builder.place("3001", at=(0, 0, 0), color="Red")
         'e1'

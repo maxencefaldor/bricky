@@ -170,8 +170,8 @@ def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
     """A smooth top curving down from the back to a low lip at the front (y = 0), without studs.
 
     The curve is a quarter ellipse, flat at the back and steep at the front, drawn as a few facets
-    with corners on whole base units. The front row stands too low for a stud underneath, so a
-    curved slope longer than one stud has anti-studs under every row except the front one.
+    with corners on whole base units. The underside is hollow, so every row has an anti-stud: a
+    curved slope sits flat on studs.
     """
     width, length = shape.size
     height = shape.height * PLATE
@@ -183,8 +183,7 @@ def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
     ]
     profile: Profile = [(0, 0), (back, 0), *_distinct(arc)]
     body = Convex.prism(profile, "x", 0, width * STUD)
-    rows = range(1, length) if length > 1 else range(1)  # the front row is too low for a stud
-    connectors = _anti_studs(_positions(width, length, rows))
+    connectors = _anti_studs(_positions(width, length))
     return [body], connectors, "curves down toward -y (the front) when unrotated"
 
 

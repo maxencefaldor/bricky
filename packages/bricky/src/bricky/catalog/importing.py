@@ -30,8 +30,9 @@ from bricky.catalog import SAMPLE_CATALOG, Catalog, CatalogFile
 from bricky.catalog.bricklink import Downloads, bricklink_parts, downloaded
 from bricky.catalog.families import build_part
 from bricky.catalog.ldraw import Library, ldraw_parts, ldraw_shape
-from bricky.catalog.models import CatalogPart, Color, ConnectorKind, Part, Shape
+from bricky.catalog.models import CatalogPart, Color, Connector, ConnectorKind, Part, Shape
 from bricky.errors import BrickyError
+from bricky.geometry import ALIASES, Box, Pose, Rotation, Vector
 
 _PRINTED: Final = re.compile(r"p[a-z]{0,3}\d")
 """The suffix of a printed part's id after its base part's id: p, up to three letters, a digit."""
@@ -199,14 +200,23 @@ def _ldraw_number(library: Library, entry: CatalogPart) -> str | None:
 def _difference(entry: CatalogPart, named: Shape, converted: Shape) -> str:
     """Describe how a part's shapes from its name and from LDraw differ; empty when they agree.
 
-    The comparison uses what orientation leaves unchanged: the body's size, with its two horizontal
-    sides in either order, and the numbers of studs and anti-studs.
+    LDraw orients parts its own way, so the shapes agree when a rotation about the vertical axis
+    brings LDraw's onto the name's: the same size, and studs and anti-studs in the same places.
     """
     a, b = build_part(entry, named), build_part(entry, converted)
-    facts = [_facts(a), _facts(b)]
-    if facts[0] == facts[1]:
+    if any(_placed(b, rotation) == _placed(a, "R0") for rotation in ALIASES):
         return ""
-    return f"its name gives {_describe(facts[0])}; LDraw gives {_describe(facts[1])}"
+    facts = [_facts(a), _facts(b)]
+    where = " in other places" if facts[0] == facts[1] else ""
+    return f"its name gives {_describe(facts[0])}; LDraw gives {_describe(facts[1])}{where}"
+
+
+def _placed(part: Part, rotation: str) -> tuple[Vector, frozenset[Connector]]:
+    """A part's size and connectors after a rotation, with its minimum corner at the origin."""
+    rotated = Box(Vector(0, 0, 0), part.size).transformed(Pose(Rotation.parse(rotation)))
+    pose = Pose(Rotation.parse(rotation), -rotated.min)
+    connectors = frozenset(connector.transformed(pose) for connector in part.connectors)
+    return rotated.max - rotated.min, connectors
 
 
 def _facts(part: Part) -> tuple[tuple[int, int], int, int, int]:
@@ -217,7 +227,10 @@ def _facts(part: Part) -> tuple[tuple[int, int], int, int, int]:
 
 def _describe(facts: tuple[tuple[int, int], int, int, int]) -> str:
     (x, y), z, studs, anti_studs = facts
-    return f"{x} x {y} x {z} units, {studs} studs, {anti_studs} anti-studs"
+    return (
+        f"{x} x {y} x {z} units, {studs} stud{'' if studs == 1 else 's'}, "
+        f"{anti_studs} anti-stud{'' if anti_studs == 1 else 's'}"
+    )
 
 
 def _reason(error: str) -> str:

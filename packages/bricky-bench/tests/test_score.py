@@ -23,7 +23,7 @@ def test_identical_models_match_fully():
     assert fidelity.voxels == fidelity.reference_voxels == 5
 
 
-def test_position_and_turn_are_free():
+def test_position_and_rotation_are_free():
     # The same L, rotated by 90 degrees and moved far away.
     rotated = {(x + 30, y - 7, z): c for (x, y, z), c in grid("BBA", "..A", "..A").items()}
     fidelity = compare(rotated, L_SHAPE)

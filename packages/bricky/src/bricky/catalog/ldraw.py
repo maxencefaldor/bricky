@@ -40,7 +40,7 @@ from bricky.errors import BrickyError
 type Floats = NDArray[np.float64]
 type Mask = NDArray[np.bool_]
 
-VOXEL: Final = 2
+SAMPLE_STEP: Final = 2
 """The sampling step, in LDraw units and base units alike: 0.8 mm, which divides every stud
 position."""
 
@@ -265,9 +265,9 @@ def ldraw_shape(library: Library, number: str) -> BoxesShape:
         message = f"LDraw part {number} has no body"
         raise BrickyError(message)
     corners = triangles.reshape(-1, 3)
-    low = np.floor(corners.min(axis=0) / VOXEL) * VOXEL
-    high = np.ceil(corners.max(axis=0) / VOXEL) * VOXEL
-    counts = np.round((high - low) / VOXEL).astype(int)
+    low = np.floor(corners.min(axis=0) / SAMPLE_STEP) * SAMPLE_STEP
+    high = np.ceil(corners.max(axis=0) / SAMPLE_STEP) * SAMPLE_STEP
+    counts = np.round((high - low) / SAMPLE_STEP).astype(int)
     rays = [_Rays.cast(triangles - low, counts, axis) for axis in range(3)]
     votes = np.sum([ray.beyond % 2 for ray in rays], axis=0)
     material: Mask = votes >= 2  # noqa: PLR2004 - a majority of three
@@ -278,7 +278,7 @@ def ldraw_shape(library: Library, number: str) -> BoxesShape:
     cavity = _cavity(material, walled)
     return BoxesShape(
         family=Family.BOXES,
-        size=tuple(int(n) * VOXEL for n in counts),
+        size=tuple(int(n) * SAMPLE_STEP for n in counts),
         boxes=tuple(_boxes(material | cavity)),
         studs=tuple(_studs(flat.studs, low)),
         anti_studs=tuple(_anti_studs(material, walled)),
@@ -304,7 +304,9 @@ class _Rays:
         the tile. Sorting each ray's crossings then makes counting those beyond every sample a
         binary search.
         """
-        centers = [(np.arange(int(n)) + 0.5) * VOXEL + _JITTER[i] for i, n in enumerate(counts)]
+        centers = [
+            (np.arange(int(n)) + 0.5) * SAMPLE_STEP + _JITTER[i] for i, n in enumerate(counts)
+        ]
         u, v = (a for a in range(3) if a != axis)
         size_u, size_v = len(centers[u]), len(centers[v])
         origin = triangles[:, 0]
@@ -350,7 +352,7 @@ class _Rays:
                 rays.append(ids[ray])
         hit_rays = np.concatenate(rays) if rays else np.zeros(0, dtype=np.int64)
         hit_depths = np.concatenate(depths) if depths else np.zeros(0)
-        span = float(counts.max() * VOXEL + 4 * VOXEL)
+        span = float(counts.max() * SAMPLE_STEP + 4 * SAMPLE_STEP)
         keys = np.sort(hit_rays * span + hit_depths)
         all_rays = np.arange(size_u * size_v)
         starts = np.searchsorted(keys, all_rays * span, side="left")
@@ -406,10 +408,10 @@ def _anti_studs(material: Mask, walled: Mask) -> Iterator[tuple[int, int]]:
     walled in and free of material from the bottom face up to a stud's height.
     """
     size_x, size_y, _ = material.shape
-    reach, depth = _STUD_ROOM // VOXEL // 2, _STUD_ROOM // VOXEL
-    for x in range(_HALF_STUD, size_x * VOXEL, _STUD):
-        for y in range(_HALF_STUD, size_y * VOXEL, _STUD):
-            i, j = x // VOXEL, y // VOXEL
+    reach, depth = _STUD_ROOM // SAMPLE_STEP // 2, _STUD_ROOM // SAMPLE_STEP
+    for x in range(_HALF_STUD, size_x * SAMPLE_STEP, _STUD):
+        for y in range(_HALF_STUD, size_y * SAMPLE_STEP, _STUD):
+            i, j = x // SAMPLE_STEP, y // SAMPLE_STEP
             near = (slice(i - reach, i + reach), slice(j - reach, j + reach))
             free = ~material[*near, :depth].any() and walled[near].all()
             if walled[near].shape == (2 * reach, 2 * reach) and free:
@@ -445,7 +447,14 @@ def _boxes(body: Mask) -> Iterator[tuple[int, int, int, int, int, int]]:
         while k1 < left.shape[2] and left[i:i1, j:j1, k1].all():
             k1 += 1
         left[i:i1, j:j1, k:k1] = False
-        yield (i * VOXEL, j * VOXEL, k * VOXEL, i1 * VOXEL, j1 * VOXEL, k1 * VOXEL)
+        yield (
+            i * SAMPLE_STEP,
+            j * SAMPLE_STEP,
+            k * SAMPLE_STEP,
+            i1 * SAMPLE_STEP,
+            j1 * SAMPLE_STEP,
+            k1 * SAMPLE_STEP,
+        )
 
 
 def _faces(fields: list[str]) -> Floats:

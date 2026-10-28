@@ -147,7 +147,7 @@ def render_report(report: Report) -> str:
     """Render a report as compiler-style text."""
     blocks = [_render_diagnostic(diagnostic, report.elements) for diagnostic in report.diagnostics]
     if report.omitted:
-        blocks.append(f"... {report.omitted} more not shown; raise --max-diagnostics to see them")
+        blocks.append(f"... {_plural(report.omitted, 'more diagnostic')} not shown")
     sites = _sites(report)
     if sites:
         lines = ["by source line:"]

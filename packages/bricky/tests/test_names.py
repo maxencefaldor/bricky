@@ -14,7 +14,7 @@ from bricky.catalog.models import (
     SideStudsShape,
     SlopeShape,
 )
-from bricky.catalog.names import plates, shape_from_name
+from bricky.catalog.names import height_in_plates, shape_from_name
 
 SHAPED = {
     "Brick 2 x 4": BlockShape(family=Family.BRICK, size=(2, 4)),
@@ -105,7 +105,7 @@ def test_names_with_other_details_have_no_shape(name):
 
 
 def test_heights_in_bricks_become_plates():
-    assert [plates(h, 3) for h in (None, "2", "2/3", "1 1/3", "1 2/3", "1/2")] == [
+    assert [height_in_plates(h, 3) for h in (None, "2", "2/3", "1 1/3", "1 2/3", "1/2")] == [
         3,
         6,
         2,

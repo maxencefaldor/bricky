@@ -66,7 +66,7 @@ def test_scenes_mark_the_parts_diagnostics_name():
     assert not flags["top"] & Flag.ERROR
     assert [label.text for label in scene.labels] == ["E301 float"]
     assert [mark.text for mark in scene.marks] == ["E301"]
-    assert "1 errors" in scene.title
+    assert "check: 1 error, 0 warnings" in scene.title
 
 
 def test_highlights_select_by_uid_or_script_function():

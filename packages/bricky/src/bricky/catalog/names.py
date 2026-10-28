@@ -111,7 +111,7 @@ _BLOCKS: Final[dict[str, Literal[Family.BRICK, Family.PLATE, Family.TILE]]] = {
 def shape_from_name(name: str) -> Shape | None:
     """Return the shape a BrickLink part name describes, or ``None`` when it describes none.
 
-    Example:
+    Examples:
         >>> shape_from_name("Slope 45 2 x 4")
         SlopeShape(size=(4, 2), family=<Family.SLOPE: 'slope'>, height=3, run=1, studs=True)
         >>> shape_from_name("Slope 45 2 x 2 Double") is None
@@ -125,7 +125,7 @@ def shape_from_name(name: str) -> Shape | None:
     return None
 
 
-def plates(height: str | None, default: int) -> int | None:
+def height_in_plates(height: str | None, default: int) -> int | None:
     """Convert a BrickLink height in bricks, such as ``"2"``, ``"2/3"`` or ``"1 1/3"``, to plates.
 
     Returns:
@@ -165,7 +165,7 @@ def _block(name: str) -> Shape | None:
         return None
     if kind is not Family.BRICK and match["height"] is not None:
         return None
-    height = plates(match["height"], 3)
+    height = height_in_plates(match["height"], 3)
     if height is None:
         return None
     size = (int(match["a"]), int(match["b"]))
@@ -190,7 +190,7 @@ def _slope(name: str) -> Shape | None:
     if match is None:
         return None
     depth, width = int(match["a"]), int(match["b"])
-    height = plates(match["height"], 3)
+    height = height_in_plates(match["height"], 3)
     if height is None:
         return None
     run = _run(int(match["angle"]), height, depth)
@@ -207,7 +207,7 @@ def _inverted_slope(name: str) -> Shape | None:
     if match is None or not _neutral(match["detail"], studs=True):
         return None
     depth, width = int(match["a"]), int(match["b"])
-    height = plates(match["height"], 3)
+    height = height_in_plates(match["height"], 3)
     if height is None or depth < 2:  # noqa: PLR2004 - the flat back row holds the anti-studs
         return None
     run = min(_run(int(match["angle"]), height, depth), depth - 1)
@@ -223,7 +223,7 @@ def _run(angle: int, height: int, depth: int) -> int:
     are that rise divided by the angle's tangent, rounded to whole rows and kept between one row
     and the part's depth.
 
-    Example:
+    Examples:
         >>> _run(45, 3, 2), _run(33, 3, 3), _run(18, 3, 4), _run(30, 2, 1)
         (1, 2, 3, 1)
     """
@@ -239,7 +239,7 @@ def _curved_slope(name: str) -> Shape | None:
     match = _CURVED.match(name)
     if match is None or match["height"] is None or not _neutral(match["detail"], studs=False):
         return None
-    height = plates(match["height"], 0)
+    height = height_in_plates(match["height"], 0)
     if not height:
         return None
     depth, width = int(match["a"]), int(match["b"])
@@ -262,7 +262,7 @@ def _round(name: str) -> Shape | None:
         return None
     if kind != "Brick" and match["height"] is not None:
         return None
-    height = plates(match["height"], 3) if kind == "Brick" else 1
+    height = height_in_plates(match["height"], 3) if kind == "Brick" else 1
     if height is None:
         return None
     return RoundShape(
@@ -311,7 +311,7 @@ def _arch(name: str) -> Shape | None:
     if match is None or not _neutral(match["detail"], studs=True):
         return None
     length = int(match["b"])
-    height = plates(match["height"], 3)
+    height = height_in_plates(match["height"], 3)
     if height is None or length < 3 or height < 2:  # noqa: PLR2004 - two legs and an opening
         return None
     return ArchShape(family=Family.ARCH, size=(1, length), height=height, span=length - 2)

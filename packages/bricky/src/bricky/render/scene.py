@@ -441,7 +441,8 @@ def _clipped(bounds: Box, clips: Sequence[Clip]) -> Box:
             low[axis] = max(low[axis], clip.value)
     if any(a >= b for a, b in zip(low, high, strict=True)):
         listed = ", ".join(str(clip) for clip in clips)
-        message = f"the clip {listed} leaves nothing of the model to draw"
+        which = f"the clip {listed} leaves" if len(clips) == 1 else f"the clips {listed} leave"
+        message = f"{which} nothing of the model to draw"
         raise BrickyError(message)
     return Box(Vector(*low), Vector(*high))
 
@@ -473,8 +474,12 @@ def _title(model: Model, bounds: Box, count: int, report: Report | None) -> str:
         f"{to_plates(size.z):g} plates tall"
     )
     if report is not None:
-        title += f"; check: {report.errors} errors, {report.warnings} warnings"
+        title += f"; check: {_count(report.errors, 'error')}, {_count(report.warnings, 'warning')}"
     return title
+
+
+def _count(number: int, noun: str) -> str:
+    return f"{number} {noun}{'' if number == 1 else 's'}"
 
 
 def _select(

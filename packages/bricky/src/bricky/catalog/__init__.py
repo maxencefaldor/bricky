@@ -230,7 +230,7 @@ class Catalog:
             size: A footprint in studs, in either order: ``(1, 6)`` and ``(6, 1)`` both find a
                 1 x 6 part; any footprint when omitted.
 
-        Example:
+        Examples:
             >>> [part.id for part in default_catalog().find(family="plate", size=(6, 1))]
             ['3666']
         """
