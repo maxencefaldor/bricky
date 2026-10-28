@@ -629,8 +629,8 @@ function photograph(scene, options) {
   ground.receiveShadow = true;
   three.add(ground);
 
-  // Frame the model and its shadow: center them, then move the camera to fill the image.
-  // Each corner of the model's box casts its shadow along the sunlight, onto the ground.
+  // Center the model and its shadow, then move the camera until they fill the image.
+  // Each corner of the model's box casts a shadow along the sunlight, onto the ground.
   const floor = model.bounds.min.y;
   const framed = corners(model.bounds).flatMap((corner) => [
     corner,
