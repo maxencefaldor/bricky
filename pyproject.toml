@@ -40,6 +40,10 @@ ignore = [
 "bench/**" = ["C901", "D103", "FBT001", "INP001", "PLR0911", "PLR0913", "PLR0917", "PLR2004", "T201"]
 "packages/*/src/*/cli.py" = ["T201"] # a command line prints
 
+[tool.ruff.lint.flake8-builtins]
+# "id" is the vocabulary word for identifiers, in models, catalogs and the builder's arguments.
+builtins-ignorelist = ["id"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 

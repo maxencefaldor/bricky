@@ -52,7 +52,7 @@ type Color = str | None
 
 
 def ring(x: int, y: int, lo: int, hi: int, thickness: int = 1) -> bool:
-    """Whether (x, y) lies in a square ring spanning lo..hi-1 on both axes."""
+    """Whether (x, y) lies in a square ring spanning lo..max-1 on both axes."""
     if not (lo <= x < hi and lo <= y < hi):
         return False
     return min(x - lo, y - lo, hi - 1 - x, hi - 1 - y) < thickness
@@ -202,13 +202,13 @@ def pack(
                         x0, y0 = start[0] - ox, start[1] - oy
                         span = [(x0 + i, y0 + j) for i in range(w) for j in range(n)]
                         if fits(span, color):
-                            rot = "R0" if (w, n) == (short, long_) else "R90"
+                            rotation = "R0" if (w, n) == (short, long_) else "R90"
                             builder.place(
                                 parts[short, long_],
                                 at=(x0, y0, z),
-                                rot=rot,
+                                rotation=rotation,
                                 color=color,
-                                name=f"{label}.{x0}.{y0}",
+                                id=f"{label}.{x0}.{y0}",
                             )
                             for c in span:
                                 del free[c]

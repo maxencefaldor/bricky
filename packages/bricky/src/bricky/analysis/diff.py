@@ -18,9 +18,9 @@ from dataclasses import dataclass
 from bricky.analysis.cells import world_cells
 from bricky.analysis.world import Placed, World
 from bricky.catalog import Connector
-from bricky.geometry import Box, Vec3
+from bricky.geometry import Box, Vector
 
-type Key = tuple[str, int, frozenset[Box | frozenset[Vec3]], frozenset[Connector]]
+type Key = tuple[str, int, frozenset[Box | frozenset[Vector]], frozenset[Connector]]
 
 
 @dataclass(frozen=True, slots=True)

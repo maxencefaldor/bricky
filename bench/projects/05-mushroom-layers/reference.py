@@ -34,7 +34,7 @@ def row(
             length = next(n for n in PLATES if n <= j - start)
             x, y = cells[start]
             builder.place(
-                PLATES[length], at=(x, y, z), rot="R90" if along_x else "R0", color=colors[i]
+                PLATES[length], at=(x, y, z), rotation="R90" if along_x else "R0", color=colors[i]
             )
             start += length
         i = j
@@ -44,7 +44,7 @@ def build() -> ModelBuilder:
     builder = ModelBuilder("toadstool")
     # Lawn: Green 2 x 8 and 2 x 2 plates, 10 x 10 studs.
     for y in range(0, SIZE, 2):
-        builder.place("3034", at=(0, y, 0), rot="R90", color="Green")
+        builder.place("3034", at=(0, y, 0), rotation="R90", color="Green")
         builder.place("3022", at=(8, y, 0), color="Green")
     # Stem: crossed pairs of White 2 x 4 bricks.
     for course in range(4):
@@ -53,7 +53,7 @@ def build() -> ModelBuilder:
             if course % 2 == 0:
                 builder.place("3001", at=(STEM[0] + k, STEM[0], z), color="White")
             else:
-                builder.place("3001", at=(STEM[0], STEM[0] + k, z), rot="R90", color="White")
+                builder.place("3001", at=(STEM[0], STEM[0] + k, z), rotation="R90", color="White")
     # Cap: Red plate layers, rows alternating between x and y.
     for layer, (lo, hi) in enumerate(CAP):
         z = CAP_Z + layer

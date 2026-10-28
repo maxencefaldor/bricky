@@ -41,8 +41,8 @@ def test_placements_remember_the_helper_and_its_caller():
 def test_traces_follow_instances_to_the_element():
     builder = ModelBuilder()
     column = builder.component("column")
-    column.place("3003", at=(0, 0, 0), color="Tan", name="block")
-    builder.instance("column", at=(4, 0, 0), name="west")
+    column.place("3003", at=(0, 0, 0), color="Tan", id="block")
+    builder.instance("column", at=(4, 0, 0), id="west")
     model = builder.build()
     trace = builder.provenance().trace(model, "west/block")
     assert trace.component == "column"

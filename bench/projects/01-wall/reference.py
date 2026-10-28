@@ -13,10 +13,10 @@ def build() -> ModelBuilder:
         color = "White" if course == COURSES - 1 else "Red"
         if course % 2 == 0:
             for x in range(0, LENGTH, 2):
-                builder.place("3004", at=(x, 0, z), rot="R90", color=color)  # Brick 1 x 2
+                builder.place("3004", at=(x, 0, z), rotation="R90", color=color)  # Brick 1 x 2
         else:
             builder.place("3005", at=(0, 0, z), color=color)  # Brick 1 x 1
             for x in range(1, LENGTH - 1, 2):
-                builder.place("3004", at=(x, 0, z), rot="R90", color=color)
+                builder.place("3004", at=(x, 0, z), rotation="R90", color=color)
             builder.place("3005", at=(LENGTH - 1, 0, z), color=color)
     return builder

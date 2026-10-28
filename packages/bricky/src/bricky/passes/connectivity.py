@@ -45,7 +45,7 @@ class ConnectivityPass:
             groups[root(i)].append(i)
 
         for members in sorted(groups.values()):
-            if any(placed[k].bounds.lo.z <= 0 for k in members):
+            if any(placed[k].bounds.min.z <= 0 for k in members):
                 continue
             what = "1 element floats" if len(members) == 1 else f"{len(members)} elements float"
             yield Diagnostic(

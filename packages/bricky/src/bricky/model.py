@@ -47,8 +47,8 @@ class Element(_Record):
     id: Identifier
     part: str = Field(description="BrickLink item number, such as '3001'.")
     color: int = Field(description="BrickLink colour id.")
-    rot: RotationName = "+x+y"
-    pos: Position = (0, 0, 0)
+    rotation: RotationName = "+x+y"
+    position: Position = (0, 0, 0)
 
 
 class Instance(_Record):
@@ -56,8 +56,8 @@ class Instance(_Record):
 
     id: Identifier
     component: str = Field(description="Name of the component to place.")
-    rot: RotationName = "+x+y"
-    pos: Position = (0, 0, 0)
+    rotation: RotationName = "+x+y"
+    position: Position = (0, 0, 0)
 
 
 class Component(_Record):

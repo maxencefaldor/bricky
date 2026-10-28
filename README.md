@@ -49,7 +49,7 @@ from bricky import ModelBuilder
 def build() -> ModelBuilder:
     builder = ModelBuilder("wall")
     builder.place("3001", at=(0, 0, 0), color="Red")  # Brick 2 x 4
-    builder.place("3001", at=(0, 2, 3), rot="R90", color="Red")  # turned a quarter
+    builder.place("3001", at=(0, 2, 3), rotation="R90", color="Red")  # turned a quarter
     return builder
 ```
 

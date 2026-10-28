@@ -19,8 +19,8 @@ def build() -> ModelBuilder:
             builder.place("3001", at=(0, 0, z), color="Red")
             builder.place("3001", at=(2, 0, z), color="Red")
         else:
-            builder.place("3001", at=(0, 0, z), rot="R90", color="White")
-            builder.place("3001", at=(0, 2, z), rot="R90", color="White")
+            builder.place("3001", at=(0, 0, z), rotation="R90", color="White")
+            builder.place("3001", at=(0, 2, z), rotation="R90", color="White")
     for x in (0, 2):
         for y in (0, 2):
             builder.place("3068b", at=(x, y, 3 * LEVELS), color="Dark Bluish Gray")

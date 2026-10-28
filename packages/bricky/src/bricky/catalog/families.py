@@ -31,7 +31,7 @@ from bricky.catalog.models import (
     SideStudsShape,
     SlopeShape,
 )
-from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Solid, Vec3
+from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Solid, Vector
 from bricky.units import PLATE, STUD
 
 BLOCK_HEIGHTS: Final[dict[Family, int]] = {Family.BRICK: 3, Family.PLATE: 1, Family.TILE: 1}
@@ -55,15 +55,15 @@ def build_part(entry: CatalogPart, shape: Shape) -> Part:
     solids, connectors, note = _geometry(shape)
     bounds = Box.bounding(solid.bounds for solid in solids)
     if isinstance(shape, BoxesShape):
-        bounds = Box(ORIGIN, Vec3(*shape.size))
-    elif bounds.lo != ORIGIN:  # pragma: no cover - every family builds from the origin
-        msg = f"part {entry.id}: its bounding box starts at {bounds.lo}, not at the origin"
+        bounds = Box(ORIGIN, Vector(*shape.size))
+    elif bounds.min != ORIGIN:  # pragma: no cover - every family builds from the origin
+        msg = f"part {entry.id}: its bounding box starts at {bounds.min}, not at the origin"
         raise ValueError(msg)
     return Part(
         id=entry.id,
         name=entry.name,
         family=Family(shape.family),
-        size=bounds.hi,
+        size=bounds.max,
         solids=tuple(solids),
         connectors=tuple(connectors),
         note=note,
@@ -108,11 +108,11 @@ def _positions(width: int, length: int, rows: Iterable[int] | None = None) -> li
 
 
 def _studs(positions: Iterable[tuple[int, int]], z: int) -> list[Connector]:
-    return [Connector(ConnectorKind.STUD, Vec3(x, y, z), UP) for x, y in positions]
+    return [Connector(ConnectorKind.STUD, Vector(x, y, z), UP) for x, y in positions]
 
 
 def _anti_studs(positions: Iterable[tuple[int, int]]) -> list[Connector]:
-    return [Connector(ConnectorKind.ANTI_STUD, Vec3(x, y, 0), DOWN) for x, y in positions]
+    return [Connector(ConnectorKind.ANTI_STUD, Vector(x, y, 0), DOWN) for x, y in positions]
 
 
 def _block(shape: BlockShape) -> Geometry:
@@ -123,13 +123,13 @@ def _block(shape: BlockShape) -> Geometry:
     connectors = _anti_studs(grid)
     if shape.family != Family.TILE:
         connectors += _studs(grid, height)
-    return [Box(ORIGIN, Vec3(width * STUD, length * STUD, height))], connectors, ""
+    return [Box(ORIGIN, Vector(width * STUD, length * STUD, height))], connectors, ""
 
 
 def _baseplate(shape: BaseplateShape) -> Geometry:
     """A thin box with studs on top and a flat underside that grips nothing."""
     width, length = shape.size
-    body = Box(ORIGIN, Vec3(width * STUD, length * STUD, BASEPLATE_HEIGHT))
+    body = Box(ORIGIN, Vector(width * STUD, length * STUD, BASEPLATE_HEIGHT))
     note = "half a plate thick: parts standing on it start at z = 0.5"
     return [body], _studs(_positions(width, length), BASEPLATE_HEIGHT), note
 
@@ -221,12 +221,12 @@ def _side_studs(shape: SideStudsShape) -> Geometry:
         normal = AXES[side]
         if side in {"-y", "+y"}:
             y = 0 if side == "-y" else length * STUD
-            spots = [Vec3(i * STUD + STUD // 2, y, middle) for i in range(width)]
+            spots = [Vector(i * STUD + STUD // 2, y, middle) for i in range(width)]
         else:
             x = 0 if side == "-x" else width * STUD
-            spots = [Vec3(x, j * STUD + STUD // 2, middle) for j in range(length)]
+            spots = [Vector(x, j * STUD + STUD // 2, middle) for j in range(length)]
         connectors += [Connector(ConnectorKind.STUD, spot, normal) for spot in spots]
-    body = Box(ORIGIN, Vec3(width * STUD, length * STUD, height))
+    body = Box(ORIGIN, Vector(width * STUD, length * STUD, height))
     return [body], connectors, f"side studs face {', '.join(shape.sides)} when unrotated"
 
 
@@ -237,7 +237,7 @@ def _jumper(shape: JumperShape) -> Geometry:
     anti_studs = _positions(width, length)
     if shape.center_anti_stud:
         anti_studs.append(center)
-    body = Box(ORIGIN, Vec3(width * STUD, length * STUD, PLATE))
+    body = Box(ORIGIN, Vector(width * STUD, length * STUD, PLATE))
     return [body], _anti_studs(anti_studs) + _studs([center], PLATE), ""
 
 
@@ -261,8 +261,8 @@ def _arch(shape: ArchShape) -> Geometry:
         ]
     )
     solids: list[Solid] = [
-        Box(ORIGIN, Vec3(thickness, start, height)),
-        Box(Vec3(0, end, 0), Vec3(thickness, length * STUD, height)),
+        Box(ORIGIN, Vector(thickness, start, height)),
+        Box(Vector(0, end, 0), Vector(thickness, length * STUD, height)),
     ]
     for (y0, z0), (y1, z1) in pairwise(curve):
         if y0 == y1:  # a steep facet beside a leg: no body between it and the leg
@@ -277,10 +277,10 @@ def _arch(shape: ArchShape) -> Geometry:
 
 def _boxes(shape: BoxesShape) -> Geometry:
     """A body of boxes, with studs and anti-studs where the shape says."""
-    solids = [Box(Vec3(x0, y0, z0), Vec3(x1, y1, z1)) for x0, y0, z0, x1, y1, z1 in shape.boxes]
+    solids = [Box(Vector(x0, y0, z0), Vector(x1, y1, z1)) for x0, y0, z0, x1, y1, z1 in shape.boxes]
     connectors = _anti_studs(shape.anti_studs)
     connectors += [
-        Connector(ConnectorKind.STUD, Vec3(x, y, z), AXES[axis]) for x, y, z, axis in shape.studs
+        Connector(ConnectorKind.STUD, Vector(x, y, z), AXES[axis]) for x, y, z, axis in shape.studs
     ]
     return solids, connectors, f"converted from {shape.source}, as it is oriented there"
 

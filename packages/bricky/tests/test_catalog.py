@@ -17,7 +17,7 @@ from bricky.catalog import (
     load_catalog,
 )
 from bricky.catalog.models import BlockShape
-from bricky.geometry import DOWN, UP, Vec3
+from bricky.geometry import DOWN, UP, Vector
 from bricky.settings import Settings
 from bricky.units import BRICK, PLATE, STUD
 
@@ -35,13 +35,13 @@ def test_brick_geometry():
     assert brick is not None
     assert brick.name == "Brick 2 x 4"
     assert brick.category == "Brick"
-    assert brick.size == Vec3(2 * STUD, 4 * STUD, BRICK)
+    assert brick.size == Vector(2 * STUD, 4 * STUD, BRICK)
     assert brick.footprint == (2, 4)
     studs = [c for c in brick.connectors if c.kind is ConnectorKind.STUD]
     anti_studs = [c for c in brick.connectors if c.kind is ConnectorKind.ANTI_STUD]
     assert len(studs) == len(anti_studs) == 8
-    assert all(c.normal == UP and c.pos.z == BRICK for c in studs)
-    assert all(c.normal == DOWN and c.pos.z == 0 for c in anti_studs)
+    assert all(c.normal == UP and c.position.z == BRICK for c in studs)
+    assert all(c.normal == DOWN and c.position.z == 0 for c in anti_studs)
 
 
 def test_tiles_have_anti_studs_but_no_studs():

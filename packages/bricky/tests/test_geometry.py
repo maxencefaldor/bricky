@@ -10,12 +10,12 @@ from bricky.geometry import (
     Convex,
     Pose,
     Rotation,
-    Vec3,
+    Vector,
     overlaps,
 )
 
 coordinates = st.integers(min_value=-1000, max_value=1000)
-vectors = st.builds(Vec3, coordinates, coordinates, coordinates)
+vectors = st.builds(Vector, coordinates, coordinates, coordinates)
 rotations = st.sampled_from(ROTATIONS)
 boxes = st.builds(Box.spanning, vectors, vectors)
 
@@ -43,8 +43,8 @@ def test_inverse_undoes_a_rotation(r, v):
 
 @given(rotations)
 def test_rotations_are_proper(r):
-    assert r.ex.cross(r.ey) == r.ez
-    assert r.ex.dot(r.ey) == 0
+    assert r.x_axis.cross(r.y_axis) == r.z_axis
+    assert r.x_axis.dot(r.y_axis) == 0
 
 
 @given(rotations)
@@ -53,7 +53,7 @@ def test_names_round_trip(r):
 
 
 def test_aliases_turn_counter_clockwise_seen_from_above():
-    assert Rotation.parse("R90").apply(Vec3(1, 0, 0)) == Vec3(0, 1, 0)
+    assert Rotation.parse("R90").apply(Vector(1, 0, 0)) == Vector(0, 1, 0)
     assert Rotation.parse("r180") == Rotation.parse(ALIASES["R180"])
     assert Rotation.parse("R270") @ Rotation.parse("R90") == IDENTITY
 
@@ -82,10 +82,10 @@ def test_overlap_is_symmetric_and_matches_intersection(a, b):
 
 
 def test_touching_boxes_do_not_overlap():
-    a = Box(Vec3(0, 0, 0), Vec3(20, 20, 24))
-    b = Box(Vec3(20, 0, 0), Vec3(40, 20, 24))
+    a = Box(Vector(0, 0, 0), Vector(20, 20, 24))
+    b = Box(Vector(20, 0, 0), Vector(40, 20, 24))
     assert not a.overlaps(b)
-    assert a.overlaps(Box(Vec3(19, 0, 0), Vec3(40, 20, 24)))
+    assert a.overlaps(Box(Vector(19, 0, 0), Vector(40, 20, 24)))
 
 
 def test_bounding_needs_at_least_one_box():
@@ -95,7 +95,7 @@ def test_bounding_needs_at_least_one_box():
 
 # Convex solids
 
-sizes = st.builds(Vec3, st.integers(1, 200), st.integers(1, 200), st.integers(1, 200))
+sizes = st.builds(Vector, st.integers(1, 200), st.integers(1, 200), st.integers(1, 200))
 solid_boxes = st.builds(lambda lo, size: Box(lo, lo + size), vectors, sizes)
 SLOPE = Convex.prism([(0, 0), (40, 0), (40, 24), (20, 24), (0, 4)], "x", 0, 20)
 """Slope 45 2 x 1: its slanted face is the plane z = y + 4."""
@@ -127,27 +127,27 @@ def test_overlap_tests_agree_both_ways_and_under_any_pose(rotation, shift, box):
 
 def test_touching_a_slanted_face_is_not_overlapping():
     # A box whose lower front edge lies on the slope's face, at y = 10, z = 14.
-    touching = Box(Vec3(0, 0, 14), Vec3(20, 10, 24))
+    touching = Box(Vector(0, 0, 14), Vector(20, 10, 24))
     assert not overlaps(SLOPE, touching)
-    assert overlaps(SLOPE, Box(Vec3(0, 0, 13), Vec3(20, 10, 24)))
-    assert overlaps(SLOPE, Box(Vec3(5, 30, 20), Vec3(15, 35, 30)))  # the flat top at the back
+    assert overlaps(SLOPE, Box(Vector(0, 0, 13), Vector(20, 10, 24)))
+    assert overlaps(SLOPE, Box(Vector(5, 30, 20), Vector(15, 35, 30)))  # the flat top at the back
 
 
 def test_points_on_shared_faces_belong_to_one_side():
-    assert SLOPE.contains(Vec3(10, 5, 2))
-    assert not SLOPE.contains(Vec3(10, 5, 20))
-    assert SLOPE.contains(Vec3(0, 10, 10))  # on the low x face: inside
-    assert not SLOPE.contains(Vec3(20, 10, 10))  # on the high x face: outside
+    assert SLOPE.contains(Vector(10, 5, 2))
+    assert not SLOPE.contains(Vector(10, 5, 20))
+    assert SLOPE.contains(Vector(0, 10, 10))  # on the low x face: inside
+    assert not SLOPE.contains(Vector(20, 10, 10))  # on the high x face: outside
 
 
 def test_convex_solids_must_be_convex_and_face_outward():
-    box = Box(Vec3(0, 0, 0), Vec3(10, 10, 10))
+    box = Box(Vector(0, 0, 0), Vector(10, 10, 10))
     with pytest.raises(ValueError, match="faces inward"):
         Convex(box.corners(), tuple(tuple(reversed(face)) for face in box.as_convex().faces))
     with pytest.raises(ValueError, match="faces inward"):
         Convex.prism([(0, 0), (20, 0), (20, 10), (10, 10), (10, 20), (0, 20)], "z", 0, 5)  # an L
     with pytest.raises(ValueError, match="not flat"):
         Convex(
-            (*box.corners()[:7], Vec3(10, 10, 11)),
+            (*box.corners()[:7], Vector(10, 10, 11)),
             box.as_convex().faces,
         )

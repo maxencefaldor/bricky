@@ -17,7 +17,7 @@ def railing(builder: ModelBuilder, y: int, post_heights: dict[int, int]) -> None
     for x, z in post_heights.items():
         builder.place("3005", at=(x, y, z), color="White")
     for x in (0, 6):
-        builder.place("3666", at=(x, y, 13), rot="R90", color="White")
+        builder.place("3666", at=(x, y, 13), rotation="R90", color="White")
 
 
 def build() -> ModelBuilder:
@@ -27,10 +27,10 @@ def build() -> ModelBuilder:
     pier(builder, 10, (0, 4, 6))
     # Deck: Reddish Brown plates on the piers at z = 9. Each row is a 2 x 8 and a 2 x 4 plate end
     # to end from x = 0 to 12; the south row starts with the 2 x 8, the north row with the 2 x 4.
-    builder.place("3034", at=(0, 0, 9), rot="R90", color="Reddish Brown")
-    builder.place("3020", at=(8, 0, 9), rot="R90", color="Reddish Brown")
-    builder.place("3020", at=(0, 2, 9), rot="R90", color="Reddish Brown")
-    builder.place("3034", at=(5, 2, 9), rot="R90", color="Reddish Brown")
+    builder.place("3034", at=(0, 0, 9), rotation="R90", color="Reddish Brown")
+    builder.place("3020", at=(8, 0, 9), rotation="R90", color="Reddish Brown")
+    builder.place("3020", at=(0, 2, 9), rotation="R90", color="Reddish Brown")
+    builder.place("3034", at=(5, 2, 9), rotation="R90", color="Reddish Brown")
     # Railings along both edges: posts on the deck (z = 10) at x = 0, 2, 4, 6, 8, 10 and 11.
     posts = {0: 10, 2: 10, 4: 10, 6: 10, 8: 10, 10: 10, 11: 10}
     railing(builder, 0, posts)

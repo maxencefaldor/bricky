@@ -33,16 +33,18 @@ def run(
     while i < len(cells):
         length = next(n for n in BRICKS if n <= len(cells) - i)
         x, y = cells[i]
-        builder.place(BRICKS[length], at=(x, y, z), rot="R90" if along_x else "R0", color=color)
+        builder.place(
+            BRICKS[length], at=(x, y, z), rotation="R90" if along_x else "R0", color=color
+        )
         i += length
 
 
 def islet(builder: ModelBuilder) -> None:
     """A 14 x 14 base of plates, two layers, with boulders around the shore."""
     for y in range(0, 14, 2):
-        builder.place("3034", at=(0, y, 0), rot="R90", color=ROCK)
-        builder.place("3021", at=(8, y, 0), rot="R90", color=ROCK)
-        builder.place("3021", at=(11, y, 0), rot="R90", color=ROCK)
+        builder.place("3034", at=(0, y, 0), rotation="R90", color=ROCK)
+        builder.place("3021", at=(8, y, 0), rotation="R90", color=ROCK)
+        builder.place("3021", at=(11, y, 0), rotation="R90", color=ROCK)
     for x in range(0, 14, 2):
         builder.place("3034", at=(x, 0, 1), color=ROCK)
         builder.place("3022", at=(x, 8, 1), color=ROCK)
@@ -66,11 +68,11 @@ def build() -> ModelBuilder:
         z = 2 + 3 * course
         color = "Red" if course // 2 % 2 == 0 else "White"
         ring(builder, 4, 10, z, course, color)
-    builder.place("3004", at=(6, 3, 2), rot="R90", color="Reddish Brown")  # door step
+    builder.place("3004", at=(6, 3, 2), rotation="R90", color="Reddish Brown")  # door step
     # Upper shaft: 4 x 4, from 5 to 9, four courses, on a plate collar.
     collar_z = 2 + 3 * 8
     for y in (4, 6, 8):
-        builder.place("3795", at=(4, y, collar_z), rot="R90", color="Black")  # Plate 2 x 6
+        builder.place("3795", at=(4, y, collar_z), rotation="R90", color="Black")  # Plate 2 x 6
     for course in range(4):
         z = collar_z + 1 + 3 * course
         color = "Red" if (course + 8) // 2 % 2 == 0 else "White"
@@ -79,7 +81,7 @@ def build() -> ModelBuilder:
     # overhang the shaft hold on to the rows above them, with a railing of 1 x 1 bricks.
     deck_z = collar_z + 1 + 3 * 4
     for k in range(3, 11):
-        builder.place("3460", at=(3, k, deck_z), rot="R90", color="Black")  # Plate 1 x 8
+        builder.place("3460", at=(3, k, deck_z), rotation="R90", color="Black")  # Plate 1 x 8
         builder.place("3460", at=(k, 3, deck_z + 1), color="Black")
     top = deck_z + 2
     for x in range(3, 11):

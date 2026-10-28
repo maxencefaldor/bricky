@@ -5,7 +5,7 @@ import struct
 import pytest
 
 from bricky import BrickyError, ModelBuilder, Settings, check_model, default_catalog
-from bricky.geometry import Box, Vec3
+from bricky.geometry import Box, Vector
 from bricky.render import Clip, Flag, Renderer, View, build_scene, write_html
 from bricky.render.scene import ALL_FACES, visible_faces
 from bricky.units import PLATE, STUD, STUD_HEIGHT
@@ -13,8 +13,8 @@ from bricky.units import PLATE, STUD, STUD_HEIGHT
 
 def stack() -> ModelBuilder:
     builder = ModelBuilder("stack")
-    builder.place("3001", at=(0, 0, 0), color="Red", name="bottom")
-    builder.place("3001", at=(0, 0, 3), color="Blue", name="top")
+    builder.place("3001", at=(0, 0, 0), color="Red", id="bottom")
+    builder.place("3001", at=(0, 0, 3), color="Blue", id="top")
     return builder
 
 
@@ -35,9 +35,9 @@ def test_clips_read_studs_and_plates():
 
 
 def test_faces_pressed_against_opaque_neighbours_are_left_out():
-    lower = Box(Vec3(0, 0, 0), Vec3(40, 80, 24))
-    upper = Box(Vec3(0, 0, 24), Vec3(40, 80, 48))
-    offset = Box(Vec3(20, 0, 48), Vec3(60, 80, 72))
+    lower = Box(Vector(0, 0, 0), Vector(40, 80, 24))
+    upper = Box(Vector(0, 0, 24), Vector(40, 80, 48))
+    offset = Box(Vector(20, 0, 48), Vector(60, 80, 72))
     masks = visible_faces([lower, upper, offset], [True, True, True])
     top, bottom = 1 << 5, 1 << 4
     assert masks[0] == ALL_FACES & ~top
@@ -57,7 +57,7 @@ def test_scenes_drop_seated_studs_and_keep_exposed_ones():
 
 def test_scenes_mark_the_parts_diagnostics_name():
     builder = stack()
-    builder.place("3022", at=(9, 9, 9), color="Tan", name="float")
+    builder.place("3022", at=(9, 9, 9), color="Tan", id="float")
     model = builder.build()
     report = check_model(model, settings=Settings())
     scene = build_scene(model, default_catalog(), report=report)
@@ -73,9 +73,9 @@ def test_highlights_select_by_uid_or_script_function():
     builder = ModelBuilder("m")
 
     def lintels() -> None:
-        builder.place("3710", at=(0, 0, 3), color="Tan", name="lintel1")
+        builder.place("3710", at=(0, 0, 3), color="Tan", id="lintel1")
 
-    builder.place("3001", at=(0, 0, 0), color="Red", name="post")
+    builder.place("3001", at=(0, 0, 0), color="Red", id="post")
     lintels()
     model, provenance = builder.build(), builder.provenance()
     by_uid = build_scene(model, default_catalog(), highlight=["lin*"])
@@ -136,9 +136,9 @@ def test_the_renderer_draws_every_view_at_the_requested_size():
 
 def test_parts_that_are_not_boxes_become_shapes():
     builder = ModelBuilder("mixed")
-    builder.place("3001", at=(0, 0, 0), color="Red", name="brick")
-    builder.place("3039", at=(0, 4, 0), color="Red", name="slope")  # Slope 45 2 x 2
-    builder.place("3659", at=(3, 0, 0), color="Tan", name="arch")  # Arch 1 x 4
+    builder.place("3001", at=(0, 0, 0), color="Red", id="brick")
+    builder.place("3039", at=(0, 4, 0), color="Red", id="slope")  # Slope 45 2 x 2
+    builder.place("3659", at=(3, 0, 0), color="Tan", id="arch")  # Arch 1 x 4
     scene = build_scene(builder.build(), default_catalog())
     assert {box[6] for box in scene.boxes} == {scene.uids.index("brick")}
     shapes = {scene.uids[s.part]: s for s in scene.shapes}

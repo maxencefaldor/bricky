@@ -59,7 +59,7 @@ def angle(stone: int) -> float:
 def base(builder: ModelBuilder) -> None:
     for x in range(0, WIDTH, 2):
         for y in range(0, DEPTH, 8):
-            builder.place("3034", at=(x, y, 0), color="Green", name=f"grass.{x}.{y}")
+            builder.place("3034", at=(x, y, 0), color="Green", id=f"grass.{x}.{y}")
 
 
 def sarsen_cells(stone: int, along_y: bool) -> list[Cell]:
@@ -130,9 +130,9 @@ def sarsen_circle(builder: ModelBuilder) -> None:
             builder.place(
                 "3004",
                 at=(x0, y0, GROUND + BRICK * level),
-                rot="R0" if along_y[stone] else "R90",
+                rotation="R0" if along_y[stone] else "R90",
                 color=SARSEN,
-                name=f"sarsen{stone}.{level}",
+                id=f"sarsen{stone}.{level}",
             )
         tops[stone] = cells
     for a, b in LINTELS:
@@ -145,9 +145,9 @@ def sarsen_circle(builder: ModelBuilder) -> None:
         builder.place(
             part,
             at=(x0, y0, GROUND + BRICK * UPRIGHT_BRICKS),
-            rot="R0" if n >= w else "R90",
+            rotation="R0" if n >= w else "R90",
             color=SARSEN,
-            name=f"lintel{a}-{b}",
+            id=f"lintel{a}-{b}",
         )
     for stone in FALLEN:
         a = angle(stone)
@@ -157,9 +157,9 @@ def sarsen_circle(builder: ModelBuilder) -> None:
             builder.place(
                 "3001",
                 at=(x, snap(CY + SARSEN_RADIUS * dy - 1), GROUND),
-                rot="R90",
+                rotation="R90",
                 color=SARSEN,
-                name=f"fallen{stone}",
+                id=f"fallen{stone}",
             )
         else:  # lies along y, outward
             y = CY + SARSEN_RADIUS + 1 if dy > 0 else CY - SARSEN_RADIUS - 5
@@ -167,7 +167,7 @@ def sarsen_circle(builder: ModelBuilder) -> None:
                 "3001",
                 at=(snap(CX + SARSEN_RADIUS * dx - 1), y, GROUND),
                 color=SARSEN,
-                name=f"fallen{stone}",
+                id=f"fallen{stone}",
             )
 
 
@@ -179,11 +179,11 @@ def trilithon(builder: ModelBuilder) -> None:
             component.place(
                 "3004",
                 at=(x, 0, BRICK * level),
-                rot="R90",
+                rotation="R90",
                 color=SARSEN,
-                name=f"upright{side}.{level}",
+                id=f"upright{side}.{level}",
             )
-    component.place("3009", at=(0, 0, BRICK * 5), rot="R90", color=SARSEN, name="lintel")
+    component.place("3009", at=(0, 0, BRICK * 5), rotation="R90", color=SARSEN, id="lintel")
 
 
 def upright(builder: ModelBuilder, name: str, corner: Cell, along_y: bool, bricks: int) -> None:
@@ -191,27 +191,27 @@ def upright(builder: ModelBuilder, name: str, corner: Cell, along_y: bool, brick
         builder.place(
             "3004",
             at=(*corner, GROUND + BRICK * level),
-            rot="R0" if along_y else "R90",
+            rotation="R0" if along_y else "R90",
             color=SARSEN,
-            name=f"{name}.{level}",
+            id=f"{name}.{level}",
         )
 
 
 def horseshoe(builder: ModelBuilder) -> None:
     trilithon(builder)
     # Trilithons stand along y on the sides of the horseshoe: turn the component a quarter.
-    builder.instance("trilithon", at=(27, 21, GROUND), rot="R90", name="tri51-52")
-    builder.instance("trilithon", at=(26, 13, GROUND), rot="R90", name="tri53-54")
-    builder.instance("trilithon", at=(13, 13, GROUND), rot="R90", name="tri57-58")
+    builder.instance("trilithon", at=(27, 21, GROUND), rotation="R90", id="tri51-52")
+    builder.instance("trilithon", at=(26, 13, GROUND), rotation="R90", id="tri53-54")
+    builder.instance("trilithon", at=(13, 13, GROUND), rotation="R90", id="tri57-58")
     upright(builder, "stone60", (12, 25), along_y=True, bricks=5)
-    builder.place("2456", at=(15, 24, GROUND), color=SARSEN, name="fallen59")
-    builder.place("3009", at=(10, 15, GROUND), color=SARSEN, name="lintel160")
+    builder.place("2456", at=(15, 24, GROUND), color=SARSEN, id="fallen59")
+    builder.place("3009", at=(10, 15, GROUND), color=SARSEN, id="lintel160")
     # The Great Trilithon: 56 stands; 55 fell in two across the Altar Stone, with lintel 156.
     upright(builder, "stone56", (17, 12), along_y=False, bricks=6)
-    builder.place("3710", at=(18, 16, GROUND), rot="R90", color=BLUESTONE, name="altar")
-    builder.place("3002", at=(20, 14, GROUND + 1), color=SARSEN, name="fallen55a")
-    builder.place("3003", at=(22, 15, GROUND), color=SARSEN, name="fallen55b")
-    builder.place("3009", at=(15, 18, GROUND), rot="R90", color=SARSEN, name="lintel156")
+    builder.place("3710", at=(18, 16, GROUND), rotation="R90", color=BLUESTONE, id="altar")
+    builder.place("3002", at=(20, 14, GROUND + 1), color=SARSEN, id="fallen55a")
+    builder.place("3003", at=(22, 15, GROUND), color=SARSEN, id="fallen55b")
+    builder.place("3009", at=(15, 18, GROUND), rotation="R90", color=SARSEN, id="lintel156")
 
 
 def bluestones(builder: ModelBuilder) -> None:
@@ -223,7 +223,7 @@ def bluestones(builder: ModelBuilder) -> None:
         x, y = snap(CX + 11.5 * math.cos(a) - 0.5), snap(CY + 11.5 * math.sin(a) - 0.5)
         for level in range(1 + (k % 3 == 0)):
             builder.place(
-                "3005", at=(x, y, GROUND + BRICK * level), color=BLUESTONE, name=f"blue{k}.{level}"
+                "3005", at=(x, y, GROUND + BRICK * level), color=BLUESTONE, id=f"blue{k}.{level}"
             )
     # Inner horseshoe: taller dressed pillars at radius 6, opening north.
     for k, degrees in enumerate((150, 170, 195, 345, 10, 30)):
@@ -234,16 +234,14 @@ def bluestones(builder: ModelBuilder) -> None:
                 "3005",
                 at=(x, y, GROUND + BRICK * level),
                 color=BLUESTONE,
-                name=f"pillar{k}.{level}",
+                id=f"pillar{k}.{level}",
             )
 
 
 def outliers(builder: ModelBuilder) -> None:
     for level in range(4):  # the Heel Stone, just east of the axis
-        builder.place(
-            "3003", at=(22, 43, GROUND + BRICK * level), color=SARSEN, name=f"heel.{level}"
-        )
-    builder.place("3020", at=(17, 38, GROUND), rot="R90", color=SARSEN, name="slaughter")
+        builder.place("3003", at=(22, 43, GROUND + BRICK * level), color=SARSEN, id=f"heel.{level}")
+    builder.place("3020", at=(17, 38, GROUND), rotation="R90", color=SARSEN, id="slaughter")
 
 
 def build() -> ModelBuilder:

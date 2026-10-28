@@ -7,7 +7,7 @@ from typing import ClassVar
 from bricky.analysis import Context
 from bricky.catalog import Connector, ConnectorKind
 from bricky.diagnostics import Code, Diagnostic, Region
-from bricky.geometry import Box, Solid, Vec3, overlaps
+from bricky.geometry import Box, Solid, Vector, overlaps
 from bricky.units import STUD_DIAMETER, STUD_HEIGHT
 
 _STUD_RADIUS = STUD_DIAMETER // 2
@@ -15,9 +15,9 @@ _STUD_RADIUS = STUD_DIAMETER // 2
 
 def stud_volume(stud: Connector) -> Box:
     """Return the space a stud occupies, standing out of its face along its normal."""
-    side = Vec3(*(0 if n else _STUD_RADIUS for n in stud.normal))
-    tip = stud.pos + stud.normal * STUD_HEIGHT
-    return Box.spanning(stud.pos - side, tip + side)
+    side = Vector(*(0 if n else _STUD_RADIUS for n in stud.normal))
+    tip = stud.position + stud.normal * STUD_HEIGHT
+    return Box.spanning(stud.position - side, tip + side)
 
 
 def _shared(a: Iterable[Solid], b: Iterable[Solid]) -> Box | None:
@@ -85,7 +85,7 @@ class CollisionPass:
                 if stud.kind is not ConnectorKind.STUD:
                     continue
                 volume = stud_volume(stud)
-                receivers = context.receptors.get((stud.pos, -stud.normal), ())
+                receivers = context.receptors.get((stud.position, -stud.normal), ())
                 for j in context.solid_index.query(volume):
                     if j == i or j in receivers:
                         continue
