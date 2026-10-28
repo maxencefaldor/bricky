@@ -12,8 +12,6 @@ Each build places every part in exact geometry, checks that the model holds toge
 Each diagnostic names the script line behind it, and the orthographic views carry rulers in studs and plates.
 The agent therefore knows what is wrong, where, and which line placed it.
 
-📖 **[Documentation](https://maxencefaldor.github.io/bricky/)** · 🚀 [Get started](https://maxencefaldor.github.io/bricky/get-started/) · 🖼️ [Gallery in 3D](https://maxencefaldor.github.io/bricky/gallery/) · 🤖 [Connect an agent](https://maxencefaldor.github.io/bricky/agents/connect/) · 🏁 [Benchmark](https://maxencefaldor.github.io/bricky/agents/benchmark/)
-
 ## 🚀 Quick start
 
 The quick start needs [uv](https://docs.astral.sh/uv/), which installs Python 3.15 and every dependency:
