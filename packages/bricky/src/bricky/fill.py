@@ -72,7 +72,7 @@ class Placement:
     """Minimum corner, in studs, studs and plates."""
 
     rotation: str
-    """``R0`` keeps the part's shorter side along x; ``R90`` turns its longer side along x."""
+    """``R0`` keeps the part's shorter side along x; ``R90`` lays its longer side along x."""
 
     color: int | str
 
@@ -99,21 +99,21 @@ def plan_fill(
     bricked: defaultdict[int, set[Square]] = defaultdict(set)
     for z in sorted(levels):
         level = levels[z]
-        below = None if z == 0 else set(levels.get(z - 1, ()))
+        below = set(levels.get(z - 1, ()))
         if z % COURSE == 0:
             course = [levels.get(z + k, {}) for k in range(COURSE)]
-            hanging = {
-                square
+            hanging = {  # the course's overhanging squares, with their colors
+                (square, color)
                 for k in range(COURSE)
                 if z + k > 0
-                for square in course[k]
+                for square, color in course[k].items()
                 if square not in levels.get(z + k - 1, {})
             }
             whole = {
                 square: color
                 for square, color in level.items()
                 if all(course[k].get(square) == color for k in range(1, COURSE))
-                and not any(near in hanging for near in (square, *_neighbors(square)))
+                and not any((near, color) in hanging for near in (square, *_neighbors(square)))
             }
             along_x = (z // COURSE) % 2 == 0
             bricks = _Packer(whole, z, BRICKS, along_x, below, made_in, floating=False).pack()
@@ -135,12 +135,19 @@ class _Packer:
     z: int
     parts: Mapping[tuple[int, int], str]
     along_x: bool
-    below: set[Square] | None
+    below: set[Square]
+    """The squares the level below fills; on the ground, z = 0, every square is held."""
+
     made_in: MadeIn | None
     floating: bool = True
     """Whether a square no part can hold still gets a 1 x 1 part; otherwise it stays free."""
 
     placed: list[Placement] = field(default_factory=list)
+    longest: int = field(init=False)
+    """The longest side of any part, and so the farthest a part reaches."""
+
+    def __post_init__(self) -> None:
+        self.longest = max(long for _, long in self.parts)
 
     def pack(self) -> list[Placement]:
         """Cover every square with the largest parts that fit and rest on the level below.
@@ -150,7 +157,7 @@ class _Packer:
         axis, each covered by a part whose corner is that square.
         """
         order = sorted(self.free, key=lambda square: square[::-1] if self.along_x else square)
-        if self.below is not None:
+        if self.z != 0:
             reach = self.reach()
             overhanging = [square for square in order if reach.get(square, 0) > 0]
             overhanging.sort(key=lambda square: (self.lines(square), -reach[square]))
@@ -159,7 +166,8 @@ class _Packer:
                     self.cover(start, anywhere=True)
         for start in order:
             if start in self.free and not self.cover(start, anywhere=False) and self.floating:
-                self.take(start, 1, 1, (1, 1))  # nothing below holds it: a 1 x 1 part, floating
+                # No part both rests on the level below and comes in this color: a 1 x 1 part.
+                self.take(start, 1, 1, (1, 1))
         return self.placed
 
     def reach(self) -> dict[Square, int]:
@@ -168,8 +176,7 @@ class _Packer:
         Squares that no path of their color joins to a held square are left out: no part can
         hold them.
         """
-        below = self.below or set()
-        steps = {square: 0 for square in self.free if square in below}
+        steps = {square: 0 for square in self.free if square in self.below}
         queue = deque(steps)
         while queue:
             square = queue.popleft()
@@ -183,8 +190,8 @@ class _Packer:
         """Place the largest part over ``start`` that fits; return whether one did.
 
         With ``anywhere``, the part may take any offset over ``start``, and gives way to the next
-        that fits while it would cut an overhanging neighbor off from support. When every part
-        that fits cuts one off, the part that cuts off the fewest goes.
+        part that fits while it would strand an overhanging neighbor, leaving it no line back to
+        support. When every part that fits strands one, the part that strands the fewest is placed.
         """
         color = self.free[start]
         best: tuple[int, tuple[Square, int, int, tuple[int, int]]] | None = None
@@ -211,16 +218,15 @@ class _Packer:
         """Whether a part there covers only free squares of one color, and rests on below."""
         span = _span(corner, width, depth)
         return all(self.free.get(square) == color for square in span) and (
-            self.below is None or any(square in self.below for square in span)
+            self.z == 0 or any(square in self.below for square in span)
         )
 
     def stranded(self, span: set[Square]) -> int:
         """How many overhanging neighbors a part over ``span`` would leave with no line back."""
-        below = self.below or set()
         border = {neighbor for square in span for neighbor in _neighbors(square)} - span
         return sum(
             square in self.free
-            and square not in below
+            and square not in self.below
             and self.lines(square) > 0
             and self.lines(square, span) == 0
             for square in border
@@ -232,16 +238,14 @@ class _Packer:
         A line is a row of free squares of one color, straight along x or y and shorter than the
         longest part, that ends on a square the level below holds.
         """
-        below = self.below or set()
         color = self.free[square]
-        longest = max(long for _, long in self.parts)
         count = 0
-        for dx, dy in (1, 0), (-1, 0), (0, 1), (0, -1):
-            for step in range(1, longest):
-                ahead = square[0] + step * dx, square[1] + step * dy
+        for step_x, step_y in (1, 0), (-1, 0), (0, 1), (0, -1):
+            for distance in range(1, self.longest):
+                ahead = square[0] + distance * step_x, square[1] + distance * step_y
                 if ahead in blocked or self.free.get(ahead) != color:
                     break
-                if ahead in below:
+                if ahead in self.below:
                     count += 1
                     break
         return count

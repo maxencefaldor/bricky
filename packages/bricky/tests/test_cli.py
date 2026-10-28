@@ -237,7 +237,7 @@ def test_show_maps_a_sloped_top_and_draws_the_part_outside_the_workspace(
     monkeypatch.chdir(tmp_path)
     assert run("catalog", "show", "3039", "--render") == 0  # Slope 45 2 x 2
     out = capsys.readouterr().out
-    assert "height over each square in plates, north up:\n       3    3\n    1.88 1.88\n" in out
+    assert "height over each square in plates, north up:\n       3    3\n    1.75 1.75\n" in out
     assert (tmp_path / "parts" / "3039.png").is_file()
     assert not (tmp_path / "3039.png").exists()
     assert run("catalog", "show", "3001") == 0

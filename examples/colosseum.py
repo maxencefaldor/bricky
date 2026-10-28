@@ -1,7 +1,7 @@
 """The Colosseum in Rome, at 1:150: a stud is 1.2 m and a plate 0.48 m.
 
 References: Wikipedia, "Colosseum": an ellipse 189 m by 156 m and 48 m tall, around an arena of
-87 m by 55 m. Three storeys of 80 arches, framed by Tuscan, Ionic and Corinthian half-columns,
+87 m by 55 m. Three stories of 80 arches, framed by Tuscan, Ionic and Corinthian half-columns,
 stand under an attic with pilasters, small windows and corbels. The outer ring survives on the
 north side only, held at each end by a brick buttress; the south shows the arcades of the second
 ring. Inside, the seating is gone down to its radial walls, the arena lies open over the
@@ -54,17 +54,17 @@ type Voxel = tuple[int, int, int]
 
 
 @cache
-def depth(x: int, y: int) -> float:
+def depth_at(x: int, y: int) -> float:
     """How far a stud square lies inside the outer ellipse, in studs; negative outside.
 
-    The depth d puts the square's center on the ellipse with semi-axes shrunk by d, so equal
-    depths draw rings of equal width, like the monument's concentric walls.
+    A square at depth 3 lies on the ellipse whose semi-axes are 3 studs shorter, so equal depths
+    draw rings of equal width, like the monument's concentric walls.
     """
-    dx, dy = x + 0.5 - CENTER_X, y + 0.5 - CENTER_Y
+    east, north = x + 0.5 - CENTER_X, y + 0.5 - CENTER_Y
     low, high = -6.0, OUTER_Y - 0.5
     for _ in range(40):
         middle = (low + high) / 2
-        inside = (dx / (OUTER_X - middle)) ** 2 + (dy / (OUTER_Y - middle)) ** 2 <= 1
+        inside = (east / (OUTER_X - middle)) ** 2 + (north / (OUTER_Y - middle)) ** 2 <= 1
         low, high = (middle, high) if inside else (low, middle)
     return low
 
@@ -72,9 +72,9 @@ def depth(x: int, y: int) -> float:
 @cache
 def angle(x: int, y: int) -> float:
     """The square's angle around the ellipse, in degrees from east, counter-clockwise."""
-    d = min(depth(x, y), OUTER_Y - 1)
-    dx, dy = x + 0.5 - CENTER_X, y + 0.5 - CENTER_Y
-    return atan2(dy / (OUTER_Y - d), dx / (OUTER_X - d)) * 180 / pi % 360
+    depth = min(depth_at(x, y), OUTER_Y - 1)
+    east, north = x + 0.5 - CENTER_X, y + 0.5 - CENTER_Y
+    return atan2(north / (OUTER_Y - depth), east / (OUTER_X - depth)) * 180 / pi % 360
 
 
 def bay(x: int, y: int) -> tuple[int, float]:
@@ -83,16 +83,17 @@ def bay(x: int, y: int) -> tuple[int, float]:
     return int(position) % BAYS, position % 1
 
 
-def bay_width(d: float) -> float:
-    """The width of one bay at a depth, in studs: the ring's perimeter over 80."""
-    a, b = OUTER_X - d, OUTER_Y - d
-    return pi * (3 * (a + b) - sqrt((3 * a + b) * (a + 3 * b))) / BAYS
+def bay_width(depth: float) -> float:
+    """The width of one bay at a depth, in studs: the ring's perimeter, after Ramanujan, over 80."""
+    semi_x, semi_y = OUTER_X - depth, OUTER_Y - depth
+    ramanujan = 3 * (semi_x + semi_y) - sqrt((3 * semi_x + semi_y) * (semi_x + 3 * semi_y))
+    return pi * ramanujan / BAYS
 
 
 def from_pier(x: int, y: int) -> float:
     """How far a square lies from the nearest pier, the boundary between two bays, in studs."""
     _, across = bay(x, y)
-    return min(across, 1 - across) * bay_width(depth(x, y))
+    return min(across, 1 - across) * bay_width(depth_at(x, y))
 
 
 def surviving(x: int, y: int) -> bool:
@@ -110,8 +111,8 @@ def noise(*key: int) -> float:
 
 def arch_top(across: float, width: float) -> int:
     """The height of an arched opening above its sill, in plates: 13 at the sides, 17 on top."""
-    u = (across - 0.5) / (width / 2)
-    return 13 + round(4 * sqrt(max(0.0, 1 - u * u)))
+    side = (across - 0.5) / (width / 2)  # from -1 at one side to 1 at the other
+    return 13 + round(4 * sqrt(max(0.0, 1 - side * side)))
 
 
 def within(value: float, band: tuple[float, float]) -> bool:
@@ -122,7 +123,7 @@ def within(value: float, band: tuple[float, float]) -> bool:
 def ruin_top(bay_index: int) -> int:
     """How tall the broken outer ring still stands in a bay, in plates.
 
-    The ring stands to whole bricks: below the arches' springing, or over the first storey.
+    The ring stands to whole bricks: below the arches' springing, or over the first story.
     """
     return 3 * (2, 3, 4, 7)[int(4 * noise(bay_index, 1))]
 
@@ -138,10 +139,10 @@ def outer_ring(x: int, y: int) -> dict[int, str]:
             column[z] = CORNICE
         else:
             column[z] = STONE
-    for storey, (base, _) in enumerate(ARCADES):
+    for story, (base, _) in enumerate(ARCADES):
         if not within(across, (0.25, 0.75)):
             continue
-        sill = 0 if storey == 0 else base + 2
+        sill = 0 if story == 0 else base + 2
         for z in range(sill, base - 1 + arch_top(across, 0.5)):
             column.pop(z, None)
     if intact and bay_index % 2 == 0 and within(across, (0.42, 0.58)):
@@ -150,20 +151,20 @@ def outer_ring(x: int, y: int) -> dict[int, str]:
     return column
 
 
-def outer_skin(x: int, y: int, d: float) -> dict[int, str]:
+def outer_skin(x: int, y: int, depth: float) -> dict[int, str]:
     """What stands out of the outer face: the stylobate, cornices, pilasters and corbels."""
-    column = {0: STEPS} if d >= -2 else {}
-    if d < -1.5 or not surviving(x, y):
+    column = {0: STEPS} if depth >= -2 else {}
+    if depth < -1.5 or not surviving(x, y):
         return column
     column.update({z: CORNICE for band in CORNICES for z in range(*band)})
-    if d < -1:
+    if depth < -1:
         return column
     column.update(dict.fromkeys(range(*CROWN), CORNICE))
     _, across = bay(x, y)
     if from_pier(x, y) < 0.5:
         column.update(dict.fromkeys(range(*ATTIC), STONE))  # pilasters
-    elif min(abs(across - 1 / 3), abs(across - 2 / 3)) * bay_width(d) < 0.5 and any(
-        depth(*neighbor) >= 0 for neighbor in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+    elif min(abs(across - 1 / 3), abs(across - 2 / 3)) * bay_width(depth) < 0.5 and any(
+        depth_at(*neighbor) >= 0 for neighbor in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
     ):
         column[88] = STONE  # corbels, which held the masts of the awning
     return column
@@ -177,35 +178,35 @@ def ambulatory(x: int, y: int) -> dict[int, str]:
 
 
 def second_ring(x: int, y: int) -> dict[int, str]:
-    """The second ring of piers and arches, to the top of the third storey."""
+    """The second ring of piers and arches, to the top of the third story."""
     column = dict.fromkeys(range(SECOND_RING_TOP), STONE)
     column.update({z: CORNICE for band in CORNICES for z in range(*band)})
     _, across = bay(x, y)
     if within(across, (0.3, 0.7)):
-        for storey, (base, _) in enumerate(ARCADES):
-            sill = 0 if storey == 0 else base + 2
+        for story, (base, _) in enumerate(ARCADES):
+            sill = 0 if story == 0 else base + 2
             for z in range(sill, base - 3 + arch_top(across, 0.4)):
                 column.pop(z, None)
     return column
 
 
-def seating_height(d: float) -> int:
+def seating_height(depth: float) -> int:
     """The top of the seating at a depth, in plates: rising from the podium to the second ring."""
-    share = (CAVEA[1] - d) / (CAVEA[1] - CAVEA[0])
+    share = (CAVEA[1] - depth) / (CAVEA[1] - CAVEA[0])
     return 2 * round((PODIUM_TOP + share * (SECOND_RING_TOP - PODIUM_TOP)) / 2)
 
 
-def cavea(x: int, y: int, d: float) -> dict[int, str]:
+def cavea(x: int, y: int, depth: float) -> dict[int, str]:
     """The seating's remains: radial walls, ring walls with passages, and one rebuilt sector."""
     column: dict[int, str] = {}
     bay_index, across = bay(x, y)
-    top = seating_height(d)
+    top = seating_height(depth)
     if not surviving(x, y):
         top -= 2 * round(6 * noise(bay_index, 2))
     if from_pier(x, y) < 0.5:
         column.update(dict.fromkeys(range(top), BRICKWORK))
     for band in ANNULAR_WALLS:
-        if within(d, band):
+        if within(depth, band):
             column.update(dict.fromkeys(range(top), CORNICE))
             if within(across, (0.4, 0.6)):
                 for z in range(8):  # the passages under the seats
@@ -215,29 +216,29 @@ def cavea(x: int, y: int, d: float) -> dict[int, str]:
     return column
 
 
-def arena(x: int, y: int, d: float) -> dict[int, str]:
+def arena(x: int, y: int, depth: float) -> dict[int, str]:
     """The podium wall, the open hypogeum's walls, and the stage at the east end."""
-    if within(d, PODIUM):
+    if within(depth, PODIUM):
         return dict.fromkeys(range(PODIUM_TOP), MARBLE)
     column: dict[int, str] = {}
-    dx, dy = x + 0.5 - CENTER_X, y + 0.5 - CENTER_Y
-    corridor = abs(dy) < 1.5
+    east, north = x + 0.5 - CENTER_X, y + 0.5 - CENTER_Y
+    corridor = abs(north) < 1.5
     wall = (y % 3 == 0 or x % 6 == 0) and not corridor
     if wall:
         column.update(dict.fromkeys(range(HYPOGEUM_TOP), CORNICE))
-    if dx > STAGE_FROM:
+    if east > STAGE_FROM:
         column[HYPOGEUM_TOP] = WOOD
     return column
 
 
-def buttress(x: int, y: int, d: float) -> dict[int, str]:
+def buttress(x: int, y: int, depth: float) -> dict[int, str]:
     """The brick buttresses that hold the ends of the surviving outer ring, as stepped wedges."""
-    if not within(d, (-1.0, SECOND_RING[0])):
+    if not within(depth, (-1.0, SECOND_RING[0])):
         return {}
     position = angle(x, y)
     for end, direction in ((SURVIVING[0], -1), (SURVIVING[1], 1)):
         past = (position - end) * direction % 360
-        studs = past / 360 * bay_width(max(d, 0.0)) * BAYS
+        studs = past / 360 * bay_width(max(depth, 0.0)) * BAYS
         if studs < BUTTRESS_LENGTH:
             height = round(TOP * (1 - studs / BUTTRESS_LENGTH) ** 0.7)
             return dict.fromkeys(range(height), BUTTRESS)
@@ -249,33 +250,33 @@ def monument() -> dict[Voxel, str]:
     voxels: dict[Voxel, str] = {}
     for x in range(SIZE):
         for y in range(SIZE):
-            d = depth(x, y)
+            depth = depth_at(x, y)
             column: dict[int, str] = {}
-            if d < OUTER_WALL[0]:
-                column = outer_skin(x, y, d)
-            elif within(d, OUTER_WALL):
+            if depth < OUTER_WALL[0]:
+                column = outer_skin(x, y, depth)
+            elif within(depth, OUTER_WALL):
                 column = outer_ring(x, y)
-            elif within(d, AMBULATORY):
+            elif within(depth, AMBULATORY):
                 column = ambulatory(x, y)
-            elif within(d, SECOND_RING):
+            elif within(depth, SECOND_RING):
                 column = second_ring(x, y)
-            elif within(d, CAVEA):
-                column = cavea(x, y, d)
+            elif within(depth, CAVEA):
+                column = cavea(x, y, depth)
             else:
-                column = arena(x, y, d)
+                column = arena(x, y, depth)
             if not surviving(x, y):
-                column = {**column, **buttress(x, y, d)}
+                column = {**column, **buttress(x, y, depth)}
             voxels.update({(x, y, z): color for z, color in column.items()})
     return voxels
 
 
 def half_columns() -> list[tuple[int, int, int]]:
-    """Where the round bricks of the half-columns stand: at each pier, on each storey."""
+    """Where the round bricks of the half-columns stand: at each pier, on each story."""
     piers: dict[int, tuple[float, int, int]] = {}
     for x in range(SIZE):
         for y in range(SIZE):
-            d = depth(x, y)
-            if not within(d, (-1.0, 0.0)):
+            depth = depth_at(x, y)
+            if not within(depth, (-1.0, 0.0)):
                 continue
             position = angle(x, y) / 360 * BAYS
             pier = round(position) % BAYS

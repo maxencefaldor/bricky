@@ -29,7 +29,7 @@ def test_an_overhang_takes_a_part_that_reaches_back_over_its_support():
     assert check_model(model).ok
 
 
-def test_a_ledge_inside_a_course_turns_the_bricks_beside_it_into_plates():
+def test_a_ledge_inside_a_course_makes_the_bricks_of_its_color_beside_it_plates():
     ledge = {(0, 0, z): "Tan" for z in range(3)} | {(1, 0, 1): "Tan"}
     builder = ModelBuilder("ledge")
     builder.fill(ledge)
@@ -38,7 +38,7 @@ def test_a_ledge_inside_a_course_turns_the_bricks_beside_it_into_plates():
     assert check_model(model).ok
 
 
-def test_a_floor_between_two_walls_rests_on_both_across_the_gap():
+def test_a_floor_between_two_walls_holds_together_across_the_gap():
     walls = {(x, y, z): "Tan" for x in (0, 1, 8, 9) for y in range(4) for z in range(6)}
     floor = {(x, y, 6): "Tan" for x in range(10) for y in range(4)}
     builder = ModelBuilder("floor")
@@ -46,6 +46,22 @@ def test_a_floor_between_two_walls_rests_on_both_across_the_gap():
     model = builder.build()
     assert set(voxels(model)) == set(walls | floor)
     assert check_model(model).ok
+
+
+def test_an_overhang_of_another_color_leaves_the_bricks_beside_it_alone():
+    wall = {(x, 0, z): "Red" for x in range(4) for z in range(3)}
+    parts = [
+        (placement.part, placement.color) for placement in plan_fill(wall | {(0, 1, 1): "Blue"})
+    ]
+    assert parts == [(BRICKS[1, 4], "Red"), (PLATES[1, 1], "Blue")]
+
+
+def test_a_fill_uses_only_parts_that_come_in_each_color():
+    block = {(x, y, z): "Red" for x in range(2) for y in range(4) for z in range(3)}
+    plates_only = set(PLATES.values())
+    placements = plan_fill(block, made_in=lambda part, _: part in plates_only)
+    assert {placement.part for placement in placements} <= plates_only
+    assert len(placements) == 3  # a Plate 2 x 4 on each level
 
 
 def test_colors_are_never_mixed_within_a_part():
