@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -130,7 +132,9 @@ def test_touching_a_slanted_face_is_not_overlapping():
     touching = Box(Vector(0, 0, 14), Vector(20, 10, 24))
     assert not overlaps(SLOPE, touching)
     assert overlaps(SLOPE, Box(Vector(0, 0, 13), Vector(20, 10, 24)))
-    assert overlaps(SLOPE, Box(Vector(5, 30, 20), Vector(15, 35, 30)))  # the flat top at the back
+    assert overlaps(
+        SLOPE, Box(Vector(5, 30, 20), Vector(15, 35, 30))
+    )  # the flat top at the back
 
 
 def test_points_on_shared_faces_belong_to_one_side():
@@ -143,9 +147,14 @@ def test_points_on_shared_faces_belong_to_one_side():
 def test_convex_solids_must_be_convex_and_face_outward():
     box = Box(Vector(0, 0, 0), Vector(10, 10, 10))
     with pytest.raises(ValueError, match="faces inward"):
-        Convex(box.corners(), tuple(tuple(reversed(face)) for face in box.as_convex().faces))
+        Convex(
+            box.corners(),
+            tuple(tuple(reversed(face)) for face in box.as_convex().faces),
+        )
     with pytest.raises(ValueError, match="faces inward"):
-        Convex.prism([(0, 0), (20, 0), (20, 10), (10, 10), (10, 20), (0, 20)], "z", 0, 5)  # an L
+        Convex.prism(
+            [(0, 0), (20, 0), (20, 10), (10, 10), (10, 20), (0, 20)], "z", 0, 5
+        )  # an L
     with pytest.raises(ValueError, match="not flat"):
         Convex(
             (*box.corners()[:7], Vector(10, 10, 11)),

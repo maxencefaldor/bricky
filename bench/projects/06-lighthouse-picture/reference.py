@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Reference for project 06: a striped lighthouse on a rocky islet.
 
 The tower is two hollow square shafts, one stud thick: 6 x 6 studs for eight courses, then 4 x 4
@@ -12,7 +13,9 @@ STONE = "Light Bluish Gray"
 BRICKS = {4: "3010", 3: "3622", 2: "3004", 1: "3005"}
 
 
-def ring(builder: ModelBuilder, start: int, stop: int, z: int, course: int, color: str) -> None:
+def ring(
+    builder: ModelBuilder, start: int, stop: int, z: int, course: int, color: str
+) -> None:
     """One course of a hollow square shaft, one stud thick.
 
     The shaft spans ``start`` to ``stop - 1`` in both x and y. Corners alternate between the walls
@@ -28,7 +31,11 @@ def ring(builder: ModelBuilder, start: int, stop: int, z: int, course: int, colo
 
 
 def run(
-    builder: ModelBuilder, cells: list[tuple[int, int]], along_x: bool, z: int, color: str
+    builder: ModelBuilder,
+    cells: list[tuple[int, int]],
+    along_x: bool,
+    z: int,
+    color: str,
 ) -> None:
     """Fill a straight run of cells with 1 x N bricks, longest first."""
     i = 0
@@ -36,7 +43,10 @@ def run(
         length = next(size for size in BRICKS if size <= len(cells) - i)
         x, y = cells[i]
         builder.place(
-            BRICKS[length], at=(x, y, z), rotation="R90" if along_x else "R0", color=color
+            BRICKS[length],
+            at=(x, y, z),
+            rotation="R90" if along_x else "R0",
+            color=color,
         )
         i += length
 
@@ -71,11 +81,15 @@ def build() -> ModelBuilder:
         z = 2 + 3 * course
         color = "Red" if course // 2 % 2 == 0 else "White"
         ring(builder, 4, 10, z, course, color)
-    builder.place("3004", at=(6, 3, 2), rotation="R90", color="Reddish Brown")  # door step
+    builder.place(
+        "3004", at=(6, 3, 2), rotation="R90", color="Reddish Brown"
+    )  # door step
     # Upper shaft: 4 x 4, from 5 to 9, four courses, on a plate collar.
     collar_z = 2 + 3 * 8
     for y in (4, 6, 8):
-        builder.place("3795", at=(4, y, collar_z), rotation="R90", color="Black")  # Plate 2 x 6
+        builder.place(
+            "3795", at=(4, y, collar_z), rotation="R90", color="Black"
+        )  # Plate 2 x 6
     for course in range(4):
         z = collar_z + 1 + 3 * course
         color = "Red" if (course + 8) // 2 % 2 == 0 else "White"
@@ -84,7 +98,9 @@ def build() -> ModelBuilder:
     # overhang the shaft hold on to the rows above them, with a railing of 1 x 1 bricks.
     deck_z = collar_z + 1 + 3 * 4
     for line in range(3, 11):
-        builder.place("3460", at=(3, line, deck_z), rotation="R90", color="Black")  # Plate 1 x 8
+        builder.place(
+            "3460", at=(3, line, deck_z), rotation="R90", color="Black"
+        )  # Plate 1 x 8
         builder.place("3460", at=(line, 3, deck_z + 1), color="Black")
     top = deck_z + 2
     for x in range(3, 11):

@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Configuration shared by every front-end.
 
 Settings come, in order of precedence, from explicit arguments, ``BRICKY_*`` environment
@@ -38,12 +39,16 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    profile: str = Field(default="digital", description="Profile used when a command names none.")
+    profile: str = Field(
+        default="digital", description="Profile used when a command names none."
+    )
     max_diagnostics: int = Field(
         default=20, ge=1, description="Maximum number of diagnostics a report lists."
     )
     build_timeout: float = Field(
-        default=60.0, gt=0, description="Seconds a build script may run before bricky stops it."
+        default=60.0,
+        gt=0,
+        description="Seconds a build script may run before bricky stops it.",
     )
     output_limit: int = Field(
         default=20_000,
@@ -67,7 +72,9 @@ class Settings(BaseSettings):
 
     @field_validator("profiles", mode="after")
     @classmethod
-    def _extend_defaults(cls, value: dict[str, tuple[str, ...]]) -> dict[str, tuple[str, ...]]:
+    def _extend_defaults(
+        cls, value: dict[str, tuple[str, ...]]
+    ) -> dict[str, tuple[str, ...]]:
         return {**DEFAULT_PROFILES, **value}
 
     @classmethod
@@ -81,7 +88,11 @@ class Settings(BaseSettings):
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         """Read explicit values, then the environment, then ``pyproject.toml``."""
-        return (init_settings, env_settings, PyprojectTomlConfigSettingsSource(settings_cls))
+        return (
+            init_settings,
+            env_settings,
+            PyprojectTomlConfigSettingsSource(settings_cls),
+        )
 
     def resolve_passes(
         self,
@@ -102,5 +113,7 @@ class Settings(BaseSettings):
         try:
             return name, self.profiles[name]
         except KeyError:
-            message = f"unknown profile {name!r}; known profiles: {', '.join(self.profiles)}"
+            message = (
+                f"unknown profile {name!r}; known profiles: {', '.join(self.profiles)}"
+            )
             raise BrickyError(message) from None

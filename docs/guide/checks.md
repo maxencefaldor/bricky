@@ -1,7 +1,7 @@
 # Checks
 
-Passes check a model and report facts as diagnostics. A diagnostic states what is wrong, where,
-and which elements; the report adds what each element is and the script line that placed it.
+Passes check a model and report facts as diagnostics.
+A diagnostic states what is wrong, where, and which elements; the report adds what each element is and the script line that placed it.
 bricky never fixes a model and never says how to: deciding what to change is the agent's job.
 
 ## Reading a report
@@ -42,12 +42,11 @@ checked 4 elements with profile digital (schema, collision, connectivity): 5 err
 Each diagnostic has three parts:
 
 1. **The fact**, after its code: `error[E201]: base and overlap occupy the same space`.
-2. **The region**, after `-->`: x and y in studs, z in plates, the units `at` uses.
-3. **The elements**, after `=`: uid, part name and id, color, and the script line that placed it.
+1. **The region**, after `-->`: x and y in studs, z in plates, the units `at` uses.
+1. **The elements**, after `=`: uid, part name and id, color, and the script line that placed it.
 
-The `by source line` summary ranks script lines by the diagnostics that name their elements, so
-the first line to read is the one behind the most problems. The picture tints every named element
-red, labels the first element of each diagnostic with its code, and outlines each region:
+The `by source line` summary ranks script lines by the diagnostics that name their elements, so the first line to read is the one behind the most problems.
+The picture tints every named element red, labels the first element of each diagnostic with its code, and outlines each region:
 
 ![The broken example: every element a diagnostic names is tinted red and labeled](../images/broken.png)
 
@@ -57,8 +56,8 @@ red, labels the first element of each diagnostic with its code, and outlines eac
 
 ### E101 Unknown part
 
-The element's part id is not in the catalog, or the catalog lists the part without a shape. The
-element then has no geometry, and no other pass sees it.
+The element's part id is not in the catalog, or the catalog lists the part without a shape.
+The element then has no geometry, and no other pass sees it.
 
 ### E102 Unknown color
 
@@ -72,30 +71,30 @@ The element's body reaches below the ground plane, z = 0.
 
 ### W104 Color never made
 
-BrickLink lists the colors each part has come in, and the element's color is not among them: the
-part and the color both exist, but never together. The warning names the part and the color once,
-with every element that uses them. `builder.fill` picks only parts made in each color.
+BrickLink lists the colors each part has come in, and the element's color is not among them: the part and the color both exist, but never together.
+The warning names the part and the color once, with every element that uses them.
+`builder.fill` picks only parts made in each color.
 
 ### E201 Overlap
 
-The bodies of two parts share positive volume. Faces that only touch do not count, and studs belong
-to no body. The region is the box the two parts share.
+The bodies of two parts share positive volume.
+Faces that only touch do not count, and studs belong to no body.
+The region is the box the two parts share.
 
 ![Two bricks placed into the same space](../images/overlap.png)
 
 ### E202 Blocked stud
 
-A stud stands inside another part's body where that part has no anti-stud facing it, so the two
-parts cannot sit where they are. A plate half a stud off the grid is the classic case: the studs
-below push into its underside between its anti-studs.
+A stud stands inside another part's body where that part has no anti-stud facing it, so the two parts cannot sit where they are.
+A plate half a stud off the grid is the classic case: the studs below push into its underside between its anti-studs.
 
 ![A plate half a stud off the grid: the studs below push into it](../images/blocked.png)
 
 ### E301 Floating group
 
-Two parts are connected when a stud of one sits in an anti-stud of the other. A group of connected
-parts is grounded when any part in it reaches z = 0. Each group that is not grounded is reported
-once, with all its elements.
+Two parts are connected when a stud of one sits in an anti-stud of the other.
+A group of connected parts is grounded when any part in it reaches z = 0.
+Each group that is not grounded is reported once, with all its elements.
 
 ![A brick held by nothing](../images/floating.png)
 
@@ -109,9 +108,9 @@ schema        E101, E102, E103, W104  Unknown parts and colors, parts below the 
 digital (default): schema, collision, connectivity
 ```
 
-`bricky passes` lists the installed passes and the profiles that run them. A pass is a pure
-function of the model's shared analyses, registered under the `bricky.passes` entry-point group,
-so a package can add passes without touching bricky. `--passes collision` runs one pass alone.
+`bricky passes` lists the installed passes and the profiles that run them.
+A pass is a pure function of the model's shared analyses, registered under the `bricky.passes` entry-point group, so a package can add passes without touching bricky.
+`--passes collision` runs one pass alone.
 
 ## Changes since the last build
 
@@ -130,9 +129,8 @@ since the last build: 4 added, 0 removed, 4 changed, 8 unchanged
     models/tower.py:18 in build(): 1 element
 ```
 
-Elements match by part, color and the space they take, not by id: renumbered elements count as
-unchanged. An element that kept its id and part but moved, rotated or changed color counts as
-changed. The picture outlines new and changed elements in purple, so an edit that did more, or
-less, than intended shows at once:
+Elements match by part, color and the space they take, not by id: renumbered elements count as unchanged.
+An element that kept its id and part but moved, rotated or changed color counts as changed.
+The picture outlines new and changed elements in purple, so an edit that did more, or less, than intended shows at once:
 
 ![A tower whose top two levels were recolored and capped with tiles, outlined in purple](../images/changes.png)

@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The Elizabeth Tower (Big Ben) at roughly 1 stud to 1 m (about 1:125).
 
 Prompt: "Build the Elizabeth Tower (Big Ben) in London."
@@ -144,17 +145,23 @@ def spire(x: int, y: int, z: int) -> Color:
 def tower(x: int, y: int, z: int) -> Color:
     """Color of the voxel at (x, y, z), or None for air."""
     if z < 6:
-        return BAND if ring(x, y, OUTER.start, OUTER.stop, thickness=2) else None  # plinth
+        return (
+            BAND if ring(x, y, OUTER.start, OUTER.stop, thickness=2) else None
+        )  # plinth
     if z < 120:
         return shaft(x, y, z)
     if z in {120, 157}:
-        return BAND if ring(x, y, OUTER.start, OUTER.stop, thickness=2) else None  # string courses
+        return (
+            BAND if ring(x, y, OUTER.start, OUTER.stop, thickness=2) else None
+        )  # string courses
     if z < 157:
         return clock(x, y, z)
     if z < 188:
         return belfry(x, y, z)
     if z == 188:
-        return BAND if square(x, y, OUTER.start, OUTER.stop) else None  # cornice and roof
+        return (
+            BAND if square(x, y, OUTER.start, OUTER.stop) else None
+        )  # cornice and roof
     corner = x in {1, 13} and y in {1, 13}  # pinnacles over the corner buttresses
     if corner and z < 201:
         return STONE
@@ -178,7 +185,9 @@ def pack(
     Every part rests on at least one cell of the layer below (``below=None`` means the ground), so
     overhanging bands take wide parts that reach back over the wall.
     """
-    sizes = sorted(parts, key=lambda size: (size[1] * size[0], size[0], size[1]), reverse=True)
+    sizes = sorted(
+        parts, key=lambda size: (size[1] * size[0], size[0], size[1]), reverse=True
+    )
     free = dict(cells)
 
     def overhang(cell: Cell) -> bool:
@@ -214,17 +223,25 @@ def pack(
         color = free[start]
         for short, long in sizes:
             footprints = (
-                ((long, short), (short, long)) if along_x else ((short, long), (long, short))
+                ((long, short), (short, long))
+                if along_x
+                else ((short, long), (long, short))
             )
             for width, depth in footprints:
-                for offset_x in range(width):  # any cell of the part may be the start cell
+                for offset_x in range(
+                    width
+                ):  # any cell of the part may be the start cell
                     for offset_y in range(depth):
                         corner_x, corner_y = start[0] - offset_x, start[1] - offset_y
                         span = [
-                            (corner_x + i, corner_y + j) for i in range(width) for j in range(depth)
+                            (corner_x + i, corner_y + j)
+                            for i in range(width)
+                            for j in range(depth)
                         ]
                         if fits(span, color):
-                            rotation = "R0" if (width, depth) == (short, long) else "R90"
+                            rotation = (
+                                "R0" if (width, depth) == (short, long) else "R90"
+                            )
                             builder.place(
                                 parts[short, long],
                                 at=(corner_x, corner_y, z),
@@ -243,10 +260,17 @@ def pack(
         print(f"{label}: no part fits {len(free)} cell(s): {sorted(free)[:6]}")
 
 
-def voxelize(color_at: Callable[[int, int, int], Color], top: int) -> list[dict[Cell, str]]:
+def voxelize(
+    color_at: Callable[[int, int, int], Color], top: int
+) -> list[dict[Cell, str]]:
     """The colored cells of every plate level from the ground up to ``top``."""
     return [
-        {(x, y): color for x in OUTER for y in OUTER if (color := color_at(x, y, z)) is not None}
+        {
+            (x, y): color
+            for x in OUTER
+            for y in OUTER
+            if (color := color_at(x, y, z)) is not None
+        }
         for z in range(top)
     ]
 
@@ -263,14 +287,35 @@ def build() -> ModelBuilder:
             bricks = {
                 cell: color
                 for cell, color in course_layers[0].items()
-                if course_layers[1].get(cell) == color and course_layers[2].get(cell) == color
+                if course_layers[1].get(cell) == color
+                and course_layers[2].get(cell) == color
             }
-        pack(builder, bricks, z, BRICKS, along_x, f"b{z}", set(layers[z - 1]) if z else None)
+        pack(
+            builder,
+            bricks,
+            z,
+            BRICKS,
+            along_x,
+            f"b{z}",
+            set(layers[z - 1]) if z else None,
+        )
         for offset, layer in enumerate(course_layers):
             level = z + offset
-            plates = {cell: color for cell, color in layer.items() if cell not in bricks}
+            plates = {
+                cell: color for cell, color in layer.items() if cell not in bricks
+            }
             below = set(layers[level - 1]) if level else None
-            if below is not None and level == ROOF:  # inner roof plates hang from the spire
+            if (
+                below is not None and level == ROOF
+            ):  # inner roof plates hang from the spire
                 below |= {(x, y) for x in range(2, 13) for y in range(2, 13)}
-            pack(builder, plates, level, PLATES, (course + offset) % 2 == 0, f"p{level}", below)
+            pack(
+                builder,
+                plates,
+                level,
+                PLATES,
+                (course + offset) % 2 == 0,
+                f"p{level}",
+                below,
+            )
     return builder

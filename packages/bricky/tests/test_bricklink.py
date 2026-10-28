@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import shutil
 from pathlib import Path
 
@@ -87,7 +89,9 @@ def test_an_imported_catalog_builds_and_searches(tmp_path):
 def test_missing_and_broken_downloads_are_reported(tmp_path):
     with pytest.raises(BrickyError, match="no such folder"):
         read_downloads(tmp_path / "nowhere")
-    with pytest.raises(BrickyError, match=r"no BrickLink Colors and Catalog Items \(Parts\)"):
+    with pytest.raises(
+        BrickyError, match=r"no BrickLink Colors and Catalog Items \(Parts\)"
+    ):
         read_downloads(tmp_path)
     shutil.copy(DOWNLOADS / "Colors.xml", tmp_path / "a.xml")
     shutil.copy(DOWNLOADS / "Colors.xml", tmp_path / "b.xml")

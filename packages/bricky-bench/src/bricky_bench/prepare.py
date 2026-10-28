@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Write a project's generated inputs from its reference: pictures and voxel plans.
 
 Generated inputs are committed with the project, so every run of the benchmark gives the agent the
@@ -41,7 +42,9 @@ async def prepare(project: Project, session: Session) -> list[Path]:
                 data = await _render(model, item, session)
             case Layers():
                 data = layers_text(model, session.catalog, item.levels).encode()
-        written.append(await asyncio.to_thread(write_file, project.path / item.file, data))
+        written.append(
+            await asyncio.to_thread(write_file, project.path / item.file, data)
+        )
     return written
 
 
@@ -63,11 +66,15 @@ async def _render(model: Model, item: Render, session: Session) -> bytes:
     if item.caption is not None:
         scene = scene.model_copy(update={"title": item.caption})
     renderer = await session.renderer()
-    (picture,) = await renderer.render(scene, [item.view], width=item.width, height=item.height)
+    (picture,) = await renderer.render(
+        scene, [item.view], width=item.width, height=item.height
+    )
     return picture
 
 
-def layers_text(model: Model, catalog: Catalog, levels: Sequence[int] | None = None) -> str:
+def layers_text(
+    model: Model, catalog: Catalog, levels: Sequence[int] | None = None
+) -> str:
     """Describe a model's voxels as text: a color legend, then one plan per plate level.
 
     Every plan covers the same x and y range, the model's own, so plans line up when read one
@@ -95,7 +102,10 @@ def layers_text(model: Model, catalog: Catalog, levels: Sequence[int] | None = N
         "Each level is a plan seen from above, north up: x grows to the right (east) and y grows",
         "upward (north), both in studs. '.' is an empty voxel; every other character is a color:",
         "",
-        *(f"  {symbols[color]}  {name}" for color, name in zip(colors, names, strict=True)),
+        *(
+            f"  {symbols[color]}  {name}"
+            for color, name in zip(colors, names, strict=True)
+        ),
         "",
         (
             f"x runs from {min(xs)} to {max(xs)}, y from {min(ys)} to {max(ys)}, "
@@ -120,10 +130,15 @@ def _plan(
     columns = range(west, east + 1)
     tens = "".join(str(abs(x) // 10 % 10) if x % 10 == 0 else " " for x in columns)
     units = "".join(str(abs(x) % 10) for x in columns)
-    rows = [f"{'y\\x':>{label_width}}  {tens}".rstrip(), f"{'':>{label_width}}  {units}"]
+    rows = [
+        f"{'y\\x':>{label_width}}  {tens}".rstrip(),
+        f"{'':>{label_width}}  {units}",
+    ]
     for y in range(north, south - 1, -1):
         row = "".join(
-            symbols[voxel.color] if (voxel := filled.get((x, y, z))) is not None else EMPTY
+            symbols[voxel.color]
+            if (voxel := filled.get((x, y, z))) is not None
+            else EMPTY
             for x in columns
         )
         rows.append(f"{y:>{label_width}}  {row}")

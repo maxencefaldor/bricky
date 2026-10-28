@@ -1,12 +1,10 @@
 # Command line
 
-`bricky` builds, checks and draws models from the shell. Every command takes
-`--output-format json` to print its result as JSON for programs; the default, `text`, is for
-people and agents. Exit status 0 means success, 1 means the model has errors (or
-`catalog verify` found problems), and 2 means invalid arguments or a failed command.
+`bricky` builds, checks and draws models from the shell.
+Every command takes `--output-format json` to print its result as JSON for programs; the default, `text`, is for people and agents.
+Exit status 0 means success, 1 means the model has errors (or `catalog verify` found problems), and 2 means invalid arguments or a failed command.
 
-Each command's options come from a request model in `bricky.service`, which the
-[MCP server](../agents/mcp.md) shares, so a tool's arguments match its command's options.
+Each command's options come from a request model in `bricky.service`, which the [MCP server](../agents/mcp.md) shares, so a tool's arguments match its command's options.
 
 ## `bricky build`
 

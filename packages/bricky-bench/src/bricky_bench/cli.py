@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The ``bricky-bench`` command line: list projects, prepare their inputs, run them.
 
 Run it from the bricky repository root, where ``bench/projects`` lives.
@@ -25,13 +26,17 @@ from bricky_bench.projects import load_projects
 from bricky_bench.run import Agent, run_projects, summary_table
 
 _PROJECTS_HELP = "Folder holding the projects."
-_PROJECT_HELP = "Projects to use, by folder name or number, such as '04-house-plans' or '4'."
+_PROJECT_HELP = (
+    "Projects to use, by folder name or number, such as '04-house-plans' or '4'."
+)
 
 
 class _Selection(BaseModel):
     """The projects a command works on."""
 
-    projects_dir: Path = Field(default=Path("bench/projects"), description=_PROJECTS_HELP)
+    projects_dir: Path = Field(
+        default=Path("bench/projects"), description=_PROJECTS_HELP
+    )
     project: tuple[str, ...] = Field(default=(), description=_PROJECT_HELP)
 
 
@@ -43,7 +48,9 @@ class ListCommand(_Selection):
         for project in load_projects(self.projects_dir, self.project):
             scored = "scored" if project.reference is not None else "judged"
             inputs = ", ".join(project.input_files()) or "prompt only"
-            print(f"{project.id}  [{project.spec.difficulty}] {project.spec.title} ({scored})")
+            print(
+                f"{project.id}  [{project.spec.difficulty}] {project.spec.title} ({scored})"
+            )
             print(f"    inputs: {inputs}")
 
 
@@ -65,11 +72,15 @@ class RunCommand(_Selection):
     repeats: int = Field(default=1, ge=1, description="Runs of each project.")
     jobs: int = Field(default=1, ge=1, description="Runs at the same time.")
     output: Path = Field(
-        default=Path("bench/runs"), description="Folder for run folders, one per invocation."
+        default=Path("bench/runs"),
+        description="Folder for run folders, one per invocation.",
     )
-    model: str | None = Field(default=None, description="Model for Claude Code's --model.")
+    model: str | None = Field(
+        default=None, description="Model for Claude Code's --model."
+    )
     agent_command: tuple[str, ...] = Field(
-        default=("claude",), description="The agent's executable and any leading arguments."
+        default=("claude",),
+        description="The agent's executable and any leading arguments.",
     )
 
     async def cli_cmd(self) -> None:

@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Integer geometry: vectors, the 24 grid rotations, poses, boxes and convex solids.
 
 Every element takes one of the 24 rotations that map grid axes onto grid axes. Each rotation is a
@@ -88,7 +89,12 @@ def axis_name(vector: Vector) -> str:
         raise ValueError(message) from None
 
 
-ALIASES: Final[dict[str, str]] = {"R0": "+x+y", "R90": "+y-x", "R180": "-x-y", "R270": "-y+x"}
+ALIASES: Final[dict[str, str]] = {
+    "R0": "+x+y",
+    "R90": "+y-x",
+    "R180": "-x-y",
+    "R270": "-y+x",
+}
 """Short names for the four rotations about the vertical axis, counter-clockwise from above."""
 
 
@@ -116,7 +122,9 @@ class Rotation:
             or self.y_axis not in _AXIS_NAMES
             or self.x_axis.dot(self.y_axis) != 0
         ):
-            message = f"{self.x_axis} and {self.y_axis} are not two perpendicular grid axes"
+            message = (
+                f"{self.x_axis} and {self.y_axis} are not two perpendicular grid axes"
+            )
             raise ValueError(message)
         object.__setattr__(self, "z_axis", self.x_axis.cross(self.y_axis))
 
@@ -131,9 +139,7 @@ class Rotation:
         try:
             return cls(AXES[key[:2]], AXES[key[2:]])
         except KeyError, ValueError:
-            message = (
-                f"unknown rotation {text!r}: use a name like '+y-x' or one of {', '.join(ALIASES)}"
-            )
+            message = f"unknown rotation {text!r}: use a name like '+y-x' or one of {', '.join(ALIASES)}"
             raise ValueError(message) from None
 
     @property
@@ -202,7 +208,11 @@ class Box:
     """The maximum corner: the largest coordinate on every axis."""
 
     def __post_init__(self) -> None:
-        if self.min.x > self.max.x or self.min.y > self.max.y or self.min.z > self.max.z:
+        if (
+            self.min.x > self.max.x
+            or self.min.y > self.max.y
+            or self.min.z > self.max.z
+        ):
             message = f"box corners out of order: {self.min} > {self.max}"
             raise ValueError(message)
 
@@ -253,7 +263,9 @@ class Box:
         low, high = self.min, self.max
         return tuple(
             Vector(
-                high.x if i & 1 else low.x, high.y if i & 2 else low.y, high.z if i & 4 else low.z
+                high.x if i & 1 else low.x,
+                high.y if i & 2 else low.y,
+                high.z if i & 4 else low.z,
             )
             for i in range(8)
         )
@@ -365,7 +377,9 @@ class Convex:
                 message = f"face {face} faces inward, or the solid is not convex"
                 raise ValueError(message)
             planes.append((normal, offset))
-            for corner, following in zip(corners, corners[1:] + corners[:1], strict=True):
+            for corner, following in zip(
+                corners, corners[1:] + corners[:1], strict=True
+            ):
                 if corner != following:
                     directions.add(_direction(following - corner))
         xs, ys, zs = zip(*(vertex.as_tuple() for vertex in self.vertices), strict=True)
@@ -412,7 +426,8 @@ class Convex:
         bottom = tuple(reversed(range(count)))
         top = tuple(range(count, 2 * count))
         sides = tuple(
-            (i, (i + 1) % count, count + (i + 1) % count, count + i) for i in range(count)
+            (i, (i + 1) % count, count + (i + 1) % count, count + i)
+            for i in range(count)
         )
         return cls(vertices, (bottom, top, *sides))
 
@@ -457,7 +472,9 @@ def overlaps(a: Solid, b: Solid) -> bool:
     first = a if isinstance(a, Convex) else a.as_convex()
     second = b if isinstance(b, Convex) else b.as_convex()
     axes = [normal for normal, _ in (*first.planes, *second.planes)]
-    axes += [one.cross(other) for one in first.directions for other in second.directions]
+    axes += [
+        one.cross(other) for one in first.directions for other in second.directions
+    ]
     for axis in axes:
         if axis == ORIGIN:
             continue

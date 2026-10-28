@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The model as voxels: which element fills each voxel, one stud square and one plate tall.
 
 A voxel is one stud wide, one stud deep and one plate tall: the grid that parts are placed on.

@@ -1,7 +1,7 @@
 # Contributing
 
-bricky's conventions live in `AGENTS.md` at the repository root, so people and every agent harness
-read the same rules. A change is done when the five checks pass:
+bricky's conventions live in `AGENTS.md` at the repository root, so people and every agent harness read the same rules.
+A change is done when the five checks pass:
 
 ```sh
 uv sync

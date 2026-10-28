@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Benchmark projects: a prompt, inputs and a budget, and sometimes a reference to score against.
 
 Each project is a folder under ``bench/projects``, named ``NN-name``:
@@ -36,7 +37,9 @@ class Render(_FileModel):
     """A picture of the reference, drawn by bricky's renderer."""
 
     kind: Literal["render"]
-    file: str = Field(description="Path of the PNG to write, relative to the project folder.")
+    file: str = Field(
+        description="Path of the PNG to write, relative to the project folder."
+    )
     view: View = Field(default=View.SHEET, description="The view to draw.")
     caption: str | None = Field(
         default=None,
@@ -51,7 +54,9 @@ class Layers(_FileModel):
     """The reference's voxels as text: one plan per plate level, with a color legend."""
 
     kind: Literal["layers"]
-    file: str = Field(description="Path of the text file to write, relative to the project folder.")
+    file: str = Field(
+        description="Path of the text file to write, relative to the project folder."
+    )
     levels: tuple[int, ...] | None = Field(
         default=None, description="Plate levels to write, all of them when omitted."
     )
@@ -64,12 +69,15 @@ class ProjectFile(_FileModel):
     """What ``project.toml`` holds."""
 
     title: str = Field(description="A short name, such as 'A brick wall'.")
-    difficulty: int = Field(ge=1, le=10, description="1 is the easiest, 10 the hardest.")
+    difficulty: int = Field(
+        ge=1, le=10, description="1 is the easiest, 10 the hardest."
+    )
     prompt: str = Field(description="What the agent is asked to build.")
     max_turns: int = Field(ge=1, description="Agentic turns the agent may take.")
     minutes: int = Field(ge=1, description="Wall-clock time the agent may take.")
     generate: tuple[Generated, ...] = Field(
-        default=(), description="Inputs written from the reference by `bricky-bench prepare`."
+        default=(),
+        description="Inputs written from the reference by `bricky-bench prepare`.",
     )
 
 
@@ -119,7 +127,9 @@ def load_project(path: Path) -> Project:
     """
     file = path / PROJECT_FILE
     try:
-        project_file = ProjectFile.model_validate(tomllib.loads(file.read_text(encoding="utf-8")))
+        project_file = ProjectFile.model_validate(
+            tomllib.loads(file.read_text(encoding="utf-8"))
+        )
     except FileNotFoundError:
         message = f"{path} has no {PROJECT_FILE}"
         raise BrickyError(message) from None
@@ -161,4 +171,6 @@ def load_projects(root: Path, wanted: tuple[str, ...] = ()) -> list[Project]:
 def _named(project: Project, name: str) -> bool:
     """Whether ``name`` is the project's folder name or its number."""
     number, _, _ = project.id.partition("-")
-    return name == project.id or (name.isdigit() and number.isdigit() and int(name) == int(number))
+    return name == project.id or (
+        name.isdigit() and number.isdigit() and int(name) == int(number)
+    )

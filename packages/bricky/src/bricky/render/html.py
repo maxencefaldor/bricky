@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """A standalone viewer: one HTML file people open in a browser to orbit a model.
 
 The page embeds the scene and bricky's viewer module, and loads three.js from jsDelivr, so it stays
@@ -96,7 +97,11 @@ show();
 
 @cache
 def _viewer_source() -> str:
-    return files("bricky.render").joinpath("assets", "viewer.js").read_text(encoding="utf-8")
+    return (
+        files("bricky.render")
+        .joinpath("assets", "viewer.js")
+        .read_text(encoding="utf-8")
+    )
 
 
 def write_html(scene: Scene, path: Path) -> Path:

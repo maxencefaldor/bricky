@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The Colosseum in Rome, at 1:150: a stud is 1.2 m and a plate 0.48 m.
 
 References: Wikipedia, "Colosseum": an ellipse 189 m by 156 m and 48 m tall, around an arena of
@@ -25,7 +26,12 @@ OUTER_X, OUTER_Y = 77.5, 64.5  # the outer ellipse's semi-axes, in studs
 BAYS = 80
 
 STONE, CORNICE, STEPS = "Tan", "Dark Tan", "Light Bluish Gray"
-BRICKWORK, BUTTRESS, MARBLE, WOOD = "Medium Nougat", "Dark Orange", "White", "Reddish Brown"
+BRICKWORK, BUTTRESS, MARBLE, WOOD = (
+    "Medium Nougat",
+    "Dark Orange",
+    "White",
+    "Reddish Brown",
+)
 
 # Depths inward from the outer face, in studs.
 OUTER_WALL = (0.0, 2.5)
@@ -45,7 +51,10 @@ SECOND_RING_TOP = 72
 PODIUM_TOP = 10
 HYPOGEUM_TOP = 6
 
-SURVIVING = (15.0, 195.0)  # degrees of the outer ring standing to full height, counter-clockwise
+SURVIVING = (
+    15.0,
+    195.0,
+)  # degrees of the outer ring standing to full height, counter-clockwise
 BUTTRESS_LENGTH = 9.0  # studs along the ring
 SEATS = range(8, 14)  # bays of the rebuilt seating, north-east
 STAGE_FROM = 14.0  # studs east of the center where the arena's stage begins
@@ -64,7 +73,9 @@ def depth_at(x: int, y: int) -> float:
     low, high = -6.0, OUTER_Y - 0.5
     for _ in range(40):
         middle = (low + high) / 2
-        inside = (east / (OUTER_X - middle)) ** 2 + (north / (OUTER_Y - middle)) ** 2 <= 1
+        inside = (east / (OUTER_X - middle)) ** 2 + (
+            north / (OUTER_Y - middle)
+        ) ** 2 <= 1
         low, high = (middle, high) if inside else (low, middle)
     return low
 
@@ -86,7 +97,9 @@ def bay(x: int, y: int) -> tuple[int, float]:
 def bay_width(depth: float) -> float:
     """The width of one bay at a depth, in studs: the ring's perimeter, after Ramanujan, over 80."""
     semi_x, semi_y = OUTER_X - depth, OUTER_Y - depth
-    ramanujan = 3 * (semi_x + semi_y) - sqrt((3 * semi_x + semi_y) * (semi_x + 3 * semi_y))
+    ramanujan = 3 * (semi_x + semi_y) - sqrt(
+        (3 * semi_x + semi_y) * (semi_x + 3 * semi_y)
+    )
     return pi * ramanujan / BAYS
 
 
@@ -164,7 +177,8 @@ def outer_skin(x: int, y: int, depth: float) -> dict[int, str]:
     if from_pier(x, y) < 0.5:
         column.update(dict.fromkeys(range(*ATTIC), STONE))  # pilasters
     elif min(abs(across - 1 / 3), abs(across - 2 / 3)) * bay_width(depth) < 0.5 and any(
-        depth_at(*neighbor) >= 0 for neighbor in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+        depth_at(*neighbor) >= 0
+        for neighbor in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
     ):
         column[88] = STONE  # corbels, which held the masts of the awning
     return column
@@ -211,7 +225,9 @@ def cavea(x: int, y: int, depth: float) -> dict[int, str]:
             if within(across, (0.4, 0.6)):
                 for z in range(8):  # the passages under the seats
                     column.pop(z, None)
-    if bay_index in SEATS:  # steps of 2 plates on a shell of 4, so each step overlaps the next
+    if (
+        bay_index in SEATS
+    ):  # steps of 2 plates on a shell of 4, so each step overlaps the next
         column.update(dict.fromkeys(range(top - 4, top), MARBLE))
     return column
 
@@ -285,9 +301,15 @@ def half_columns() -> list[tuple[int, int, int]]:
                 piers[pier] = (distance, x, y)
     spots: list[tuple[int, int, int]] = []
     for pier, (_, x, y) in piers.items():
-        standing = TOP if surviving(x, y) else min(ruin_top((pier - 1) % BAYS), ruin_top(pier))
+        standing = (
+            TOP if surviving(x, y) else min(ruin_top((pier - 1) % BAYS), ruin_top(pier))
+        )
         for base, top in ARCADES:
-            spots.extend((x, y, z) for z in range(base, min(top, standing), 3) if z + 3 <= standing)
+            spots.extend(
+                (x, y, z)
+                for z in range(base, min(top, standing), 3)
+                if z + 3 <= standing
+            )
     return spots
 
 
@@ -295,7 +317,9 @@ def plaza(builder: ModelBuilder) -> None:
     """Lay the baseplates the monument stands on."""
     for i in range(SIZE // 32):
         for j in range(SIZE // 32):
-            builder.place("3811", at=(32 * i, 32 * j, 0), color=STEPS, id=f"plaza.{i}.{j}")
+            builder.place(
+                "3811", at=(32 * i, 32 * j, 0), color=STEPS, id=f"plaza.{i}.{j}"
+            )
 
 
 def build() -> ModelBuilder:

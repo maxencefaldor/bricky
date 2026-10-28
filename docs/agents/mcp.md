@@ -1,8 +1,7 @@
 # MCP server
 
-`bricky-mcp` serves bricky to any agent harness over the
-[Model Context Protocol](https://modelcontextprotocol.io), on stdio. Every tool's arguments come
-from the same request model as the matching command-line command, so the two never drift apart.
+`bricky-mcp` serves bricky to any agent harness over the [Model Context Protocol](https://modelcontextprotocol.io), on stdio.
+Every tool's arguments come from the same request model as the matching command-line command, so the two never drift apart.
 
 ## Connect
 
@@ -38,16 +37,16 @@ claude mcp add bricky -- uv run --directory /path/to/bricky bricky-mcp
 | `list_passes` | Lists the installed passes, their codes and the profiles that run them |
 | `explain_code` | Gives the exact rule behind a diagnostic code |
 
-Each tool answers twice: with the text the command line prints, for the agent to read, and with the
-result as structured content, for programs. `build_model` and `render_model` also return their
-pictures as images, so the agent sees the model without another call.
+Each tool answers twice: with the text the command line prints, for the agent to read, and with the result as structured content, for programs.
+`build_model` and `render_model` also return their pictures as images, so the agent sees the model without another call.
 
 ## Behavior
 
-- **One warm browser.** The server starts Chromium on its first render and keeps it for its
-  lifetime, so later renders take a second or two.
-- **Scripts run apart.** Build scripts never run inside the server. Each runs in a child process
-  with a time limit; whatever it prints is captured and returned, and never reaches the protocol
-  stream. A cancelled call stops its child.
-- **Instructions.** The server's instructions tell the agent the workflow, the coordinates and
-  the tools, so an agent can start without the skill.
+- **One warm browser.**
+  The server starts Chromium on its first render and keeps it for its lifetime, so later renders take a second or two.
+- **Scripts run apart.**
+  Build scripts never run inside the server.
+  Each runs in a child process with a time limit; whatever it prints is captured and returned, and never reaches the protocol stream.
+  A cancelled call stops its child.
+- **Instructions.**
+  The server's instructions tell the agent the workflow, the coordinates and the tools, so an agent can start without the skill.

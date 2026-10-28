@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """A uniform grid that answers "what might touch this box?" without comparing every pair."""
 
 from collections import defaultdict

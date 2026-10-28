@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 from bricky import ModelBuilder, check_model, voxels
 from bricky.analysis import Voxel, VoxelKey
 from bricky_bench.score import compare, facts
@@ -25,7 +27,9 @@ def test_identical_models_match_fully():
 
 def test_position_and_rotation_are_free():
     # The same L, rotated by 90 degrees and moved far away.
-    rotated = {(x + 30, y - 7, z): c for (x, y, z), c in grid("BBA", "..A", "..A").items()}
+    rotated = {
+        (x + 30, y - 7, z): c for (x, y, z), c in grid("BBA", "..A", "..A").items()
+    }
     fidelity = compare(rotated, L_SHAPE)
     assert (fidelity.shape, fidelity.color) == (1.0, 1.0)
     assert fidelity.rotation != "R0"
@@ -68,6 +72,8 @@ def test_real_models_compare_through_voxels():
     builder.place("3001", at=(0, 0, 0), color="Red")
     builder.place("3001", at=(0, 0, 3), rotation="R90", color="White")
     reference = voxels(builder.build())
-    assert len(reference) == 2 * (2 * 4 * 3)  # two bricks, 2 x 4 studs and 3 plates each
+    assert len(reference) == 2 * (
+        2 * 4 * 3
+    )  # two bricks, 2 x 4 studs and 3 plates each
     fidelity = compare(reference, reference)
     assert fidelity.shape == fidelity.color == 1.0

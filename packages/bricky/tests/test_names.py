@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import tomllib
 
 import pytest
@@ -37,7 +39,9 @@ SHAPED = {
     "Slope 18 2 x 1 x 2/3": SlopeShape(
         family=Family.SLOPE, size=(1, 2), run=2, height=2, studs=False
     ),
-    "Slope 45 2 x 6 x 2/3": SlopeShape(family=Family.SLOPE, size=(6, 2), run=1, height=2),
+    "Slope 45 2 x 6 x 2/3": SlopeShape(
+        family=Family.SLOPE, size=(6, 2), run=1, height=2
+    ),
     "Slope, Inverted 60 4 x 1 x 3": InvertedSlopeShape(
         family=Family.INVERTED_SLOPE, size=(1, 4), run=2, height=9
     ),
@@ -47,9 +51,15 @@ SHAPED = {
     "Slope, Curved 2 x 1 x 2/3": CurvedSlopeShape(
         family=Family.CURVED_SLOPE, size=(1, 2), height=2
     ),
-    "Brick, Round 1 x 1 Open Stud": RoundShape(family=Family.ROUND, size=(1, 1), height=3),
-    "Plate, Round 2 x 2 with Axle Hole": RoundShape(family=Family.ROUND, size=(2, 2), height=1),
-    "Tile, Round 1 x 1": RoundShape(family=Family.ROUND, size=(1, 1), height=1, studs=False),
+    "Brick, Round 1 x 1 Open Stud": RoundShape(
+        family=Family.ROUND, size=(1, 1), height=3
+    ),
+    "Plate, Round 2 x 2 with Axle Hole": RoundShape(
+        family=Family.ROUND, size=(2, 2), height=1
+    ),
+    "Tile, Round 1 x 1": RoundShape(
+        family=Family.ROUND, size=(1, 1), height=1, studs=False
+    ),
     "Brick, Modified 1 x 1 with Stud on 1 Side": SideStudsShape(
         family=Family.SIDE_STUDS, size=(1, 1), sides=("-y",)
     ),
@@ -105,7 +115,9 @@ def test_names_with_other_details_have_no_shape(name):
 
 
 def test_heights_in_bricks_become_plates():
-    assert [height_in_plates(h, 3) for h in (None, "2", "2/3", "1 1/3", "1 2/3", "1/2")] == [
+    assert [
+        height_in_plates(h, 3) for h in (None, "2", "2/3", "1 1/3", "1 2/3", "1/2")
+    ] == [
         3,
         6,
         2,

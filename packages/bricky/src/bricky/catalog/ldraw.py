@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Shapes from the LDraw.org Parts Library: a part's body as boxes, its studs and its anti-studs.
 
 LDraw describes each part as a surface of triangles and quads, plus references to other files
@@ -130,7 +131,9 @@ class Library:
                 if folder.endswith("parts") and "/" not in key:
                     self._parts.setdefault(key.removesuffix(".dat"), path)
         if not self._parts:
-            message = f"{root} holds no LDraw parts: expected a parts folder of .dat files"
+            message = (
+                f"{root} holds no LDraw parts: expected a parts folder of .dat files"
+            )
             raise BrickyError(message)
         self._flat: dict[str, Flat] = {}
         self._headers: dict[str, PartFile] = {}
@@ -166,7 +169,9 @@ class Library:
             elif text.startswith("!LDRAW_ORG"):
                 found = re.search(r"UPDATE (\d{4}-\d{2})", text)
                 update = found.group(1) if found else None
-        return PartFile(name=path.name, description=description, category=category, update=update)
+        return PartFile(
+            name=path.name, description=description, category=category, update=update
+        )
 
     @cached_property
     def release(self) -> str:
@@ -310,7 +315,8 @@ class _Rays:
         binary search.
         """
         centers = [
-            (np.arange(int(n)) + 0.5) * SAMPLE_STEP + _JITTER[i] for i, n in enumerate(counts)
+            (np.arange(int(n)) + 0.5) * SAMPLE_STEP + _JITTER[i]
+            for i, n in enumerate(counts)
         ]
         u, v = (a for a in range(3) if a != axis)
         size_u, size_v = len(centers[u]), len(centers[v])
@@ -327,7 +333,10 @@ class _Rays:
         depths: list[Floats] = []
         for i0 in range(0, size_u, _TILE):
             for j0 in range(0, size_v, _TILE):
-                tile_u, tile_v = centers[u][i0 : i0 + _TILE], centers[v][j0 : j0 + _TILE]
+                tile_u, tile_v = (
+                    centers[u][i0 : i0 + _TILE],
+                    centers[v][j0 : j0 + _TILE],
+                )
                 near = (
                     (high_u >= tile_u[0])
                     & (low_u <= tile_u[-1])
@@ -345,8 +354,12 @@ class _Rays:
                 denominator = determinant[near][None]
                 offset_u = grid_u.ravel()[:, None] - near_origin[None, :, u]
                 offset_v = grid_v.ravel()[:, None] - near_origin[None, :, v]
-                a = (offset_u * near_b[None, :, v] - offset_v * near_b[None, :, u]) / denominator
-                b = (near_a[None, :, u] * offset_v - near_a[None, :, v] * offset_u) / denominator
+                a = (
+                    offset_u * near_b[None, :, v] - offset_v * near_b[None, :, u]
+                ) / denominator
+                b = (
+                    near_a[None, :, u] * offset_v - near_a[None, :, v] * offset_u
+                ) / denominator
                 ray, triangle = np.nonzero((a >= 0) & (b >= 0) & (a + b <= 1))
                 a, b = a[ray, triangle], b[ray, triangle]
                 depths.append(
@@ -363,15 +376,19 @@ class _Rays:
         starts = np.searchsorted(keys, all_rays * span, side="left")
         ends = np.searchsorted(keys, (all_rays + 1) * span, side="left")
         queries = all_rays[:, None] * span + centers[axis][None, :]
-        beyond = ends[:, None] - np.searchsorted(keys, queries.ravel(), side="right").reshape(
-            queries.shape
-        )
+        beyond = ends[:, None] - np.searchsorted(
+            keys, queries.ravel(), side="right"
+        ).reshape(queries.shape)
         total = np.broadcast_to((ends - starts)[:, None], beyond.shape)
         dimensions = (size_u, size_v, len(centers[axis]))
         order = [u, v, axis]
         return cls(
-            beyond=np.moveaxis(beyond.reshape(dimensions).astype(np.int16), [0, 1, 2], order),
-            total=np.moveaxis(total.reshape(dimensions).astype(np.int16), [0, 1, 2], order),
+            beyond=np.moveaxis(
+                beyond.reshape(dimensions).astype(np.int16), [0, 1, 2], order
+            ),
+            total=np.moveaxis(
+                total.reshape(dimensions).astype(np.int16), [0, 1, 2], order
+            ),
         )
 
 
@@ -441,7 +458,9 @@ def _boxes(body: Mask) -> Iterator[tuple[int, int, int, int, int, int]]:
     """Cover the samples with boxes, greedily: grow along x, then y, then z."""
     left = body.copy()
     while left.any():
-        i, j, k = (int(index) for index in np.unravel_index(np.argmax(left), left.shape))
+        i, j, k = (
+            int(index) for index in np.unravel_index(np.argmax(left), left.shape)
+        )
         i1 = i + 1
         while i1 < left.shape[0] and left[i1, j, k]:
             i1 += 1
@@ -488,7 +507,11 @@ def _find_folder(root: Path, folder: str) -> Path | None:
     current = root
     for name in folder.split("/"):
         match = next(
-            (path for path in current.iterdir() if path.is_dir() and path.name.casefold() == name),
+            (
+                path
+                for path in current.iterdir()
+                if path.is_dir() and path.name.casefold() == name
+            ),
             None,
         )
         if match is None:

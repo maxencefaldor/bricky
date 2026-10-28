@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """bricky: a compiler-style toolkit that lets AI agents design buildable LEGO® models.
 
 Write a model with :class:`ModelBuilder`, then check it with :func:`check_model` or the

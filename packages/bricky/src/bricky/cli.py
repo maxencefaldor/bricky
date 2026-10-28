@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The ``bricky`` command line.
 
 Each subcommand extends a request model from :mod:`bricky.service` with an output format. The
@@ -35,7 +36,9 @@ class _Output(BaseModel):
 
     def emit(self, result: BaseModel, text: str) -> None:
         """Print a result in the requested format."""
-        print(result.model_dump_json(indent=2) if self.output_format == "json" else text)
+        print(
+            result.model_dump_json(indent=2) if self.output_format == "json" else text
+        )
 
 
 def _fail_on_errors(report: Report | None) -> None:
@@ -128,7 +131,12 @@ class CatalogImportCommand(service.CatalogImportRequest, _Output):
 def _progress(done: int, total: int) -> None:
     if done == total or done % 1000 == 0:
         end = "\n" if done == total else ""
-        print(f"\rlooked at {done:,} of {total:,} parts", end=end, file=sys.stderr, flush=True)
+        print(
+            f"\rlooked at {done:,} of {total:,} parts",
+            end=end,
+            file=sys.stderr,
+            flush=True,
+        )
 
 
 class CatalogStatusCommand(service.CatalogStatusRequest, _Output):
@@ -167,7 +175,8 @@ class CatalogCommand(BaseModel):
     """Import the catalog of parts and colors, and inspect it."""
 
     import_: CliSubCommand[CatalogImportCommand] = Field(
-        alias="import", description="Import parts and colors from BrickLink, shapes from LDraw."
+        alias="import",
+        description="Import parts and colors from BrickLink, shapes from LDraw.",
     )
     status: CliSubCommand[CatalogStatusCommand] = Field(
         description="Say which catalog bricky uses and what is in it."
@@ -206,15 +215,25 @@ class Bricky(BaseSettings):
         description="Run a build script, then save, check and render its model."
     )
     check: CliSubCommand[CheckCommand] = Field(description="Check a model file.")
-    render: CliSubCommand[RenderCommand] = Field(description="Render pictures of a model file.")
+    render: CliSubCommand[RenderCommand] = Field(
+        description="Render pictures of a model file."
+    )
     parts: CliSubCommand[PartsCommand] = Field(description="Search the parts catalog.")
-    colors: CliSubCommand[ColorsCommand] = Field(description="Search the catalog's colors.")
+    colors: CliSubCommand[ColorsCommand] = Field(
+        description="Search the catalog's colors."
+    )
     catalog: CliSubCommand[CatalogCommand] = Field(
         description="Import the catalog of parts and colors, and inspect it."
     )
-    passes: CliSubCommand[PassesCommand] = Field(description="List installed passes and profiles.")
-    explain: CliSubCommand[ExplainCommand] = Field(description="Explain diagnostic codes.")
-    json_schema: CliSubCommand[SchemaCommand] = Field(description="Print the model file schema.")
+    passes: CliSubCommand[PassesCommand] = Field(
+        description="List installed passes and profiles."
+    )
+    explain: CliSubCommand[ExplainCommand] = Field(
+        description="Explain diagnostic codes."
+    )
+    json_schema: CliSubCommand[SchemaCommand] = Field(
+        description="Print the model file schema."
+    )
 
     @classmethod
     @override

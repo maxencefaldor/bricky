@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import json
 import re
 from pathlib import Path
@@ -55,7 +57,9 @@ def test_check_writes_json(floating, capsys):
 
 def test_build_saves_checks_and_names_script_lines(tmp_path, capsys):
     script = tmp_path / "tower.py"
-    script.write_text(TOWER.replace('at=(0, 0, 3), rotation="R90"', 'at=(9, 9, 3), rotation="R90"'))
+    script.write_text(
+        TOWER.replace('at=(0, 0, 3), rotation="R90"', 'at=(9, 9, 3), rotation="R90"')
+    )
     assert run("build", str(script), "--no-render") == 1
     assert (tmp_path / "tower.bricky.json").is_file()
     assert (tmp_path / "tower.bricky.map.json").is_file()
@@ -69,7 +73,8 @@ def test_build_shows_what_the_script_printed(tmp_path, capsys):
     script = tmp_path / "chatty.py"
     script.write_text(
         TOWER.replace(
-            "    return builder", '    print("hello from the script")\n    return builder'
+            "    return builder",
+            '    print("hello from the script")\n    return builder',
         )
     )
     assert run("build", str(script), "--no-render") == 0
@@ -102,7 +107,10 @@ def test_building_again_says_what_changed_and_where(tmp_path, capsys):
     assert run("build", str(script), "--no-render") == 1  # the rest now floats
     out = capsys.readouterr().out
     assert "since the last build: 0 added, 1 removed, 0 changed, 2 unchanged" in out
-    assert f"removed from the earlier script at:\n    {script}:7 in build(): 1 element" in out
+    assert (
+        f"removed from the earlier script at:\n    {script}:7 in build(): 1 element"
+        in out
+    )
 
 
 def test_build_reports_script_failures_with_line_numbers(tmp_path, capsys):
@@ -156,7 +164,14 @@ def test_outputs_go_where_they_are_asked_creating_folders(tmp_path):
     shots = tmp_path / "shots" / "look.png"
     assert (
         run(
-            "render", str(model), "--views", "perspective", "--views", "top", "--output", str(shots)
+            "render",
+            str(model),
+            "--views",
+            "perspective",
+            "--views",
+            "top",
+            "--output",
+            str(shots),
         )
         == 0
     )
@@ -169,7 +184,9 @@ def test_files_that_cannot_be_written_or_read_are_errors(tmp_path, capsys):
     script.write_text(TOWER)
     blocker = tmp_path / "blocker"
     blocker.write_text("a file where a folder would go")
-    assert run("build", str(script), "--output", str(blocker / "tower.bricky.json")) == 2
+    assert (
+        run("build", str(script), "--output", str(blocker / "tower.bricky.json")) == 2
+    )
     assert f"cannot write {blocker / 'tower.bricky.json'}" in capsys.readouterr().err
     assert run("check", str(tmp_path)) == 2
     assert f"cannot read {tmp_path}" in capsys.readouterr().err
@@ -180,9 +197,14 @@ DOWNLOADS = Path(__file__).parent / "data" / "bricklink"
 
 def test_the_catalog_is_imported_and_looked_into(tmp_path, capsys, monkeypatch):
     output = tmp_path / "catalog.json"
-    assert run("catalog", "import", "--bricklink", str(DOWNLOADS), "--output", str(output)) == 0
+    assert (
+        run("catalog", "import", "--bricklink", str(DOWNLOADS), "--output", str(output))
+        == 0
+    )
     out = capsys.readouterr().out
-    assert "imported 9 parts and 6 colors from:\n  BrickLink catalog downloads of " in out
+    assert (
+        "imported 9 parts and 6 colors from:\n  BrickLink catalog downloads of " in out
+    )
     assert "5 parts have a shape and can be placed; 4 have none" in out
     assert "shapes by source: name 3, printed 2" in out
     assert "  Technic, Brick: 1" in out
@@ -195,7 +217,8 @@ def test_the_catalog_is_imported_and_looked_into(tmp_path, capsys, monkeypatch):
     out = capsys.readouterr().out
     assert "printed on: 3068b, whose shape it has" in out
     assert (
-        "shape: tile, 2 x 2 studs (x by y, unrotated), 1 plate tall, 0 studs, 4 anti-studs" in out
+        "shape: tile, 2 x 2 studs (x by y, unrotated), 1 plate tall, 0 studs, 4 anti-studs"
+        in out
     )
     picture = tmp_path / "brick.png"
     assert run("catalog", "show", "3001", "--render", "--output", str(picture)) == 0
@@ -210,7 +233,9 @@ def test_the_catalog_is_imported_and_looked_into(tmp_path, capsys, monkeypatch):
     assert "part 3700 has no shape to draw" in capsys.readouterr().err
 
 
-def test_shapes_come_from_ldraw_for_parts_no_name_describes(tmp_path, capsys, monkeypatch):
+def test_shapes_come_from_ldraw_for_parts_no_name_describes(
+    tmp_path, capsys, monkeypatch
+):
     output = tmp_path / "catalog.json"
     ldraw = str(DOWNLOADS.parent / "ldraw")
     assert run("catalog", "import", "--ldraw", ldraw, "--output", str(output)) == 0
@@ -222,12 +247,16 @@ def test_shapes_come_from_ldraw_for_parts_no_name_describes(tmp_path, capsys, mo
     assert run("catalog", "show", "4490") == 0
     out = capsys.readouterr().out
     assert (
-        "shape: boxes, 3 x 1 studs (x by y, unrotated), 3 plates tall, 3 studs, 2 anti-studs" in out
+        "shape: boxes, 3 x 1 studs (x by y, unrotated), 3 plates tall, 3 studs, 2 anti-studs"
+        in out
     )
     assert "converted from LDraw 4490.dat, as it is oriented there" in out
     assert run("catalog", "verify") == 0
     assert run("catalog", "import") == 2
-    assert "needs BrickLink's downloads, an LDraw library, or both" in capsys.readouterr().err
+    assert (
+        "needs BrickLink's downloads, an LDraw library, or both"
+        in capsys.readouterr().err
+    )
 
 
 def test_show_maps_a_sloped_top_and_draws_the_part_outside_the_workspace(
@@ -237,15 +266,22 @@ def test_show_maps_a_sloped_top_and_draws_the_part_outside_the_workspace(
     monkeypatch.chdir(tmp_path)
     assert run("catalog", "show", "3039", "--render") == 0  # Slope 45 2 x 2
     out = capsys.readouterr().out
-    assert "height over each square in plates, north up:\n       3    3\n    1.75 1.75\n" in out
+    assert (
+        "height over each square in plates, north up:\n       3    3\n    1.75 1.75\n"
+        in out
+    )
     assert (tmp_path / "parts" / "3039.png").is_file()
     assert not (tmp_path / "3039.png").exists()
     assert run("catalog", "show", "3001") == 0
     assert "height over" not in capsys.readouterr().out
 
 
-def test_help_writes_choices_as_the_values_the_command_line_accepts(capsys, monkeypatch):
-    monkeypatch.setenv("PYTHON_COLORS", "0")  # argparse colors help where CI forces color
+def test_help_writes_choices_as_the_values_the_command_line_accepts(
+    capsys, monkeypatch
+):
+    monkeypatch.setenv(
+        "PYTHON_COLORS", "0"
+    )  # argparse colors help where CI forces color
     assert run("render", "--help") == 0
     out = capsys.readouterr().out
     assert "--views list[{sheet,perspective,perspective-south-west," in out

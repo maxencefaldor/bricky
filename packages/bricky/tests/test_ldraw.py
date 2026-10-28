@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import shutil
 from pathlib import Path
 
@@ -31,12 +33,18 @@ def test_a_brick_becomes_a_box_with_studs_on_top_and_anti_studs_below():
     assert shape.studs == ((10, 10, 24, "+z"), (30, 10, 24, "+z"))
     assert shape.anti_studs == ((10, 10), (30, 10))
     assert shape.source == "LDraw 3004.dat"
-    assert ldraw_shape(LIBRARY, "3004old").boxes == shape.boxes  # moved: follows the reference
+    assert (
+        ldraw_shape(LIBRARY, "3004old").boxes == shape.boxes
+    )  # moved: follows the reference
 
 
 def test_solid_undersides_have_no_anti_studs_and_openings_stay_open():
     baseplate = ldraw_shape(LIBRARY, "3867")
-    assert (baseplate.size, len(baseplate.studs), baseplate.anti_studs) == ((40, 40, 4), 4, ())
+    assert (baseplate.size, len(baseplate.studs), baseplate.anti_studs) == (
+        (40, 40, 4),
+        4,
+        (),
+    )
     arch = ldraw_shape(LIBRARY, "4490")
     assert arch.anti_studs == ((10, 10), (50, 10))  # under the legs only
     assert arch.boxes == (
@@ -49,7 +57,9 @@ def test_solid_undersides_have_no_anti_studs_and_openings_stay_open():
 def test_parts_that_cannot_be_converted_say_why():
     with pytest.raises(BrickyError, match="encloses no volume"):
         ldraw_shape(LIBRARY, "990001")
-    with pytest.raises(BrickyError, match=r"no file missing\.dat, which 990002\.dat uses"):
+    with pytest.raises(
+        BrickyError, match=r"no file missing\.dat, which 990002\.dat uses"
+    ):
         ldraw_shape(LIBRARY, "990002")
 
 
@@ -129,17 +139,25 @@ def test_an_import_from_both_shapes_by_name_then_by_ldraw_and_ldraw_wins_a_disag
         ),
     )
     assert parts["3867"].shape is not None
-    assert parts["3867"].shape.family is Family.BOXES  # LDraw's shape, where they disagree
-    assert coverage.sources[1].startswith("LDraw.org Parts Library, CC BY, release 2025-01, at ")
+    assert (
+        parts["3867"].shape.family is Family.BOXES
+    )  # LDraw's shape, where they disagree
+    assert coverage.sources[1].startswith(
+        "LDraw.org Parts Library, CC BY, release 2025-01, at "
+    )
 
 
-def test_a_part_whose_ldraw_shape_only_lacks_anti_studs_keeps_its_name_s_shape(tmp_path):
+def test_a_part_whose_ldraw_shape_only_lacks_anti_studs_keeps_its_name_s_shape(
+    tmp_path,
+):
     shutil.copy(DATA / "bricklink" / "Colors.xml", tmp_path / "Colors.xml")
     (tmp_path / "parts.xml").write_text(parts_download([("3005", "Brick 1 x 1")]))
     catalog_file, coverage = import_catalog(read_downloads(tmp_path), LIBRARY)
     (brick,) = catalog_file.parts
     assert brick.shape is not None
-    assert brick.shape.family is Family.BRICK  # LDraw's solid underside finds no room for a stud
+    assert (
+        brick.shape.family is Family.BRICK
+    )  # LDraw's solid underside finds no room for a stud
     assert coverage.disagreements == (
         (
             "3005 Brick 1 x 1 keeps its name's shape: its name gives 20 x 20 x 24 units, 1 stud, "

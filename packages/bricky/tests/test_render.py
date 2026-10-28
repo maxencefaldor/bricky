@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import asyncio
 import json
 import struct
@@ -51,7 +53,14 @@ def test_scenes_drop_seated_studs_and_keep_exposed_ones():
     scene = build_scene(stack().build(), default_catalog())
     assert len(scene.studs) == 8
     assert {stud[4] for stud in scene.studs} == {scene.uids.index("top")}
-    assert scene.bounds == (0, 0, 0, 2 * STUD, 4 * STUD, 6 * PLATE + STUD_HEIGHT)  # stud tips
+    assert scene.bounds == (
+        0,
+        0,
+        0,
+        2 * STUD,
+        4 * STUD,
+        6 * PLATE + STUD_HEIGHT,
+    )  # stud tips
     assert scene.title.startswith("stack: 2 elements, 2 x 4 studs, 6 plates tall")
 
 
@@ -61,7 +70,9 @@ def test_scenes_mark_the_parts_diagnostics_name():
     model = builder.build()
     report = check_model(model, settings=Settings())
     scene = build_scene(model, default_catalog(), report=report)
-    flags = dict(zip(scene.uids, (element[1] for element in scene.elements), strict=True))
+    flags = dict(
+        zip(scene.uids, (element[1] for element in scene.elements), strict=True)
+    )
     assert flags["float"] & Flag.ERROR
     assert not flags["top"] & Flag.ERROR
     assert [label.text for label in scene.labels] == ["E301 float"]
@@ -83,7 +94,9 @@ def test_highlights_select_by_uid_or_script_function():
         model, default_catalog(), provenance=provenance, highlight=["@lintels"]
     )
     for scene in (by_uid, by_function):
-        flags = dict(zip(scene.uids, (element[1] for element in scene.elements), strict=True))
+        flags = dict(
+            zip(scene.uids, (element[1] for element in scene.elements), strict=True)
+        )
         assert flags["lintel1"] & Flag.HIGHLIGHT
         assert flags["post"] & Flag.GHOST
     with pytest.raises(BrickyError, match="matches no element"):
@@ -94,7 +107,9 @@ def test_highlights_select_by_uid_or_script_function():
 
 def test_scenes_mark_the_parts_new_or_changed_since_the_last_build():
     scene = build_scene(stack().build(), default_catalog(), changed=["top"])
-    flags = dict(zip(scene.uids, (element[1] for element in scene.elements), strict=True))
+    flags = dict(
+        zip(scene.uids, (element[1] for element in scene.elements), strict=True)
+    )
     assert flags["top"] == Flag.CHANGED
     assert flags["bottom"] == 0
 
@@ -110,7 +125,10 @@ def test_the_standalone_viewer_embeds_the_scene(tmp_path):
     scene = build_scene(stack().build(), default_catalog(), cull=False)
     path = write_html(scene, tmp_path / "stack.html")
     page = path.read_text()
-    assert '"three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"' in page
+    assert (
+        '"three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"'
+        in page
+    )
     start = page.index('<script type="application/json" id="scene">') + len(
         '<script type="application/json" id="scene">'
     )
@@ -126,7 +144,9 @@ def test_the_renderer_draws_every_view_at_the_requested_size():
     async def draw() -> list[bytes]:
         async with Renderer(Settings().render_browser) as renderer:
             first = await renderer.render(scene, views, width=640, height=480)
-            again = await renderer.render(scene, [View.PERSPECTIVE], width=320, height=240)
+            again = await renderer.render(
+                scene, [View.PERSPECTIVE], width=320, height=240
+            )
         return [*first, *again]
 
     images = asyncio.run(draw())
@@ -137,7 +157,9 @@ def test_the_renderer_draws_every_view_at_the_requested_size():
 def test_the_perspectives_from_each_corner_draw_different_pictures():
     builder = ModelBuilder("corner")
     builder.place("3001", at=(0, 0, 0), color="Red")
-    builder.place("3003", at=(0, 0, 3), color="Blue")  # off center, so every corner differs
+    builder.place(
+        "3003", at=(0, 0, 3), color="Blue"
+    )  # off center, so every corner differs
     scene = build_scene(builder.build(), default_catalog())
     corners = [view for view in View if view.value.startswith("perspective")]
 
@@ -177,7 +199,9 @@ def test_meshes_are_drawn_as_their_own_profile():
 
         async def draw() -> bytes:
             async with Renderer(Settings().render_browser) as renderer:
-                (image,) = await renderer.render(scene, [View.RIGHT], width=400, height=300)
+                (image,) = await renderer.render(
+                    scene, [View.RIGHT], width=400, height=300
+                )
             return image
 
         return asyncio.run(draw())

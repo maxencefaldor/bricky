@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Write the command-line reference from the commands themselves.
 
 Run from the repository root: ``uv run python docs/commands.py``. Every option's flag, default and
@@ -34,7 +35,9 @@ Each command's options come from a request model in `bricky.service`, which the
 
 def _positional(field: FieldInfo) -> bool:
     """Whether the field is a positional argument, which pydantic-settings marks in metadata."""
-    return any(getattr(item, "__name__", "") == "_CliPositionalArg" for item in field.metadata)
+    return any(
+        getattr(item, "__name__", "") == "_CliPositionalArg" for item in field.metadata
+    )
 
 
 def _flag(name: str, field: FieldInfo) -> str:
@@ -77,11 +80,17 @@ def _section(path: str, command: type[BaseModel], summary: str) -> list[str]:
     ]
 
 
-def _subcommands(group: type[BaseModel], prefix: str) -> list[tuple[str, type[BaseModel], str]]:
+def _subcommands(
+    group: type[BaseModel], prefix: str
+) -> list[tuple[str, type[BaseModel], str]]:
     found = []
     for name, field in group.model_fields.items():
         command = next(
-            (item for item in getattr(field.annotation, "__args__", ()) if isinstance(item, type)),
+            (
+                item
+                for item in getattr(field.annotation, "__args__", ())
+                if isinstance(item, type)
+            ),
             None,
         )
         if command is None or not issubclass(command, BaseModel):

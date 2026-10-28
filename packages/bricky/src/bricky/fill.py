@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Fill voxels with bricks and plates, the way a builder lays courses.
 
 Many models are easiest to draw as voxels: which color fills each stud square, one plate tall.
@@ -113,16 +114,22 @@ def plan_fill(
                 square: color
                 for square, color in level.items()
                 if all(course[k].get(square) == color for k in range(1, COURSE))
-                and not any((near, color) in hanging for near in (square, *_neighbors(square)))
+                and not any(
+                    (near, color) in hanging for near in (square, *_neighbors(square))
+                )
             }
             along_x = (z // COURSE) % 2 == 0
-            bricks = _Packer(whole, z, BRICKS, along_x, below, made_in, floating=False).pack()
+            bricks = _Packer(
+                whole, z, BRICKS, along_x, below, made_in, floating=False
+            ).pack()
             placements += bricks
             for brick in bricks:
                 for square in _squares(brick, BRICKS):
                     for k in range(COURSE):
                         bricked[z + k].add(square)
-        rest = {square: color for square, color in level.items() if square not in bricked[z]}
+        rest = {
+            square: color for square, color in level.items() if square not in bricked[z]
+        }
         placements += _Packer(rest, z, PLATES, z % 2 == 1, below, made_in).pack()
     return placements
 
@@ -156,7 +163,9 @@ class _Packer:
         farthest from it, since few parts can hold them. The rest follow in rows along the chosen
         axis, each covered by a part whose corner is that square.
         """
-        order = sorted(self.free, key=lambda square: square[::-1] if self.along_x else square)
+        order = sorted(
+            self.free, key=lambda square: square[::-1] if self.along_x else square
+        )
         if self.z != 0:
             reach = self.reach()
             overhanging = [square for square in order if reach.get(square, 0) > 0]
@@ -165,7 +174,11 @@ class _Packer:
                 if start in self.free:
                     self.cover(start, anywhere=True)
         for start in order:
-            if start in self.free and not self.cover(start, anywhere=False) and self.floating:
+            if (
+                start in self.free
+                and not self.cover(start, anywhere=False)
+                and self.floating
+            ):
                 # No part both rests on the level below and comes in this color: a 1 x 1 part.
                 self.take(start, 1, 1, (1, 1))
         return self.placed
@@ -181,7 +194,10 @@ class _Packer:
         while queue:
             square = queue.popleft()
             for neighbor in _neighbors(square):
-                if neighbor not in steps and self.free.get(neighbor) == self.free[square]:
+                if (
+                    neighbor not in steps
+                    and self.free.get(neighbor) == self.free[square]
+                ):
                     steps[neighbor] = steps[square] + 1
                     queue.append(neighbor)
         return steps
@@ -196,7 +212,9 @@ class _Packer:
         color = self.free[start]
         best: tuple[int, tuple[Square, int, int, tuple[int, int]]] | None = None
         for short, long in sorted(self.parts, key=_area, reverse=True):
-            if self.made_in is not None and not self.made_in(self.parts[short, long], color):
+            if self.made_in is not None and not self.made_in(
+                self.parts[short, long], color
+            ):
                 continue
             shapes = (long, short), (short, long)
             for width, depth in dict.fromkeys(shapes if self.along_x else shapes[::-1]):
@@ -204,7 +222,9 @@ class _Packer:
                     if not self.fits(corner, width, depth, color):
                         continue
                     candidate = corner, width, depth, (short, long)
-                    stranded = self.stranded(_span(corner, width, depth)) if anywhere else 0
+                    stranded = (
+                        self.stranded(_span(corner, width, depth)) if anywhere else 0
+                    )
                     if stranded == 0:
                         self.take(*candidate)
                         return True
@@ -250,7 +270,9 @@ class _Packer:
                     break
         return count
 
-    def take(self, corner: Square, width: int, depth: int, size: tuple[int, int]) -> None:
+    def take(
+        self, corner: Square, width: int, depth: int, size: tuple[int, int]
+    ) -> None:
         """Place the part of ``size`` at ``corner``, ``width`` studs along x."""
         rotation = "R0" if (width, depth) == size else "R90"
         self.placed.append(
@@ -275,7 +297,9 @@ def _area(size: tuple[int, int]) -> tuple[int, int]:
     return size[0] * size[1], size[1]
 
 
-def _corners(start: Square, width: int, depth: int, *, anywhere: bool) -> Iterator[Square]:
+def _corners(
+    start: Square, width: int, depth: int, *, anywhere: bool
+) -> Iterator[Square]:
     """Corners of the footprints that cover ``start``: only ``start`` itself, unless anywhere."""
     if not anywhere:
         yield start
@@ -285,7 +309,9 @@ def _corners(start: Square, width: int, depth: int, *, anywhere: bool) -> Iterat
             yield start[0] - i, start[1] - j
 
 
-def _squares(placement: Placement, parts: Mapping[tuple[int, int], str]) -> Iterator[Square]:
+def _squares(
+    placement: Placement, parts: Mapping[tuple[int, int], str]
+) -> Iterator[Square]:
     """The stud squares a placed part covers."""
     short, long = next(size for size, part in parts.items() if part == placement.part)
     width, depth = (short, long) if placement.rotation == "R0" else (long, short)

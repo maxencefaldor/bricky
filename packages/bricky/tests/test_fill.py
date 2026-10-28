@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -51,7 +53,8 @@ def test_a_floor_between_two_walls_holds_together_across_the_gap():
 def test_an_overhang_of_another_color_leaves_the_bricks_beside_it_alone():
     wall = {(x, 0, z): "Red" for x in range(4) for z in range(3)}
     parts = [
-        (placement.part, placement.color) for placement in plan_fill(wall | {(0, 1, 1): "Blue"})
+        (placement.part, placement.color)
+        for placement in plan_fill(wall | {(0, 1, 1): "Blue"})
     ]
     assert parts == [(BRICKS[1, 4], "Red"), (PLATES[1, 1], "Blue")]
 
@@ -88,7 +91,11 @@ columns = st.dictionaries(
 @settings(deadline=None, max_examples=40)
 @given(columns)
 def test_columns_standing_on_the_ground_fill_exactly_and_hold_together(heights):
-    shape = {(x, y, z): color for (x, y), (height, color) in heights.items() for z in range(height)}
+    shape = {
+        (x, y, z): color
+        for (x, y), (height, color) in heights.items()
+        for z in range(height)
+    }
     builder = ModelBuilder("columns")
     builder.fill(shape)
     model = builder.build()

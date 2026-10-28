@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Reading and writing model files and their source maps.
 
 A model file (``name.bricky.json``) holds the model alone. Its source map
@@ -90,8 +91,12 @@ def save_source_map(provenance: Provenance, *, script: Path, model_path: Path) -
     except OSError as error:
         message = f"cannot read {model_path}: {error.strerror or error}"
         raise BrickyError(message) from None
-    source_map = SourceMap(script=script.as_posix(), model_sha256=digest, provenance=provenance)
-    return write_file(source_map_path(model_path), _json(source_map.model_dump_json(indent=2)))
+    source_map = SourceMap(
+        script=script.as_posix(), model_sha256=digest, provenance=provenance
+    )
+    return write_file(
+        source_map_path(model_path), _json(source_map.model_dump_json(indent=2))
+    )
 
 
 def load_source_map(model_path: Path) -> Provenance | None:

@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import ast
 import inspect
 
@@ -42,7 +44,9 @@ def test_reports_describe_each_element_and_count_script_lines():
     wall(builder, 0, 0)
     wall(builder, 1, 0)
     wall(builder, 20, 9)
-    report = check_model(builder.build(), provenance=builder.provenance(), settings=Settings())
+    report = check_model(
+        builder.build(), provenance=builder.provenance(), settings=Settings()
+    )
     assert [d.code for d in report.diagnostics] == ["E201", "E301"]
     info = report.elements["e1"]
     assert (info.part_name, info.color_name) == ("Brick 2 x 4", "Red")

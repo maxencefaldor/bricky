@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Reference for project 03: the footbridge that inputs/bridge.py means to build."""
 
 from bricky import ModelBuilder

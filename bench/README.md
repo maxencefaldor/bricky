@@ -1,9 +1,8 @@
 # bricky benchmark
 
-Ten projects, from a brick wall to Notre-Dame de Paris, that measure how well an agent builds
-LEGO® models with bricky. Each project is a prompt, sometimes with inputs: pictures, a voxel-by-voxel
-plan, notes, or a broken script to repair. Seven have a reference model the agent never sees, and
-are scored against it; the other three are open briefs, judged by looking at the result.
+Ten projects, from a brick wall to Notre-Dame de Paris, that measure how well an agent builds LEGO® models with bricky.
+Each project is a prompt, sometimes with inputs: pictures, a voxel-by-voxel plan, notes, or a broken script to repair.
+Seven have a reference model the agent never sees, and are scored against it; the other three are open briefs, judged by looking at the result.
 
 | # | Project | What the agent gets | Scored |
 | --- | --- | --- | --- |
@@ -27,31 +26,27 @@ uv run bricky-bench run --repeats 3 --jobs 2 # every project three times, two at
 uv run bricky-bench run --model opus         # choose Claude Code's model
 ```
 
-Run from the repository root. Each run needs Claude Code (`claude`) signed in, and costs real
-model usage.
+Run from the repository root.
+Each run needs Claude Code (`claude`) signed in, and costs real model usage.
 
 For every run, the runner:
 
-1. Builds bricky's wheel and makes a fresh workspace in the system's temporary folder, outside the
-   repository: a uv project that installs that wheel, plus the `build-model` skill, the
-   `examples/` scripts and the project's `inputs/`. The agent never sees `reference.py`.
-2. Starts Claude Code there in print mode with the project's prompt and its turn and time budget.
+1. Builds bricky's wheel and makes a fresh workspace in the system's temporary folder, outside the repository: a uv project that installs that wheel, plus the `build-model` skill, the `examples/` scripts and the project's `inputs/`.
+   The agent never sees `reference.py`.
+1. Starts Claude Code there in print mode with the project's prompt and its turn and time budget.
    The agent may read, write and edit files, and run commands through `uv run`.
-3. Builds the agent's final `models/<name>.py` in the same workspace, exactly as the agent would,
-   and scores it.
+1. Builds the agent's final `models/<name>.py` in the same workspace, exactly as the agent would, and scores it.
 
-Everything lands in `bench/runs/<time>/`: per run the transcript, the agent's log, its workspace
-(script, model, source map and pictures) and `record.json`; for the whole invocation
-`summary.json` and `summary.md`.
+Everything lands in `bench/runs/<time>/`: per run the transcript, the agent's log, its workspace (script, model, source map and pictures) and `record.json`; for the whole invocation `summary.json` and `summary.md`.
 
 ## Scores
 
 - **Facts:** whether the final script builds, its element count, and its errors and warnings.
-- **Fidelity**, for projects with a reference: the two models are compared voxel by voxel, a
-  voxel being 1 x 1 stud and 1 plate tall (see `bricky.voxels`). The agent's model may be rotated
-  and shifted; the best match counts. `shape` is the share of voxels filled in both models among
-  voxels filled in either. `color` counts a shared voxel only when its colors match too. 1 is
-  identical.
+- **Fidelity**, for projects with a reference: the two models are compared voxel by voxel, a voxel being 1 x 1 stud and 1 plate tall (see `bricky.voxels`).
+  The agent's model may be rotated and shifted; the best match counts.
+  `shape` is the share of voxels filled in both models among voxels filled in either.
+  `color` counts a shared voxel only when its colors match too.
+  1 is identical.
 - **Effort:** turns, minutes, Claude Code's cost estimate, and how often the agent built.
 
 Judged projects have facts and effort but no fidelity: compare their pictures by eye.
@@ -65,6 +60,5 @@ bench/projects/04-house-plans/
   inputs/        what the agent gets besides the prompt
 ```
 
-Inputs listed under `[[generate]]` in `project.toml` (pictures and voxel plans) come from the
-reference: `uv run bricky-bench prepare` writes them again after a reference changes. They are
-committed, so every run gives the agent the same files.
+Inputs listed under `[[generate]]` in `project.toml` (pictures and voxel plans) come from the reference: `uv run bricky-bench prepare` writes them again after a reference changes.
+They are committed, so every run gives the agent the same files.

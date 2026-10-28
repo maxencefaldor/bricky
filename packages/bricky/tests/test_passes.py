@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import pytest
 
 from bricky import (
@@ -45,7 +47,9 @@ def test_parts_resting_on_the_ground_need_no_connection():
 
 
 def test_overlapping_parts_collide():
-    assert codes(stack(("3001", (0, 0, 0), "R0"), ("3001", (1, 0, 0), "R0"))) == ["E201"]
+    assert codes(stack(("3001", (0, 0, 0), "R0"), ("3001", (1, 0, 0), "R0"))) == [
+        "E201"
+    ]
 
 
 def test_half_stud_offsets_are_blocked_and_float():
@@ -91,7 +95,9 @@ def test_colors_a_part_never_came_in_are_reported_once_per_part_and_color():
     builder.place("3001", at=(4, 0, 0), color=never.id, id="never")
     builder.place("3001", at=(8, 0, 0), color=never.id, id="again")
     report = check_model(builder.build(), passes=["schema"])
-    assert [(d.code, d.elements) for d in report.diagnostics] == [("W104", ("never", "again"))]
+    assert [(d.code, d.elements) for d in report.diagnostics] == [
+        ("W104", ("never", "again"))
+    ]
     assert report.ok
 
 
@@ -107,7 +113,9 @@ def test_reports_cap_diagnostics_but_count_everything():
 
 
 def test_profiles_report_passes_that_are_not_installed():
-    report = check_model(stack(("3001", (0, 0, 0), "R0")), profile="physical", settings=Settings())
+    report = check_model(
+        stack(("3001", (0, 0, 0), "R0")), profile="physical", settings=Settings()
+    )
     assert report.passes == DIGITAL
     assert report.missing == ("stability", "buildability", "budget")
 
@@ -120,5 +128,7 @@ def test_unknown_profiles_are_rejected():
 def test_configured_profiles_extend_the_defaults():
     settings = Settings(profiles={"quick": ("schema",)})
     assert set(settings.profiles) == {"digital", "physical", "quick"}
-    report = check_model(stack(("3001", (0, 0, 0), "R0")), profile="quick", settings=settings)
+    report = check_model(
+        stack(("3001", (0, 0, 0), "R0")), profile="quick", settings=settings
+    )
     assert report.passes == ("schema",)

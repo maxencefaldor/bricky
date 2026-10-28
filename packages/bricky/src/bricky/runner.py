@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Run one build script in a process of its own.
 
 The service starts ``python -P -m bricky.runner SCRIPT RESULT`` for every build. The script's
@@ -59,7 +60,9 @@ def run(script: Path) -> RunResult:
         with _importable(script.parent):
             return _run(script, root)
     except SystemExit as error:
-        return RunResult(failure=_failure(error, root, f"the script exited with {error.code!r}"))
+        return RunResult(
+            failure=_failure(error, root, f"the script exited with {error.code!r}")
+        )
     except BaseException as error:  # noqa: BLE001 - a build script may raise anything
         return RunResult(failure=_failure(error, root, str(error)))
 
@@ -76,7 +79,9 @@ def _run(script: Path, root: Path) -> RunResult:
         provenance = result.provenance().relative_to(root)
         result = result.build()
     if not isinstance(result, Model):
-        message = f"build() returned {type(result).__name__}, not a ModelBuilder or a Model"
+        message = (
+            f"build() returned {type(result).__name__}, not a ModelBuilder or a Model"
+        )
         return RunResult(failure=Failure(error="BuildScriptError", message=message))
     return RunResult(model=result, provenance=provenance)
 
@@ -94,20 +99,25 @@ def _importable(directory: Path) -> Generator[None]:
 def _failure(error: BaseException, root: Path, message: str) -> Failure:
     """Describe an exception by the script lines it passed through, innermost first."""
     frames = [
-        Frame(file=frame.f_code.co_filename, line=line or 1, function=frame.f_code.co_name)
+        Frame(
+            file=frame.f_code.co_filename, line=line or 1, function=frame.f_code.co_name
+        )
         for frame, line in traceback.walk_tb(error.__traceback__)
         if is_script_file(frame.f_code.co_filename)
     ]
     frames.reverse()
     relative = tuple(
-        frame.model_copy(update={"file": relative_path(frame.file, root)}) for frame in frames
+        frame.model_copy(update={"file": relative_path(frame.file, root)})
+        for frame in frames
     )
     return Failure(error=type(error).__name__, message=message, frames=relative)
 
 
 def main(argv: list[str] | None = None) -> None:
     """Run the script named by the first argument and write the result to the second."""
-    script, result = (Path(argument) for argument in (argv if argv is not None else sys.argv[1:]))
+    script, result = (
+        Path(argument) for argument in (argv if argv is not None else sys.argv[1:])
+    )
     outcome = run(script)
     result.write_text(outcome.model_dump_json(), encoding="utf-8")
 

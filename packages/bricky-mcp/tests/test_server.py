@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import asyncio
 import os
 import sys
@@ -109,7 +111,11 @@ def test_render_model_returns_one_picture_per_view(tmp_path: Path):
     builder.place("3001", at=(0, 0, 0), color="Red", id="base")
     path = tmp_path / "m.bricky.json"
     save_model(builder.build(), path)
-    arguments = {"model": str(path), "views": ["perspective", "top"], "highlight": ["base"]}
+    arguments = {
+        "model": str(path),
+        "views": ["perspective", "top"],
+        "highlight": ["base"],
+    }
     result = call("render_model", arguments)
     assert not result.is_error
     text, *images = result.content
@@ -139,15 +145,24 @@ def test_catalog_tools():
 
 def test_scripts_that_print_cannot_corrupt_the_stdio_channel(tmp_path: Path):
     script = tmp_path / "noisy.py"
-    script.write_text(SCRIPT.replace('print("chatter on stdout")', 'print("{not json}" * 50)'))
-    environment = {key: value for key, value in os.environ.items() if key.startswith("BRICKY_")}
+    script.write_text(
+        SCRIPT.replace('print("chatter on stdout")', 'print("{not json}" * 50)')
+    )
+    environment = {
+        key: value for key, value in os.environ.items() if key.startswith("BRICKY_")
+    }
     server = StdioServerParameters(
-        command=sys.executable, args=["-m", "bricky_mcp"], env=environment, cwd=str(tmp_path)
+        command=sys.executable,
+        args=["-m", "bricky_mcp"],
+        env=environment,
+        cwd=str(tmp_path),
     )
 
     async def go():
         async with Client(server) as client:
-            built = await client.call_tool("build_model", {"script": str(script), "render": False})
+            built = await client.call_tool(
+                "build_model", {"script": str(script), "render": False}
+            )
             colors = await client.call_tool("search_colors", {"query": "red"})
             return built, colors
 

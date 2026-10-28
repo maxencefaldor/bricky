@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The service layer: every command, defined once.
 
 Each command is a request model plus an async function. The CLI runs them, the MCP server awaits
@@ -65,7 +66,9 @@ _PROFILE_HELP: Final = (
     "Profile to run, such as 'digital' or 'physical'; defaults to the configured one."
 )
 _PASSES_HELP: Final = "Pass names to run instead of a profile."
-_MAX_DIAGNOSTICS_HELP: Final = "Maximum diagnostics to return; defaults to the configured cap."
+_MAX_DIAGNOSTICS_HELP: Final = (
+    "Maximum diagnostics to return; defaults to the configured cap."
+)
 _VIEWS_HELP: Final = (
     "Views to draw: sheet (perspective, front, right and top on one image), perspective (from the "
     "south-east), perspective-south-west, perspective-north-west, perspective-north-east, front, "
@@ -89,7 +92,9 @@ class Session:
     first render and keeps it until :meth:`close`. A session is an async context manager.
     """
 
-    def __init__(self, settings: Settings | None = None, catalog: Catalog | None = None) -> None:
+    def __init__(
+        self, settings: Settings | None = None, catalog: Catalog | None = None
+    ) -> None:
         self.settings = settings or Settings()
         self.catalog = catalog or load_catalog(catalog_path(self.settings))
         self._renderer: Renderer | None = None
@@ -133,9 +138,15 @@ class Image(BaseModel):
 class ScriptOutput(BaseModel):
     """What a build script printed."""
 
-    stdout: str = Field(default="", description="Standard output, up to the configured limit.")
-    stderr: str = Field(default="", description="Standard error, up to the configured limit.")
-    truncated: bool = Field(default=False, description="Whether either stream was truncated.")
+    stdout: str = Field(
+        default="", description="Standard output, up to the configured limit."
+    )
+    stderr: str = Field(
+        default="", description="Standard error, up to the configured limit."
+    )
+    truncated: bool = Field(
+        default=False, description="Whether either stream was truncated."
+    )
 
     def describe(self) -> str:
         """Return the output as text, or an empty string when the script printed nothing."""
@@ -165,10 +176,14 @@ class Timings(BaseModel):
 class CheckRequest(BaseModel):
     """Check a model file and report diagnostics."""
 
-    model: CliPositionalArg[Path] = Field(description="Path to a .bricky.json model file.")
+    model: CliPositionalArg[Path] = Field(
+        description="Path to a .bricky.json model file."
+    )
     profile: str | None = Field(default=None, description=_PROFILE_HELP)
     passes: list[str] | None = Field(default=None, description=_PASSES_HELP)
-    max_diagnostics: int | None = Field(default=None, ge=1, description=_MAX_DIAGNOSTICS_HELP)
+    max_diagnostics: int | None = Field(
+        default=None, ge=1, description=_MAX_DIAGNOSTICS_HELP
+    )
 
 
 async def check(request: CheckRequest, session: Session) -> Report:
@@ -200,14 +215,19 @@ class BuildRequest(BaseModel):
         description="Python file defining build(), which returns a ModelBuilder or a Model."
     )
     output: Path | None = Field(
-        default=None, description="Where to save the model; defaults to <script>.bricky.json."
+        default=None,
+        description="Where to save the model; defaults to <script>.bricky.json.",
     )
     check: bool = Field(default=True, description="Check the model after building it.")
-    render: bool = Field(default=True, description="Render the model after checking it.")
+    render: bool = Field(
+        default=True, description="Render the model after checking it."
+    )
     views: list[View] = Field(default=[View.SHEET], description=_VIEWS_HELP)
     profile: str | None = Field(default=None, description=_PROFILE_HELP)
     passes: list[str] | None = Field(default=None, description=_PASSES_HELP)
-    max_diagnostics: int | None = Field(default=None, ge=1, description=_MAX_DIAGNOSTICS_HELP)
+    max_diagnostics: int | None = Field(
+        default=None, ge=1, description=_MAX_DIAGNOSTICS_HELP
+    )
 
 
 class LineCount(BaseModel):
@@ -231,12 +251,16 @@ class Changes(BaseModel):
         description="Elements with the same id and part, now in another position, rotation or "
         "color."
     )
-    unchanged: int = Field(description="Elements of the same part and color in the same space.")
+    unchanged: int = Field(
+        description="Elements of the same part and color in the same space."
+    )
     voxels_filled: int = Field(
         description="Voxels, each one stud square and one plate tall, empty before and filled now."
     )
     voxels_emptied: int = Field(description="Voxels filled before and empty now.")
-    voxels_recolored: int = Field(description="Voxels filled in both models, in another color.")
+    voxels_recolored: int = Field(
+        description="Voxels filled in both models, in another color."
+    )
     added_at: tuple[LineCount, ...] = Field(
         description="Added elements by the script line that placed them, most first."
     )
@@ -273,7 +297,9 @@ class Changes(BaseModel):
                     for count in counts[:_LISTED_LINES]
                 )
                 if len(counts) > _LISTED_LINES:
-                    lines.append(f"    ... and {len(counts) - _LISTED_LINES} more lines")
+                    lines.append(
+                        f"    ... and {len(counts) - _LISTED_LINES} more lines"
+                    )
         return "\n".join(lines)
 
 
@@ -284,7 +310,9 @@ class BuildResult(BaseModel):
     source_map: Path | None = Field(
         description="The saved source map, linking elements to script lines."
     )
-    elements: int = Field(description="Elements in the model, with every instance unfolded.")
+    elements: int = Field(
+        description="Elements in the model, with every instance unfolded."
+    )
     size: tuple[float, float, float] | None = Field(
         default=None,
         description="Size of the model's bodies: x and y in studs, z in plates; null when the "
@@ -295,8 +323,12 @@ class BuildResult(BaseModel):
         description="What changed since the last build saved a model at the same path; null on "
         "the first build."
     )
-    report: Report | None = Field(description="The check report; null when checking is off.")
-    images: tuple[Image, ...] = Field(description="Rendered pictures; empty when rendering is off.")
+    report: Report | None = Field(
+        description="The check report; null when checking is off."
+    )
+    images: tuple[Image, ...] = Field(
+        description="Rendered pictures; empty when rendering is off."
+    )
     seconds: Timings
 
     def describe(self) -> str:
@@ -340,7 +372,9 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
     changed: tuple[str, ...] = ()
     if earlier is not None:
         started = time.perf_counter()
-        changes, changed = await asyncio.to_thread(_compare, earlier, run, session.catalog)
+        changes, changed = await asyncio.to_thread(
+            _compare, earlier, run, session.catalog
+        )
         seconds.changes = time.perf_counter() - started
 
     report = None
@@ -414,7 +448,9 @@ async def run_script(script: Path, settings: Settings) -> ScriptRun:
     return ScriptRun(model=result.model, provenance=result.provenance, output=output)
 
 
-async def _run_child(script: Path, limit: int) -> tuple[RunResult | None, ScriptOutput, int]:
+async def _run_child(
+    script: Path, limit: int
+) -> tuple[RunResult | None, ScriptOutput, int]:
     """Run the child process to its end and return its result, its output and its exit code.
 
     When the caller stops waiting, through a timeout or a cancelled request, the function kills
@@ -433,11 +469,16 @@ async def _run_child(script: Path, limit: int) -> tuple[RunResult | None, Script
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        if process.stdout is None or process.stderr is None:  # pragma: no cover - pipes requested
+        if (
+            process.stdout is None or process.stderr is None
+        ):  # pragma: no cover - pipes requested
             message = "could not capture the build script's output"
             raise BrickyError(message)
         try:
-            (stdout, stdout_truncated), (stderr, stderr_truncated) = await asyncio.gather(
+            (
+                (stdout, stdout_truncated),
+                (stderr, stderr_truncated),
+            ) = await asyncio.gather(
                 _read_capped(process.stdout, limit), _read_capped(process.stderr, limit)
             )
             code = await process.wait()
@@ -504,9 +545,13 @@ def _by_line(
     if provenance is None:
         return ()
     counts = Counter(
-        str(source.site) for uid in uids if (source := provenance.trace(model, uid).source)
+        str(source.site)
+        for uid in uids
+        if (source := provenance.trace(model, uid).source)
     )
-    return tuple(LineCount(line=line, elements=count) for line, count in counts.most_common())
+    return tuple(
+        LineCount(line=line, elements=count) for line, count in counts.most_common()
+    )
 
 
 def _save(run: ScriptRun, script: Path, path: Path) -> Path | None:
@@ -540,7 +585,9 @@ def _with_output(message: str, output: ScriptOutput) -> str:
 class RenderRequest(BaseModel):
     """Render pictures of a model file."""
 
-    model: CliPositionalArg[Path] = Field(description="Path to a .bricky.json model file.")
+    model: CliPositionalArg[Path] = Field(
+        description="Path to a .bricky.json model file."
+    )
     views: list[View] = Field(default=[View.SHEET], description=_VIEWS_HELP)
     highlight: list[str] = Field(
         default_factory=list,
@@ -554,9 +601,15 @@ class RenderRequest(BaseModel):
         description="Clip the model to look inside: 'z<130' keeps what lies below 130 plates; x "
         "and y are in studs.",
     )
-    check: bool = Field(default=True, description="Mark the elements that diagnostics name.")
-    width: int = Field(default=_WIDTH, ge=200, le=4096, description="Image width in pixels.")
-    height: int = Field(default=_HEIGHT, ge=200, le=4096, description="Image height in pixels.")
+    check: bool = Field(
+        default=True, description="Mark the elements that diagnostics name."
+    )
+    width: int = Field(
+        default=_WIDTH, ge=200, le=4096, description="Image width in pixels."
+    )
+    height: int = Field(
+        default=_HEIGHT, ge=200, le=4096, description="Image height in pixels."
+    )
     output: Path | None = Field(
         default=None,
         description="Image file to write; with several views, each file name gets the view's "
@@ -621,7 +674,10 @@ async def render(request: RenderRequest, session: Session) -> RenderResult:
     started = time.perf_counter()
     if request.output is None:
         stem = model_stem(request.model)
-        paths = [request.model.with_name(f"{stem}.{view.value}.png") for view in request.views]
+        paths = [
+            request.model.with_name(f"{stem}.{view.value}.png")
+            for view in request.views
+        ]
         viewer = request.model.with_name(stem + ".html")
     else:
         paths = _view_paths(request.output, request.views)
@@ -707,7 +763,9 @@ class PartsRequest(BaseModel):
         description="Words to match against ids, names, categories and sizes, such as "
         "'plate 2x4' (quoted).",
     )
-    limit: int = Field(default=20, ge=1, le=500, description="Maximum number of parts to return.")
+    limit: int = Field(
+        default=20, ge=1, le=500, description="Maximum number of parts to return."
+    )
     shapeless: bool = Field(
         default=False,
         description="Also list the parts without a shape, which cannot be placed.",
@@ -725,12 +783,16 @@ class PartInfo(BaseModel):
         description="The family that turns the part's shape into geometry; null without a shape.",
     )
     footprint: tuple[int, int] | None = Field(
-        default=None, description="Studs along x, then along y, when the part is unrotated."
+        default=None,
+        description="Studs along x, then along y, when the part is unrotated.",
     )
     height: float | None = Field(default=None, description="Body height in plates.")
-    studs: int | None = Field(default=None, description="Number of studs, on top and on sides.")
+    studs: int | None = Field(
+        default=None, description="Number of studs, on top and on sides."
+    )
     note: str = Field(
-        default="", description="How the part sits when placed unrotated, where that matters."
+        default="",
+        description="How the part sits when placed unrotated, where that matters.",
     )
     base: str | None = Field(
         default=None, description="For a printed part, the part it is printed on."
@@ -771,16 +833,22 @@ class PartsResult(BaseModel):
             if note:
                 rows.append(" " * (widths[0] + 2) + note)
         shown = f"{len(self.parts)} of {self.total:,} matching parts"
-        rows.append(shown + ("; --limit shows more" if len(self.parts) < self.total else ""))
+        rows.append(
+            shown + ("; --limit shows more" if len(self.parts) < self.total else "")
+        )
         return "\n".join(rows)
 
 
 async def parts(request: PartsRequest, session: Session) -> PartsResult:
     """Search the parts catalog."""
     catalog = session.catalog
-    hits = await asyncio.to_thread(catalog.search_parts, request.query, shapeless=request.shapeless)
+    hits = await asyncio.to_thread(
+        catalog.search_parts, request.query, shapeless=request.shapeless
+    )
     shown = hits[: request.limit]
-    infos = await asyncio.to_thread(lambda: tuple(_part_info(catalog, entry) for entry in shown))
+    infos = await asyncio.to_thread(
+        lambda: tuple(_part_info(catalog, entry) for entry in shown)
+    )
     return PartsResult(parts=infos, total=len(hits))
 
 
@@ -811,7 +879,8 @@ class ColorsResult(BaseModel):
     def describe(self) -> str:
         """Return the result as a table."""
         rows = [
-            f"{color.id:>4}  {color.name:<22} {color.type:<12} {color.rgb}" for color in self.colors
+            f"{color.id:>4}  {color.name:<22} {color.type:<12} {color.rgb}"
+            for color in self.colors
         ]
         rows.append(_count(len(self.colors), "color"))
         return "\n".join(rows)
@@ -873,7 +942,9 @@ class CatalogImportResult(BaseModel):
             coverage.unshaped_by_category,
         )
         _section(
-            lines, "LDraw files that could not be converted, by reason", coverage.ldraw_failures
+            lines,
+            "LDraw files that could not be converted, by reason",
+            coverage.ldraw_failures,
         )
         if coverage.compared:
             disagreements = coverage.disagreements
@@ -881,13 +952,20 @@ class CatalogImportResult(BaseModel):
                 "",
                 f"compared {coverage.compared:,} named shapes with LDraw: "
                 + _count(len(disagreements), "disagreement"),
-                *(f"  {disagreement}" for disagreement in disagreements[:_LISTED_DISAGREEMENTS]),
+                *(
+                    f"  {disagreement}"
+                    for disagreement in disagreements[:_LISTED_DISAGREEMENTS]
+                ),
             ]
             hidden = len(disagreements) - _LISTED_DISAGREEMENTS
             if hidden > 0:
                 lines.append(f"  ... and {hidden} more, in the JSON output")
         if coverage.skipped_colors:
-            lines += ["", "colors left out:", *(f"  {color}" for color in coverage.skipped_colors)]
+            lines += [
+                "",
+                "colors left out:",
+                *(f"  {color}" for color in coverage.skipped_colors),
+            ]
         lines += ["", f"wrote {self.catalog}"]
         if not self.in_use:
             lines.append(
@@ -914,8 +992,14 @@ async def catalog_import(
     bricklink = None
     if request.bricklink is not None:
         bricklink = await asyncio.to_thread(read_downloads, request.bricklink)
-    ldraw = None if request.ldraw is None else await asyncio.to_thread(Library, request.ldraw)
-    catalog, coverage = await asyncio.to_thread(import_catalog, bricklink, ldraw, progress)
+    ldraw = (
+        None
+        if request.ldraw is None
+        else await asyncio.to_thread(Library, request.ldraw)
+    )
+    catalog, coverage = await asyncio.to_thread(
+        import_catalog, bricklink, ldraw, progress
+    )
     output = request.output or IMPORTED_CATALOG
     await asyncio.to_thread(write_file, output, catalog.dump())
     in_use = catalog_path(session.settings).resolve() == output.resolve()
@@ -931,10 +1015,14 @@ class CatalogStatusResult(BaseModel):
 
     catalog: Path = Field(description="The catalog file.")
     source: str
-    sample: bool = Field(description="Whether the catalog is the small sample shipped with bricky.")
+    sample: bool = Field(
+        description="Whether the catalog is the small sample shipped with bricky."
+    )
     parts: int
     shaped: int = Field(description="Parts with a shape, which can be placed.")
-    printed: int = Field(description="Printed parts shaped like the part they are printed on.")
+    printed: int = Field(
+        description="Printed parts shaped like the part they are printed on."
+    )
     colors: int
     by_family: dict[str, int] = Field(description="Shaped parts by family.")
 
@@ -958,7 +1046,9 @@ class CatalogStatusResult(BaseModel):
         return "\n".join(lines)
 
 
-async def catalog_status(request: CatalogStatusRequest, session: Session) -> CatalogStatusResult:  # noqa: ARG001 - every command takes its request
+async def catalog_status(
+    request: CatalogStatusRequest, session: Session
+) -> CatalogStatusResult:  # noqa: ARG001 - every command takes its request
     """Describe the catalog bricky uses."""
     catalog = session.catalog
     path = catalog_path(session.settings)
@@ -984,7 +1074,9 @@ async def catalog_status(request: CatalogStatusRequest, session: Session) -> Cat
 class CatalogShowRequest(BaseModel):
     """Show everything the catalog knows about one part."""
 
-    part: CliPositionalArg[str] = Field(description="BrickLink item number, such as '3001'.")
+    part: CliPositionalArg[str] = Field(
+        description="BrickLink item number, such as '3001'."
+    )
     render: bool = Field(
         default=False, description="Also draw the part, in the first color it comes in."
     )
@@ -1000,8 +1092,12 @@ class CatalogShowResult(BaseModel):
 
     part: CatalogPart
     info: PartInfo
-    colors: tuple[str, ...] = Field(description="Names of the colors the part comes in.")
-    anti_studs: int | None = Field(description="Number of anti-studs; null without a shape.")
+    colors: tuple[str, ...] = Field(
+        description="Names of the colors the part comes in."
+    )
+    anti_studs: int | None = Field(
+        description="Number of anti-studs; null without a shape."
+    )
     connectors: tuple[str, ...] = Field(
         default=(),
         description="Where the part's studs and anti-studs are, as text: maps of its top and its "
@@ -1041,7 +1137,9 @@ class CatalogShowResult(BaseModel):
         return "\n".join(lines)
 
 
-async def catalog_show(request: CatalogShowRequest, session: Session) -> CatalogShowResult:
+async def catalog_show(
+    request: CatalogShowRequest, session: Session
+) -> CatalogShowResult:
     """Describe one catalog part, and draw it when asked.
 
     Raises:
@@ -1054,7 +1152,9 @@ async def catalog_show(request: CatalogShowRequest, session: Session) -> Catalog
         raise BrickyError(message)
     part = catalog.part(entry.id)
     names = tuple(
-        color.name for color_id in entry.colors if (color := catalog.color(color_id)) is not None
+        color.name
+        for color_id in entry.colors
+        if (color := catalog.color(color_id)) is not None
     )
     images: tuple[Image, ...] = ()
     if request.render:
@@ -1062,11 +1162,18 @@ async def catalog_show(request: CatalogShowRequest, session: Session) -> Catalog
             message = f"part {entry.id} has no shape to draw"
             raise BrickyError(message)
         color = next(iter(entry.colors), _FALLBACK_COLOR)
-        model = Model(name=entry.id, elements=(Element(id=entry.id, part=entry.id, color=color),))
+        model = Model(
+            name=entry.id, elements=(Element(id=entry.id, part=entry.id, color=color),)
+        )
         path = request.output or PART_PICTURES / f"{entry.id}.png"
         path.parent.mkdir(parents=True, exist_ok=True)
         images = await _render(
-            session, model, provenance=None, report=None, views=[View.SHEET], paths=[path]
+            session,
+            model,
+            provenance=None,
+            report=None,
+            views=[View.SHEET],
+            paths=[path],
         )
     return CatalogShowResult(
         part=entry,
@@ -1074,7 +1181,9 @@ async def catalog_show(request: CatalogShowRequest, session: Session) -> Catalog
         colors=names,
         anti_studs=None
         if part is None
-        else sum(connector.kind is ConnectorKind.ANTI_STUD for connector in part.connectors),
+        else sum(
+            connector.kind is ConnectorKind.ANTI_STUD for connector in part.connectors
+        ),
         connectors=() if part is None else _connector_maps(part),
         heights=() if part is None else _heights(part),
         images=images,
@@ -1101,7 +1210,9 @@ def _connector_maps(part: Part) -> tuple[str, ...]:
             underside.add(square)
         else:
             kind = "stud" if connector.kind is ConnectorKind.STUD else "anti-stud"
-            facing = next(name for name, axis in AXES.items() if axis == connector.normal)
+            facing = next(
+                name for name, axis in AXES.items() if axis == connector.normal
+            )
             others.append(
                 f"  {kind} facing {facing} at x {to_studs(position.x):g}, "
                 f"y {to_studs(position.y):g}, z {to_plates(position.z):g}"
@@ -1126,7 +1237,9 @@ def _heights(part: Part) -> tuple[str, ...]:
 
     def height(x: int, y: int) -> str:
         center = x * STUD + STUD // 2, y * STUD + STUD // 2
-        tops = [top for solid in part.solids if (top := _top(solid, *center)) is not None]
+        tops = [
+            top for solid in part.solids if (top := _top(solid, *center)) is not None
+        ]
         return _plates_text(max(tops, default=Fraction(0)))
 
     tops = [[height(x, y) for x in range(width)] for y in reversed(range(length))]
@@ -1142,8 +1255,12 @@ def _heights(part: Part) -> tuple[str, ...]:
 def _top(solid: Solid, x: int, y: int) -> Fraction | None:
     """The height of a solid's top over the point (x, y), in base units; ``None`` off the solid."""
     low, high = Fraction(-(10**9)), Fraction(10**9)
-    for normal, offset in (solid if isinstance(solid, Convex) else solid.as_convex()).planes:
-        rest = offset - normal.x * x - normal.y * y  # the plane holds normal.z * z <= rest
+    for normal, offset in (
+        solid if isinstance(solid, Convex) else solid.as_convex()
+    ).planes:
+        rest = (
+            offset - normal.x * x - normal.y * y
+        )  # the plane holds normal.z * z <= rest
         if normal.z > 0:
             high = min(high, Fraction(rest, normal.z))
         elif normal.z < 0:
@@ -1165,7 +1282,9 @@ class CatalogVerifyRequest(BaseModel):
 class CatalogVerifyResult(BaseModel):
     """Parts whose geometry breaks a promise every family makes."""
 
-    checked: int = Field(description="Parts whose geometry the command generated and checked.")
+    checked: int = Field(
+        description="Parts whose geometry the command generated and checked."
+    )
     problems: tuple[str, ...] = Field(description="Each problem, naming its part.")
 
     def describe(self) -> str:
@@ -1177,7 +1296,9 @@ class CatalogVerifyResult(BaseModel):
         return "\n".join(lines)
 
 
-async def catalog_verify(request: CatalogVerifyRequest, session: Session) -> CatalogVerifyResult:  # noqa: ARG001 - every command takes its request
+async def catalog_verify(
+    request: CatalogVerifyRequest, session: Session
+) -> CatalogVerifyResult:  # noqa: ARG001 - every command takes its request
     """Generate the geometry of every part with a shape and check what every family promises.
 
     A part's body fills its bounding box from the origin; anti-studs sit on its bottom face,
@@ -1207,19 +1328,24 @@ class PassesResult(BaseModel):
     """Installed passes and configured profiles."""
 
     installed: tuple[PassInfo, ...]
-    profiles: dict[str, tuple[str, ...]] = Field(description="Pass names run by each profile.")
+    profiles: dict[str, tuple[str, ...]] = Field(
+        description="Pass names run by each profile."
+    )
     default_profile: str
 
     def describe(self) -> str:
         """Return the result as text."""
         installed = {info.name for info in self.installed}
-        table = [[info.name, ", ".join(info.codes), info.summary] for info in self.installed]
+        table = [
+            [info.name, ", ".join(info.codes), info.summary] for info in self.installed
+        ]
         widths = [max((len(cells[i]) for cells in table), default=0) for i in range(2)]
         rows = [_row(cells, widths) for cells in table]
         rows.append("")
         for profile, names in self.profiles.items():
             marked = ", ".join(
-                name if name in installed else f"{name} (not installed)" for name in names
+                name if name in installed else f"{name} (not installed)"
+                for name in names
             )
             default = " (default)" if profile == self.default_profile else ""
             rows.append(f"{profile}{default}: {marked}")
@@ -1286,7 +1412,10 @@ async def explain(request: ExplainRequest, session: Session) -> ExplainResult:  
     chosen = [wanted] if wanted else list(codes)
     return ExplainResult(
         codes=tuple(
-            CodeInfo(pass_name=codes[code][0], **codes[code][1].model_dump(exclude={"severity"}))
+            CodeInfo(
+                pass_name=codes[code][0],
+                **codes[code][1].model_dump(exclude={"severity"}),
+            )
             for code in chosen
         )
     )
@@ -1327,7 +1456,9 @@ def _write_images(paths: Sequence[Path], pictures: Sequence[bytes]) -> None:
 
 
 def _part_info(catalog: Catalog, entry: CatalogPart) -> PartInfo:
-    info = PartInfo(id=entry.id, name=entry.name, category=entry.category, base=entry.base)
+    info = PartInfo(
+        id=entry.id, name=entry.name, category=entry.category, base=entry.base
+    )
     part = catalog.part(entry.id)
     if part is None:
         return info
@@ -1349,11 +1480,16 @@ def _verify(catalog: Catalog) -> CatalogVerifyResult:
         try:
             part = catalog.part(entry.id)
         except ValueError as error:
-            problems.append(f"{entry.id} {entry.name}: its shape cannot be generated: {error}")
+            problems.append(
+                f"{entry.id} {entry.name}: its shape cannot be generated: {error}"
+            )
             continue
         if part is not None:
             checked += 1
-            problems += [f"{entry.id} {entry.name}: {problem}" for problem in _part_problems(part)]
+            problems += [
+                f"{entry.id} {entry.name}: {problem}"
+                for problem in _part_problems(part)
+            ]
     return CatalogVerifyResult(checked=checked, problems=tuple(problems))
 
 
@@ -1365,22 +1501,32 @@ def _part_problems(part: Part) -> list[str]:
         problems.append("its body does not fill its bounding box from the origin")
     sides = {AXES["-x"]: 0, AXES["+x"]: size.x, AXES["-y"]: 0, AXES["+y"]: size.y}
     places = Counter(
-        (connector.kind, connector.position, connector.normal) for connector in part.connectors
+        (connector.kind, connector.position, connector.normal)
+        for connector in part.connectors
     )
     problems += [
-        f"two {kind}s at {position}" for (kind, position, _), count in places.items() if count > 1
+        f"two {kind}s at {position}"
+        for (kind, position, _), count in places.items()
+        if count > 1
     ]
     for connector in part.connectors:
         position, normal = connector.position, connector.normal
         inside = 0 < position.x < size.x and 0 < position.y < size.y
         if connector.kind is ConnectorKind.ANTI_STUD:
             if normal != DOWN or position.z != 0 or not inside:
-                problems.append(f"the anti-stud at {position} is not on the bottom face")
+                problems.append(
+                    f"the anti-stud at {position} is not on the bottom face"
+                )
         elif normal == UP:
             if position.z != size.z or not inside:
                 problems.append(f"the stud at {position} is not on the top face")
-        elif normal not in sides or (position.x if normal.x else position.y) != sides[normal]:
-            problems.append(f"the stud at {position} facing {normal} is not on a side face")
+        elif (
+            normal not in sides
+            or (position.x if normal.x else position.y) != sides[normal]
+        ):
+            problems.append(
+                f"the stud at {position} facing {normal} is not on a side face"
+            )
     return problems
 
 
@@ -1397,7 +1543,9 @@ def _describe_images(images: Sequence[Image]) -> list[str]:
 
 def _row(cells: Sequence[str], widths: Sequence[int]) -> str:
     """A table row: each cell padded to its column's width, the last left as it is."""
-    padded = [cell.ljust(width) for cell, width in zip(cells[:-1], widths, strict=False)]
+    padded = [
+        cell.ljust(width) for cell, width in zip(cells[:-1], widths, strict=False)
+    ]
     return "  ".join([*padded, cells[-1]])
 
 
@@ -1432,7 +1580,10 @@ def _section(lines: list[str], title: str, counts: dict[str, int]) -> None:
     if not counts:
         return
     lines += ["", f"{title}:"]
-    lines += [f"  {name}: {count:,}" for name, count in list(counts.items())[:_LISTED_CATEGORIES]]
+    lines += [
+        f"  {name}: {count:,}"
+        for name, count in list(counts.items())[:_LISTED_CATEGORIES]
+    ]
     hidden = len(counts) - _LISTED_CATEGORIES
     if hidden > 0:
         lines.append(f"  ... and {hidden} more")

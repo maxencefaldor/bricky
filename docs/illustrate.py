@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Draw every picture in bricky's docs with bricky's own renderer.
 
 Run from the repository root: ``uv run python docs/illustrate.py``, or name figures to draw only
@@ -86,16 +87,26 @@ def corners(catalog: Catalog) -> ModelBuilder:
 def rotations(catalog: Catalog) -> ModelBuilder:
     """A Slope 45 2 x 2 in each rotation about the vertical axis, on a plate."""
     builder = ModelBuilder("rotations", catalog=catalog)
-    builder.place("3028", at=(0, 0, 0), rotation="R90", color="Light Bluish Gray", id="plate")
+    builder.place(
+        "3028", at=(0, 0, 0), rotation="R90", color="Light Bluish Gray", id="plate"
+    )
     for index, rotation in enumerate(("R0", "R90", "R180", "R270")):
-        builder.place("3039", at=(1 + 3 * index, 2, 1), rotation=rotation, color="Red", id=rotation)
+        builder.place(
+            "3039",
+            at=(1 + 3 * index, 2, 1),
+            rotation=rotation,
+            color="Red",
+            id=rotation,
+        )
     return builder
 
 
 def sideways(catalog: Catalog) -> ModelBuilder:
     """A tile and a plate held sideways by the studs on the sides of bricks."""
     builder = ModelBuilder("sideways", catalog=catalog)
-    builder.place("3020", at=(0, 0, 0), rotation="R90", color="Dark Bluish Gray", id="base")
+    builder.place(
+        "3020", at=(0, 0, 0), rotation="R90", color="Dark Bluish Gray", id="base"
+    )
     for x in (0, 3):
         builder.place("3005", at=(x, 1, 1), color="White", id=f"column{x}")
     builder.place("87087", at=(0, 1, 4), color="White", id="holder")
@@ -112,7 +123,9 @@ def half_stud(catalog: Catalog) -> ModelBuilder:
     builder.place("3020", at=(0, 0, 0), color="Dark Bluish Gray", id="base")
     builder.place("15573", at=(0, 1, 1), color="Black", id="jumper")
     for level in range(3):
-        builder.place("3062", at=(0, 1.5, 2 + 3 * level), color="Black", id=f"post{level}")
+        builder.place(
+            "3062", at=(0, 1.5, 2 + 3 * level), color="Black", id=f"post{level}"
+        )
     builder.place("4073", at=(0, 1.5, 11), color="Trans-Yellow", id="lamp")
     builder.place("3004", at=(1, 0, 1), color="Tan", id="bench")
     return builder
@@ -138,7 +151,9 @@ FAMILIES: Final = (
 def families(catalog: Catalog) -> ModelBuilder:
     """One part of each family, in a row on a baseplate."""
     builder = ModelBuilder("families", catalog=catalog)
-    builder.place("3857", at=(0, 0, 0), rotation="R90", color="Light Bluish Gray", id="baseplate")
+    builder.place(
+        "3857", at=(0, 0, 0), rotation="R90", color="Light Bluish Gray", id="baseplate"
+    )
     for index, (family, part, color) in enumerate(FAMILIES):
         x, y = 1 + 6 * (index % 5), 9 - 7 * (index // 5)
         rotation = "R90" if family == "arch" else "R0"
@@ -336,7 +351,13 @@ FIGURES: Final = (
     # Coordinates
     Figure("axes", axes),
     Figure("corners", corners, view=View.TOP, size=(1200, 800), highlight=("R*",)),
-    Figure("rotations", rotations, view=View.PERSPECTIVE, size=(1200, 800), highlight=("R*",)),
+    Figure(
+        "rotations",
+        rotations,
+        view=View.PERSPECTIVE,
+        size=(1200, 800),
+        highlight=("R*",),
+    ),
     Figure("sideways", sideways, view=View.PERSPECTIVE, size=(1000, 900)),
     Figure("jumper", half_stud),
     # Parts and colors
@@ -348,7 +369,9 @@ FIGURES: Final = (
         highlight=tuple(family for family, _, _ in FAMILIES),
     ),
     Figure("colors", colors, view=View.PERSPECTIVE, size=(1600, 700)),
-    Figure("converted", converted, view=View.PERSPECTIVE, size=(1600, 800), imported=True),
+    Figure(
+        "converted", converted, view=View.PERSPECTIVE, size=(1600, 800), imported=True
+    ),
     # Build scripts
     Figure("tower", EXAMPLES / "tower.py"),
     Figure("colonnade", EXAMPLES / "colonnade.py", highlight=("i2/*",)),
@@ -368,7 +391,13 @@ FIGURES: Final = (
     Figure("blocked", blocked, view=View.PERSPECTIVE, size=(1000, 800), check=True),
     Figure("floating", floating, view=View.FRONT, size=(1000, 800), check=True),
     Figure("underground", underground, view=View.FRONT, size=(1000, 800), check=True),
-    Figure("changes", tower_after, view=View.PERSPECTIVE, size=(1000, 1000), before=tower_before),
+    Figure(
+        "changes",
+        tower_after,
+        view=View.PERSPECTIVE,
+        size=(1000, 1000),
+        before=tower_before,
+    ),
     # Pictures
     Figure("highlight", EXAMPLES / "stonehenge.py", highlight=("@horseshoe",)),
     Figure("clip", EXAMPLES / "cottage.py", view=View.PERSPECTIVE, clips=("y>4",)),
@@ -376,14 +405,19 @@ FIGURES: Final = (
     Figure("front", EXAMPLES / "cottage.py", view=View.FRONT, size=(1200, 900)),
     Figure("top", EXAMPLES / "cottage.py", view=View.TOP, size=(1200, 900)),
     # Voxels
-    Figure("voxels", voxelized, view=View.PERSPECTIVE, size=(1200, 800), buildable=False),
+    Figure(
+        "voxels", voxelized, view=View.PERSPECTIVE, size=(1200, 800), buildable=False
+    ),
 )
 
 COPIES: Final = {
     "bench-heart.png": BENCH / "02-pixel-heart" / "inputs" / "heart.png",
     "bench-house.png": BENCH / "04-house-plans" / "inputs" / "plans.png",
     "bench-toadstool.png": BENCH / "05-mushroom-layers" / "inputs" / "toadstool.png",
-    "bench-lighthouse.png": BENCH / "06-lighthouse-picture" / "inputs" / "lighthouse.png",
+    "bench-lighthouse.png": BENCH
+    / "06-lighthouse-picture"
+    / "inputs"
+    / "lighthouse.png",
     "bench-castle.png": BENCH / "09-castle-plans" / "inputs" / "plans.png",
 }
 """Benchmark inputs the docs show as they are."""
@@ -407,9 +441,13 @@ async def draw(figure: Figure, renderer: Renderer, settings: Settings) -> Path |
         return None
     catalog = load_catalog(IMPORTED_CATALOG) if figure.imported else default_catalog()
     model, provenance = await model_of(figure, catalog, settings)
-    report = check_model(model, provenance=provenance, catalog=catalog, settings=settings)
+    report = check_model(
+        model, provenance=provenance, catalog=catalog, settings=settings
+    )
     if report.errors and figure.buildable and not figure.check:
-        print(f"warning: {figure.name} has {report.errors} errors, which the picture leaves out")
+        print(
+            f"warning: {figure.name} has {report.errors} errors, which the picture leaves out"
+        )
     changed: list[str] = []
     if figure.before is not None:
         before = build_world(figure.before(catalog).build(), catalog)
@@ -433,7 +471,9 @@ async def draw(figure: Figure, renderer: Renderer, settings: Settings) -> Path |
 
 async def main() -> None:
     """Draw every figure, then copy the benchmark inputs the docs show."""
-    os.environ["BRICKY_CATALOG"] = str(SAMPLE_CATALOG)  # example scripts too use the sample
+    os.environ["BRICKY_CATALOG"] = str(
+        SAMPLE_CATALOG
+    )  # example scripts too use the sample
     IMAGES.mkdir(parents=True, exist_ok=True)
     settings = Settings()
     wanted = set(sys.argv[1:])

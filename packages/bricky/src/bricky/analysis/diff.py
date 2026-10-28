@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """What changed between two builds of a model: elements added, removed and changed, and voxels.
 
 The diff matches elements by what they are and the space they take: the same part in the same
@@ -82,7 +83,9 @@ def diff_worlds(before: World, after: World) -> WorldDiff:
         filled=sum(1 for key in new if key not in old),
         emptied=sum(1 for key in old if key not in new),
         recolored=sum(
-            1 for key, voxel in new.items() if (was := old.get(key)) and was.color != voxel.color
+            1
+            for key, voxel in new.items()
+            if (was := old.get(key)) and was.color != voxel.color
         ),
     )
 
@@ -90,6 +93,7 @@ def diff_worlds(before: World, after: World) -> WorldDiff:
 def _key(element: PlacedElement) -> Key:
     """Return what an element is and the space it takes, whatever pose put it there."""
     shapes = frozenset(
-        solid if isinstance(solid, Box) else frozenset(solid.vertices) for solid in element.solids
+        solid if isinstance(solid, Box) else frozenset(solid.vertices)
+        for solid in element.solids
     )
     return (element.part.id, element.color, shapes, frozenset(element.connectors))

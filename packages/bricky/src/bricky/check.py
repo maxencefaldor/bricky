@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Run passes over a model and assemble a report."""
 
 from collections.abc import Sequence
@@ -53,7 +54,9 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
         missing=tuple(missing),
         element_count=len(context.world.elements) + len(context.world.unknown),
         errors=sum(diagnostic.severity is Severity.ERROR for diagnostic in diagnostics),
-        warnings=sum(diagnostic.severity is Severity.WARNING for diagnostic in diagnostics),
+        warnings=sum(
+            diagnostic.severity is Severity.WARNING for diagnostic in diagnostics
+        ),
         diagnostics=tuple(shown),
         omitted=len(diagnostics) - len(shown),
         elements=_describe(context, named, provenance),
@@ -89,6 +92,10 @@ def _describe(
         for uid, info in found.items():
             trace = provenance.trace(context.model, uid)
             found[uid] = info.model_copy(
-                update={"component": trace.component, "source": trace.source, "via": trace.via}
+                update={
+                    "component": trace.component,
+                    "source": trace.source,
+                    "via": trace.via,
+                }
             )
     return dict(sorted(found.items()))

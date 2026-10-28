@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Reference for project 02: a 12 x 12 pixel heart, as tiles on a Black base."""
 
 from bricky import ModelBuilder
@@ -27,8 +28,12 @@ def build() -> ModelBuilder:
     size = len(rows)
     # The base: Black 2 x 8 and 2 x 4 plates, two studs deep, 12 studs long.
     for y in range(0, size, 2):
-        builder.place("3034", at=(0, y, 0), rotation="R90", color="Black")  # Plate 2 x 8
-        builder.place("3020", at=(8, y, 0), rotation="R90", color="Black")  # Plate 2 x 4
+        builder.place(
+            "3034", at=(0, y, 0), rotation="R90", color="Black"
+        )  # Plate 2 x 8
+        builder.place(
+            "3020", at=(8, y, 0), rotation="R90", color="Black"
+        )  # Plate 2 x 4
     # The picture: one 1 x 1 tile per pixel.
     for row, line in enumerate(rows):
         y = size - 1 - row

@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The parts and colors bricky knows.
 
 The catalog keys parts and colors by their BrickLink ids. BrickLink, the LEGO Group's marketplace,
@@ -21,7 +22,14 @@ from pathlib import Path
 from typing import Any, Final, Literal, Self
 
 from platformdirs import user_data_path
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    model_validator,
+)
 
 from bricky.catalog.families import build_part
 from bricky.catalog.models import (
@@ -59,7 +67,9 @@ __all__ = [
 CATALOG_FORMAT: Final = "bricky.catalog/1"
 """The format tag of every catalog file."""
 
-SAMPLE_CATALOG: Final = Path(str(files("bricky.catalog").joinpath("data", "sample.toml")))
+SAMPLE_CATALOG: Final = Path(
+    str(files("bricky.catalog").joinpath("data", "sample.toml"))
+)
 """The sample catalog shipped with bricky: common parts and colors, with shapes written by hand."""
 
 IMPORTED_CATALOG: Final = user_data_path("bricky", appauthor=False) / "catalog.json"
@@ -72,7 +82,9 @@ class CatalogFile(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     format: Literal["bricky.catalog/1"] = CATALOG_FORMAT
-    source: str = Field(default="", description="The sources of the data, and their dates.")
+    source: str = Field(
+        default="", description="The sources of the data, and their dates."
+    )
     colors: tuple[Color, ...] = ()
     parts: tuple[CatalogPart, ...] = ()
 
@@ -117,18 +129,24 @@ class Catalog:
         self.source = source
         self._entries: dict[str, CatalogPart | Mapping[str, Any]] = {}
         for entry in parts:
-            self._entries[entry.id if isinstance(entry, CatalogPart) else str(entry["id"])] = entry
+            self._entries[
+                entry.id if isinstance(entry, CatalogPart) else str(entry["id"])
+            ] = entry
         self._aliases: dict[str, str] = {}
         for key, entry in self._entries.items():
             for alternate in _raw_list(entry, "alternates"):
                 if alternate not in self._entries:
                     self._aliases.setdefault(alternate, key)
         self._colors = {color.id: color for color in colors}
-        self._color_names = {color.name.casefold(): color for color in self._colors.values()}
+        self._color_names = {
+            color.name.casefold(): color for color in self._colors.values()
+        }
         self._parts: dict[str, Part | None] = {}
 
     @classmethod
-    def from_data(cls, data: Mapping[str, Any], *, origin: str = "catalog data") -> Catalog:
+    def from_data(
+        cls, data: Mapping[str, Any], *, origin: str = "catalog data"
+    ) -> Catalog:
         """Build a catalog from the data of a catalog file.
 
         The catalog validates colors at once and each part when first used.
@@ -137,13 +155,16 @@ class Catalog:
             BrickyError: If the data is not a catalog, or an id or name repeats.
         """
         if data.get("format") != CATALOG_FORMAT:
-            message = f"{origin} is not a bricky catalog: expected format {CATALOG_FORMAT!r}"
+            message = (
+                f"{origin} is not a bricky catalog: expected format {CATALOG_FORMAT!r}"
+            )
             raise BrickyError(message)
         parts = data.get("parts", [])
         try:
             colors = _COLORS.validate_python(data.get("colors", []))
             if not isinstance(parts, list) or not all(
-                isinstance(part, dict) and isinstance(part.get("id"), str) for part in parts
+                isinstance(part, dict) and isinstance(part.get("id"), str)
+                for part in parts
             ):
                 message = "every part needs a string id"
                 raise ValueError(message)  # noqa: TRY301 - reported like the validation errors
@@ -168,7 +189,9 @@ class Catalog:
     @property
     def parts(self) -> tuple[Part, ...]:
         """Every part with a shape, in catalog order. Reading it generates every part's geometry."""
-        return tuple(part for key in self._entries if (part := self.part(key)) is not None)
+        return tuple(
+            part for key in self._entries if (part := self.part(key)) is not None
+        )
 
     @property
     def colors(self) -> tuple[Color, ...]:
@@ -236,7 +259,10 @@ class Catalog:
                 1 x 6 part; any footprint when omitted.
 
         Examples:
-            >>> [part.id for part in default_catalog().find(family="plate", size=(6, 1))]
+            >>> [
+            ...     part.id
+            ...     for part in default_catalog().find(family="plate", size=(6, 1))
+            ... ]
             ['3666']
         """
         wanted = None if family is None else Family(family).value
@@ -264,7 +290,8 @@ class Catalog:
             ranked = sorted(
                 self._colors.values(),
                 key=lambda color: sum(
-                    (a - b) ** 2 for a, b in zip(_channels(color.rgb), target, strict=True)
+                    (a - b) ** 2
+                    for a, b in zip(_channels(color.rgb), target, strict=True)
                 ),
             )
             return ranked[:_NEAREST_COLORS]
@@ -272,7 +299,10 @@ class Catalog:
         return [
             color
             for color in self._colors.values()
-            if all(word in f"{color.id} {color.name.casefold()} {color.type}" for word in words)
+            if all(
+                word in f"{color.id} {color.name.casefold()} {color.type}"
+                for word in words
+            )
         ]
 
     def search_parts(self, query: str, *, shapeless: bool = False) -> list[CatalogPart]:
@@ -297,7 +327,9 @@ class Catalog:
             text = _search_text(key, name, _raw(entry, "category"), shape)
             text += " " + " ".join(_raw_list(entry, "alternates")).casefold()
             if all(_matches(word, text) for word in words):
-                elsewhere = any(system in text and system not in words for system in _SYSTEMS)
+                elsewhere = any(
+                    system in text and system not in words for system in _SYSTEMS
+                )
                 printed = bool(_raw(entry, "base"))
                 hits.append((shape is None, elsewhere, printed, len(name), order, key))
         hits.sort()
@@ -378,16 +410,24 @@ def _channels(rgb: str) -> tuple[int, int, int]:
 
 
 def _raw(entry: CatalogPart | Mapping[str, Any], field: str) -> str:
-    value = getattr(entry, field) if isinstance(entry, CatalogPart) else entry.get(field)
+    value = (
+        getattr(entry, field) if isinstance(entry, CatalogPart) else entry.get(field)
+    )
     return value if isinstance(value, str) else ""
 
 
 def _raw_list(entry: CatalogPart | Mapping[str, Any], field: str) -> list[str]:
-    value = getattr(entry, field) if isinstance(entry, CatalogPart) else entry.get(field, ())
+    value = (
+        getattr(entry, field)
+        if isinstance(entry, CatalogPart)
+        else entry.get(field, ())
+    )
     return [str(item) for item in value] if isinstance(value, (list, tuple)) else []
 
 
-def _raw_field(entry: CatalogPart | Mapping[str, Any], field: str) -> Mapping[str, Any] | None:
+def _raw_field(
+    entry: CatalogPart | Mapping[str, Any], field: str
+) -> Mapping[str, Any] | None:
     if isinstance(entry, CatalogPart):
         value = getattr(entry, field)
         return None if value is None else value.model_dump()
@@ -404,13 +444,17 @@ def _matches(word: str, text: str) -> bool:
     return f"{a}x{b}" in words or f"{b}x{a}" in words
 
 
-def _search_text(key: str, name: str, category: str, shape: Mapping[str, Any] | None) -> str:
+def _search_text(
+    key: str, name: str, category: str, shape: Mapping[str, Any] | None
+) -> str:
     plain = f"{name} {category}".casefold().replace(",", " ")
     family = "" if shape is None else str(shape.get("family", ""))
     return f"{key.casefold()} {plain} {family} {_SIZE.sub(r'\1x\2', plain)}"
 
 
-def _check_unique(part_ids: list[str], color_ids: list[int], color_names: list[str]) -> None:
+def _check_unique(
+    part_ids: list[str], color_ids: list[int], color_names: list[str]
+) -> None:
     for what, keys in (
         ("part id", part_ids),
         ("color id", [str(key) for key in color_ids]),

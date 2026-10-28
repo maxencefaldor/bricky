@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -9,7 +11,9 @@ PARTS = ["3001", "3004", "3024", "3022", "3020", "3070b", "3040", "3062b"]
 
 def diff(before: ModelBuilder, after: ModelBuilder) -> WorldDiff:
     catalog = default_catalog()
-    return diff_worlds(build_world(before.build(), catalog), build_world(after.build(), catalog))
+    return diff_worlds(
+        build_world(before.build(), catalog), build_world(after.build(), catalog)
+    )
 
 
 def row(*, first: str | None = None) -> ModelBuilder:
@@ -46,7 +50,9 @@ def test_an_element_moved_or_recolored_under_its_id_has_changed():
 def test_another_part_under_the_same_id_is_added_and_removed():
     before, after = ModelBuilder("m"), ModelBuilder("m")
     before.place("3001", at=(0, 0, 0), color="Red", id="base")
-    after.place("3020", at=(0, 0, 0), color="Red", id="base")  # a plate instead of a brick
+    after.place(
+        "3020", at=(0, 0, 0), color="Red", id="base"
+    )  # a plate instead of a brick
     result = diff(before, after)
     assert (result.added, result.removed, result.changed) == (("base",), ("base",), ())
     assert (result.filled, result.emptied, result.recolored) == (0, 2 * 4 * 2, 0)

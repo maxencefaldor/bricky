@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The pass plugin protocol and discovery.
 
 A pass is any class with a ``name``, a one-line ``summary``, the ``codes`` it can report and a

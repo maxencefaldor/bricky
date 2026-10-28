@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Reference for project 09: a castle with four corner towers, a gatehouse and a keep.
 
 The walls are two studs thick, in running bond. Hollow towers interlock at their corners:
@@ -32,7 +33,10 @@ def strip(
     A gap cell removes the strip's whole width at that position along it.
     """
     start_x, start_y = start
-    cells = [(start_x + i, start_y) if along_x else (start_x, start_y + i) for i in range(length)]
+    cells = [
+        (start_x + i, start_y) if along_x else (start_x, start_y + i)
+        for i in range(length)
+    ]
     i = 0
     while i < length:
         if cells[i] in gaps:
@@ -46,11 +50,17 @@ def strip(
             x, y = cells[i]
             if size == 1:  # a 1 x 2 brick lies across the strip
                 builder.place(
-                    STRIP[1], at=(x, y, z), rotation="R0" if along_x else "R90", color=color
+                    STRIP[1],
+                    at=(x, y, z),
+                    rotation="R0" if along_x else "R90",
+                    color=color,
                 )
             else:
                 builder.place(
-                    STRIP[size], at=(x, y, z), rotation="R90" if along_x else "R0", color=color
+                    STRIP[size],
+                    at=(x, y, z),
+                    rotation="R90" if along_x else "R0",
+                    color=color,
                 )
             i += size
 
@@ -80,18 +90,66 @@ def tower(
                 (west + middle, north - 2),
             }
         if course % 2 == 0:
-            strip(builder, (west, south), size, along_x=True, z=z, color=color, gaps=gaps)
-            strip(builder, (west, north - 2), size, along_x=True, z=z, color=color, gaps=gaps)
-            strip(builder, (west, south + 2), size - 4, along_x=False, z=z, color=color, gaps=gaps)
             strip(
-                builder, (east - 2, south + 2), size - 4, along_x=False, z=z, color=color, gaps=gaps
+                builder, (west, south), size, along_x=True, z=z, color=color, gaps=gaps
+            )
+            strip(
+                builder,
+                (west, north - 2),
+                size,
+                along_x=True,
+                z=z,
+                color=color,
+                gaps=gaps,
+            )
+            strip(
+                builder,
+                (west, south + 2),
+                size - 4,
+                along_x=False,
+                z=z,
+                color=color,
+                gaps=gaps,
+            )
+            strip(
+                builder,
+                (east - 2, south + 2),
+                size - 4,
+                along_x=False,
+                z=z,
+                color=color,
+                gaps=gaps,
             )
         else:
-            strip(builder, (west, south), size, along_x=False, z=z, color=color, gaps=gaps)
-            strip(builder, (east - 2, south), size, along_x=False, z=z, color=color, gaps=gaps)
-            strip(builder, (west + 2, south), size - 4, along_x=True, z=z, color=color, gaps=gaps)
             strip(
-                builder, (west + 2, north - 2), size - 4, along_x=True, z=z, color=color, gaps=gaps
+                builder, (west, south), size, along_x=False, z=z, color=color, gaps=gaps
+            )
+            strip(
+                builder,
+                (east - 2, south),
+                size,
+                along_x=False,
+                z=z,
+                color=color,
+                gaps=gaps,
+            )
+            strip(
+                builder,
+                (west + 2, south),
+                size - 4,
+                along_x=True,
+                z=z,
+                color=color,
+                gaps=gaps,
+            )
+            strip(
+                builder,
+                (west + 2, north - 2),
+                size - 4,
+                along_x=True,
+                z=z,
+                color=color,
+                gaps=gaps,
             )
     top = 1 + 3 * courses
     if roof:
@@ -109,11 +167,18 @@ def strip_plates(builder: ModelBuilder, start: Cell, length: int, z: int) -> Non
     end = x + length
     while x < end:
         size = next(candidate for candidate in plates if candidate <= end - x)
-        builder.place(plates[size], at=(x, y, z), rotation="R0" if size == 2 else "R90", color=ROOF)
+        builder.place(
+            plates[size],
+            at=(x, y, z),
+            rotation="R0" if size == 2 else "R90",
+            color=ROOF,
+        )
         x += size
 
 
-def battlements(builder: ModelBuilder, west: int, south: int, size: int, z: int) -> None:
+def battlements(
+    builder: ModelBuilder, west: int, south: int, size: int, z: int
+) -> None:
     """2 x 2 merlons on a tower's corners and every four studs between them."""
     spots = {(west + i, south) for i in range(0, size - 1, 4)}
     spots |= {(west + i, south + size - 2) for i in range(0, size - 1, 4)}
@@ -125,7 +190,12 @@ def battlements(builder: ModelBuilder, west: int, south: int, size: int, z: int)
 
 
 def curtain(
-    builder: ModelBuilder, start: Cell, length: int, *, along_x: bool, gate: range | None = None
+    builder: ModelBuilder,
+    start: Cell,
+    length: int,
+    *,
+    along_x: bool,
+    gate: range | None = None,
 ) -> None:
     """A wall two studs thick between two towers: five courses, merlons every four studs."""
     start_x, start_y = start
@@ -139,7 +209,9 @@ def curtain(
         if course % 2 and length > 2:
             rest = (start_x + 1, start_y) if along_x else (start_x, start_y + 1)
             strip(builder, start, 1, along_x=along_x, z=z, color=color, gaps=gaps)
-            strip(builder, rest, length - 1, along_x=along_x, z=z, color=color, gaps=gaps)
+            strip(
+                builder, rest, length - 1, along_x=along_x, z=z, color=color, gaps=gaps
+            )
         else:
             strip(builder, start, length, along_x=along_x, z=z, color=color, gaps=gaps)
     for i in range(1, length - 1, 4):
@@ -153,7 +225,9 @@ def keep(builder: ModelBuilder) -> None:
     roof_top = 1 + 3 * 10 + 1
     for z in range(roof_top, roof_top + 9, 3):  # flagpole: three Black 1 x 1 bricks
         builder.place("3005", at=(19, 22, z), color="Black")
-    builder.place("3004", at=(19, 22, roof_top + 9), rotation="R90", color="Blue")  # the flag
+    builder.place(
+        "3004", at=(19, 22, roof_top + 9), rotation="R90", color="Blue"
+    )  # the flag
 
 
 def build() -> ModelBuilder:

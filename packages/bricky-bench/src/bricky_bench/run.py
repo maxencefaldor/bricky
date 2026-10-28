@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Run benchmark projects with Claude Code, then score what it built.
 
 Each run gets a fresh workspace in the system's temporary folder, outside the repository, so the
@@ -60,9 +61,12 @@ class Agent(BaseModel):
     """How the runner starts the agent: Claude Code in print mode, unless told otherwise."""
 
     command: tuple[str, ...] = Field(
-        default=("claude",), description="The agent's executable and any leading arguments."
+        default=("claude",),
+        description="The agent's executable and any leading arguments.",
     )
-    model: str | None = Field(default=None, description="Model for Claude Code's --model.")
+    model: str | None = Field(
+        default=None, description="Model for Claude Code's --model."
+    )
     tools: str = Field(
         default="Read,Write,Edit,Glob,Grep,Bash(uv run *)",
         description="Tools the agent may use without asking, as Claude Code's --allowedTools.",
@@ -99,8 +103,12 @@ class AgentRun(BaseModel):
         description="Exit code; null when the runner stopped the agent at its time limit."
     )
     minutes: float
-    turns: int | None = Field(default=None, description="Turns, from Claude Code's result event.")
-    cost_usd: float | None = Field(default=None, description="Claude Code's own cost estimate.")
+    turns: int | None = Field(
+        default=None, description="Turns, from Claude Code's result event."
+    )
+    cost_usd: float | None = Field(
+        default=None, description="Claude Code's own cost estimate."
+    )
     outcome: str | None = Field(
         default=None, description="The result event's subtype, such as 'success'."
     )
@@ -116,7 +124,9 @@ class Record(BaseModel):
     repeat: int
     started: datetime
     bricky: str = Field(default_factory=lambda: version("bricky"))
-    model: str | None = Field(description="The model the runner asked the agent to use, if any.")
+    model: str | None = Field(
+        description="The model the runner asked the agent to use, if any."
+    )
     agent: AgentRun
     score: Score
 
@@ -151,9 +161,7 @@ async def run_projects(  # noqa: PLR0913 - keyword-only options, one per concern
     """
     for needed in (SKILL, EXAMPLES):
         if not (repository / needed).is_dir():
-            message = (
-                f"{repository} has no {needed}; run bricky-bench from the bricky repository root"
-            )
+            message = f"{repository} has no {needed}; run bricky-bench from the bricky repository root"
             raise BrickyError(message)
     references: dict[str, dict[VoxelKey, Voxel]] = {}
     for project in projects:
@@ -242,7 +250,9 @@ def footer(project: Project) -> str:
     return FOOTER.format(inputs=inputs, slug=project.slug)
 
 
-def make_workspace(workspace: Path, project: Project, *, wheel: Path, repository: Path) -> None:
+def make_workspace(
+    workspace: Path, project: Project, *, wheel: Path, repository: Path
+) -> None:
     """Lay out a workspace: a uv project using bricky's wheel, the skill, examples and inputs.
 
     The workspace pins bricky's own dependencies to the runner's versions, so renders find the
@@ -280,13 +290,27 @@ async def build_wheel(repository: Path, output: Path) -> Path:
     Raises:
         BrickyError: If the build fails.
     """
-    command = ["uv", "build", "--quiet", "--package", "bricky", "--wheel", "--out-dir", str(output)]
+    command = [
+        "uv",
+        "build",
+        "--quiet",
+        "--package",
+        "bricky",
+        "--wheel",
+        "--out-dir",
+        str(output),
+    ]
     done = await execute(
-        command, folder=repository, seconds=_BUILD_MINUTES * 60, environment=_clean_environment()
+        command,
+        folder=repository,
+        seconds=_BUILD_MINUTES * 60,
+        environment=_clean_environment(),
     )
     wheels = await asyncio.to_thread(lambda: sorted(output.glob("bricky-*.whl")))
     if done.code != 0 or not wheels:
-        message = f"could not build bricky's wheel:\n{done.stderr.decode(errors='replace')}"
+        message = (
+            f"could not build bricky's wheel:\n{done.stderr.decode(errors='replace')}"
+        )
         raise BrickyError(message)
     return wheels[-1]
 
@@ -312,14 +336,21 @@ async def score_workspace(
         "json",
     ]
     done = await execute(
-        command, folder=workspace, seconds=_BUILD_MINUTES * 60, environment=_clean_environment()
+        command,
+        folder=workspace,
+        seconds=_BUILD_MINUTES * 60,
+        environment=_clean_environment(),
     )
     if done.code is None:
-        return Score(built=False, failure=f"building {script.as_posix()} did not finish")
+        return Score(
+            built=False, failure=f"building {script.as_posix()} did not finish"
+        )
     try:
         result = BuildResult.model_validate_json(done.stdout)
     except ValidationError:
-        failure = done.stderr.decode(errors="replace").strip() or f"exit code {done.code}"
+        failure = (
+            done.stderr.decode(errors="replace").strip() or f"exit code {done.code}"
+        )
         return Score(built=False, failure=failure.removeprefix("error: "))
     if result.report is None:
         return Score(built=False, failure="the build was not checked")
@@ -345,7 +376,9 @@ def read_transcript(done: Completed) -> AgentRun:
             run.cost_usd = event.get("total_cost_usd")
             run.outcome = event.get("subtype")
         elif event.get("type") == "assistant":
-            run.builds += sum(1 for command in _bash_commands(event) if "bricky build" in command)
+            run.builds += sum(
+                1 for command in _bash_commands(event) if "bricky build" in command
+            )
     return run
 
 
@@ -372,7 +405,9 @@ def summary_table(records: Sequence[Record]) -> str:
     ]
     header = ["| " + " | ".join(columns) + " |", "|" + " --- |" * len(columns)]
     rows = []
-    for record in sorted(records, key=lambda item: (item.difficulty, item.project, item.repeat)):
+    for record in sorted(
+        records, key=lambda item: (item.difficulty, item.project, item.repeat)
+    ):
         score, agent = record.score, record.agent
         fidelity = score.fidelity
         rows.append(
@@ -416,7 +451,9 @@ async def execute(
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
-    if process.stdout is None or process.stderr is None:  # pragma: no cover - pipes requested
+    if (
+        process.stdout is None or process.stderr is None
+    ):  # pragma: no cover - pipes requested
         message = "could not capture the process's output"
         raise BrickyError(message)
     readers = [
@@ -435,7 +472,9 @@ async def execute(
             reader.cancel()
         raise
     stdout, stderr = await asyncio.gather(*readers)
-    return Completed(code=code, stdout=stdout, stderr=stderr, seconds=time.monotonic() - started)
+    return Completed(
+        code=code, stdout=stdout, stderr=stderr, seconds=time.monotonic() - started
+    )
 
 
 async def _stop(process: asyncio.subprocess.Process) -> None:
@@ -453,9 +492,13 @@ async def _stop(process: asyncio.subprocess.Process) -> None:
 
 async def _setup(workspace: Path) -> None:
     """Create the workspace's environment, so the agent's first build starts at once."""
-    done = await execute(["uv", "sync", "--quiet"], folder=workspace, seconds=_BUILD_MINUTES * 60)
+    done = await execute(
+        ["uv", "sync", "--quiet"], folder=workspace, seconds=_BUILD_MINUTES * 60
+    )
     if done.code != 0:
-        message = f"could not set up {workspace}:\n{done.stderr.decode(errors='replace')}"
+        message = (
+            f"could not set up {workspace}:\n{done.stderr.decode(errors='replace')}"
+        )
         raise BrickyError(message)
 
 
@@ -465,7 +508,9 @@ def _clean_environment() -> dict[str, str]:
     uv's lock settings go too: a workspace has its own project, which its first sync locks.
     """
     executables = str(Path(sys.prefix) / "bin")
-    environment = {key: value for key, value in os.environ.items() if key not in _REPOSITORY_ONLY}
+    environment = {
+        key: value for key, value in os.environ.items() if key not in _REPOSITORY_ONLY
+    }
     path = environment.get("PATH", "")
     environment["PATH"] = os.pathsep.join(
         folder for folder in path.split(os.pathsep) if folder != executables
@@ -502,7 +547,9 @@ def _bash_commands(event: dict[str, object]) -> list[str]:
             and block.get("name") == "Bash"
         ):
             tool_input = block.get("input")
-            command = tool_input.get("command") if isinstance(tool_input, dict) else None
+            command = (
+                tool_input.get("command") if isinstance(tool_input, dict) else None
+            )
             if isinstance(command, str):
                 commands.append(command)
     return commands

@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Catalog data types: catalog parts and their shapes, generated parts, connectors and colors.
 
 A catalog part pairs BrickLink's facts about a part (its id, name, category and the colors it comes
@@ -26,7 +27,11 @@ class ConnectorKind(StrEnum):
     @property
     def mate(self) -> ConnectorKind:
         """The kind that fits this one."""
-        return ConnectorKind.ANTI_STUD if self is ConnectorKind.STUD else ConnectorKind.STUD
+        return (
+            ConnectorKind.ANTI_STUD
+            if self is ConnectorKind.STUD
+            else ConnectorKind.STUD
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,7 +47,9 @@ class Connector:
 
     def transformed(self, pose: Pose) -> Connector:
         """Return this connector placed by a pose."""
-        return Connector(self.kind, pose.apply(self.position), pose.apply_direction(self.normal))
+        return Connector(
+            self.kind, pose.apply(self.position), pose.apply_direction(self.normal)
+        )
 
 
 class Family(StrEnum):
@@ -72,7 +79,9 @@ type Studs = Annotated[int, Field(ge=1, le=64)]
 class _Shape(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    size: tuple[Studs, Studs] = Field(description="Studs along the part's local x and y axes.")
+    size: tuple[Studs, Studs] = Field(
+        description="Studs along the part's local x and y axes."
+    )
 
 
 class BlockShape(_Shape):
@@ -97,7 +106,9 @@ class SlopeShape(_Shape):
 
     family: Literal[Family.SLOPE]
     height: int = Field(default=3, ge=1, description="Plates tall.")
-    run: int = Field(ge=1, description="Studs the slope covers, from the front edge back.")
+    run: int = Field(
+        ge=1, description="Studs the slope covers, from the front edge back."
+    )
     studs: bool = Field(default=True, description="Whether the flat top carries studs.")
 
 
@@ -106,7 +117,9 @@ class InvertedSlopeShape(_Shape):
 
     family: Literal[Family.INVERTED_SLOPE]
     height: int = Field(default=3, ge=1, description="Plates tall.")
-    run: int = Field(ge=1, description="Studs the slope covers, from the front edge back.")
+    run: int = Field(
+        ge=1, description="Studs the slope covers, from the front edge back."
+    )
 
 
 class CurvedSlopeShape(_Shape):
@@ -137,7 +150,9 @@ class SideStudsShape(_Shape):
 
     family: Literal[Family.SIDE_STUDS]
     height: int = Field(default=3, ge=1, description="Plates tall.")
-    sides: tuple[Side, ...] = Field(min_length=1, description="The faces that carry studs.")
+    sides: tuple[Side, ...] = Field(
+        min_length=1, description="The faces that carry studs."
+    )
 
 
 class JumperShape(_Shape):
@@ -145,7 +160,8 @@ class JumperShape(_Shape):
 
     family: Literal[Family.JUMPER]
     center_anti_stud: bool = Field(
-        default=False, description="Whether the underside also has an anti-stud in the middle."
+        default=False,
+        description="Whether the underside also has an anti-stud in the middle.",
     )
 
 
@@ -154,15 +170,15 @@ class ArchShape(_Shape):
 
     family: Literal[Family.ARCH]
     height: int = Field(ge=2, description="Plates tall.")
-    span: int = Field(ge=1, description="Studs the opening spans, centered between the legs.")
+    span: int = Field(
+        ge=1, description="Studs the opening spans, centered between the legs."
+    )
 
     @model_validator(mode="after")
     def _legs(self) -> Self:
         legs = self.size[1] - self.span
         if legs < 2 or legs % 2:  # noqa: PLR2004 - one whole-stud leg at each end
-            message = (
-                f"an arch {self.size[1]} studs long cannot span {self.span}: the legs must be equal"
-            )
+            message = f"an arch {self.size[1]} studs long cannot span {self.span}: the legs must be equal"
             raise ValueError(message)
         return self
 
@@ -187,12 +203,15 @@ class BoxesShape(BaseModel):
         min_length=1, description="The body: boxes as x0, y0, z0, x1, y1, z1."
     )
     studs: tuple[tuple[int, int, int, Axis], ...] = Field(
-        default=(), description="Each stud: the x, y, z of its base, and the axis it points along."
+        default=(),
+        description="Each stud: the x, y, z of its base, and the axis it points along.",
     )
     anti_studs: tuple[tuple[int, int], ...] = Field(
         default=(), description="Each anti-stud: its x, y on the bottom face, z = 0."
     )
-    source: str = Field(description="Where the shape was converted from, such as 'LDraw 3001.dat'.")
+    source: str = Field(
+        description="Where the shape was converted from, such as 'LDraw 3001.dat'."
+    )
     rotation: Literal["R0", "R90", "R180", "R270"] = Field(
         default="R0",
         description="A rotation about the vertical axis that turns the source's orientation into "
@@ -203,7 +222,9 @@ class BoxesShape(BaseModel):
     def _within(self) -> Self:
         for box in self.boxes:
             if any(not 0 <= box[a] < box[a + 3] <= self.size[a] for a in range(3)):
-                message = f"box {box} has no volume or reaches outside the size {self.size}"
+                message = (
+                    f"box {box} has no volume or reaches outside the size {self.size}"
+                )
                 raise ValueError(message)
         return self
 
@@ -274,7 +295,9 @@ class Color(BaseModel):
 
     id: int = Field(ge=1, description="BrickLink color id.")
     name: str = Field(description="BrickLink color name.")
-    type: ColorType = Field(default=ColorType.SOLID, description="BrickLink color type.")
+    type: ColorType = Field(
+        default=ColorType.SOLID, description="BrickLink color type."
+    )
     rgb: str = Field(
         pattern=r"^#[0-9A-F]{6}$", description="Display color for renders, as #RRGGBB."
     )

@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import asyncio
 import json
 import sys
@@ -55,7 +57,12 @@ def test_transcripts_give_turns_cost_and_builds():
     ]
     done = Completed(code=1, stdout="\n".join(lines).encode(), stderr=b"", seconds=90)
     run = read_transcript(done)
-    assert (run.builds, run.turns, run.outcome, run.minutes) == (1, 30, "error_max_turns", 1.5)
+    assert (run.builds, run.turns, run.outcome, run.minutes) == (
+        1,
+        30,
+        "error_max_turns",
+        1.5,
+    )
 
 
 def test_a_run_builds_the_answer_in_its_workspace_and_scores_it(tmp_path, monkeypatch):
@@ -81,7 +88,11 @@ def test_a_run_builds_the_answer_in_its_workspace_and_scores_it(tmp_path, monkey
     assert (score.errors, score.elements) == (0, 27)
     assert score.fidelity is not None
     assert (score.fidelity.shape, score.fidelity.color) == (1.0, 1.0)
-    assert (record.agent.exit_code, record.agent.turns, record.agent.builds) == (0, 3, 1)
+    assert (record.agent.exit_code, record.agent.turns, record.agent.builds) == (
+        0,
+        3,
+        1,
+    )
 
     run = tmp_path / "01-wall" / "1"
     assert (run / "transcript.jsonl").read_text().count('"type": "result"') == 1

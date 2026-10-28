@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The families: generators that convert a part's shape into its solids and connectors.
 
 A shape holds a few numbers from the catalog, and its family converts them into geometry, so many
@@ -31,10 +32,25 @@ from bricky.catalog.models import (
     SideStudsShape,
     SlopeShape,
 )
-from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Pose, Rotation, Solid, Vector
+from bricky.geometry import (
+    AXES,
+    DOWN,
+    ORIGIN,
+    UP,
+    Box,
+    Convex,
+    Pose,
+    Rotation,
+    Solid,
+    Vector,
+)
 from bricky.units import PLATE, STUD
 
-BLOCK_HEIGHTS: Final[dict[Family, int]] = {Family.BRICK: 3, Family.PLATE: 1, Family.TILE: 1}
+BLOCK_HEIGHTS: Final[dict[Family, int]] = {
+    Family.BRICK: 3,
+    Family.PLATE: 1,
+    Family.TILE: 1,
+}
 """Default height of bricks, plates and tiles, in plates."""
 
 BASEPLATE_HEIGHT: Final = PLATE // 2
@@ -97,14 +113,20 @@ def _geometry(shape: object) -> Geometry:  # noqa: C901, PLR0911 - one return pe
             return _arch(shape)
         case BoxesShape():
             return _boxes(shape)
-    message = f"no family generates {shape!r}"  # pragma: no cover - the shape union is closed
+    message = (
+        f"no family generates {shape!r}"  # pragma: no cover - the shape union is closed
+    )
     raise TypeError(message)
 
 
-def _positions(width: int, length: int, rows: Iterable[int] | None = None) -> list[tuple[int, int]]:
+def _positions(
+    width: int, length: int, rows: Iterable[int] | None = None
+) -> list[tuple[int, int]]:
     """Stud centers of a footprint, in base units; ``rows`` limits the y positions."""
     ys = range(length) if rows is None else rows
-    return [(i * STUD + STUD // 2, j * STUD + STUD // 2) for i in range(width) for j in ys]
+    return [
+        (i * STUD + STUD // 2, j * STUD + STUD // 2) for i in range(width) for j in ys
+    ]
 
 
 def _studs(positions: Iterable[tuple[int, int]], z: int) -> list[Connector]:
@@ -112,7 +134,9 @@ def _studs(positions: Iterable[tuple[int, int]], z: int) -> list[Connector]:
 
 
 def _anti_studs(positions: Iterable[tuple[int, int]]) -> list[Connector]:
-    return [Connector(ConnectorKind.ANTI_STUD, Vector(x, y, 0), DOWN) for x, y in positions]
+    return [
+        Connector(ConnectorKind.ANTI_STUD, Vector(x, y, 0), DOWN) for x, y in positions
+    ]
 
 
 def _block(shape: BlockShape) -> Geometry:
@@ -163,7 +187,11 @@ def _inverted_slope(shape: InvertedSlopeShape) -> Geometry:
     body = Convex.prism(profile, "x", 0, width * STUD)
     connectors = _studs(_positions(width, length), height)
     connectors += _anti_studs(_positions(width, length, range(run, length)))
-    return [body], connectors, "the underside rises toward -y (the front) when unrotated"
+    return (
+        [body],
+        connectors,
+        "the underside rises toward -y (the front) when unrotated",
+    )
 
 
 def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
@@ -227,7 +255,11 @@ def _side_studs(shape: SideStudsShape) -> Geometry:
             spots = [Vector(x, j * STUD + STUD // 2, middle) for j in range(length)]
         connectors += [Connector(ConnectorKind.STUD, spot, normal) for spot in spots]
     body = Box(ORIGIN, Vector(width * STUD, length * STUD, height))
-    return [body], connectors, f"side studs face {', '.join(shape.sides)} when unrotated"
+    return (
+        [body],
+        connectors,
+        f"side studs face {', '.join(shape.sides)} when unrotated",
+    )
 
 
 def _jumper(shape: JumperShape) -> Geometry:
@@ -265,7 +297,9 @@ def _arch(shape: ArchShape) -> Geometry:
         Box(Vector(0, end, 0), Vector(thickness, length * STUD, height)),
     ]
     for (y0, z0), (y1, z1) in pairwise(curve):
-        if y0 == y1:  # a vertical facet beside a leg: no body lies between it and the leg
+        if (
+            y0 == y1
+        ):  # a vertical facet beside a leg: no body lies between it and the leg
             continue
         slice_ = [(y0, z0), (y1, z1), (y1, height), (y0, height)]
         solids.append(Convex.prism(slice_, "x", 0, thickness))
@@ -284,12 +318,21 @@ def _boxes(shape: BoxesShape) -> Geometry:
     ]
     connectors = _anti_studs(shape.anti_studs)
     connectors += [
-        Connector(ConnectorKind.STUD, Vector(x, y, z), AXES[axis]) for x, y, z, axis in shape.studs
+        Connector(ConnectorKind.STUD, Vector(x, y, z), AXES[axis])
+        for x, y, z, axis in shape.studs
     ]
     connectors = [connector.transformed(pose) for connector in connectors]
     if shape.rotation == "R0":
-        return solids, connectors, f"converted from {shape.source}, as it is oriented there"
-    return solids, connectors, f"converted from {shape.source}, rotated {shape.rotation}"
+        return (
+            solids,
+            connectors,
+            f"converted from {shape.source}, as it is oriented there",
+        )
+    return (
+        solids,
+        connectors,
+        f"converted from {shape.source}, rotated {shape.rotation}",
+    )
 
 
 def _upright(shape: BoxesShape) -> Pose:

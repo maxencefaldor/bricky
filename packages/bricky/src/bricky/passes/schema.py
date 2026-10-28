@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Schema: unknown parts and colors, parts below the ground plane, and colors never made."""
 
 from collections import defaultdict
@@ -91,7 +92,11 @@ class SchemaPass:
         for (part_id, color_id), uids in uses.items():
             color = context.catalog.color(color_id)
             name = color.name if color is not None else str(color_id)
-            count = "1 element uses it" if len(uids) == 1 else f"{len(uids)} elements use it"
+            count = (
+                "1 element uses it"
+                if len(uids) == 1
+                else f"{len(uids)} elements use it"
+            )
             yield Diagnostic(
                 code="W104",
                 pass_name=self.name,

@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Collision: parts that share space, and studs that push into parts with no anti-stud."""
 
 from collections import Counter
@@ -26,7 +27,8 @@ def _shared(first: Iterable[Solid], second: Iterable[Solid]) -> Box | None:
         box
         for solid in first
         for other in second
-        if overlaps(solid, other) and (box := solid.bounds.intersection(other.bounds)) is not None
+        if overlaps(solid, other)
+        and (box := solid.bounds.intersection(other.bounds)) is not None
     ]
     return Box.bounding(shared) if shared else None
 
@@ -35,7 +37,9 @@ class CollisionPass:
     """Report parts that overlap, and studs that push into parts with no anti-stud there."""
 
     name: ClassVar[str] = "collision"
-    summary: ClassVar[str] = "Parts sharing space, and studs blocked by parts with no anti-stud."
+    summary: ClassVar[str] = (
+        "Parts sharing space, and studs blocked by parts with no anti-stud."
+    )
     codes: ClassVar[tuple[Code, ...]] = (
         Code(
             code="E201",
@@ -93,7 +97,9 @@ class CollisionPass:
                         counts[i, j] += 1
                         previous = regions.get((i, j))
                         regions[i, j] = (
-                            volume if previous is None else Box.bounding((previous, volume))
+                            volume
+                            if previous is None
+                            else Box.bounding((previous, volume))
                         )
         for (i, j), count in sorted(counts.items()):
             element, other = elements[i], elements[j]

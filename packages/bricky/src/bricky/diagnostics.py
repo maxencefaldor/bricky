@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Diagnostics: the facts that passes report, and the reports that collect them.
 
 A diagnostic states a fact about the model: a stable code whose letter gives its severity (``E``
@@ -40,9 +41,13 @@ class Code(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    code: str = Field(pattern=_CODE_PATTERN, description="Stable code; its letter is the severity.")
+    code: str = Field(
+        pattern=_CODE_PATTERN, description="Stable code; its letter is the severity."
+    )
     title: str = Field(description="Short name, such as 'Floating group'.")
-    rule: str = Field(description="The exact condition the pass checks, in plain words.")
+    rule: str = Field(
+        description="The exact condition the pass checks, in plain words."
+    )
 
     @computed_field
     @property
@@ -81,11 +86,17 @@ class Diagnostic(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    code: str = Field(pattern=_CODE_PATTERN, description="Stable code; its letter is the severity.")
+    code: str = Field(
+        pattern=_CODE_PATTERN, description="Stable code; its letter is the severity."
+    )
     pass_name: str = Field(description="Name of the pass that found it.")
     message: str = Field(description="What is wrong, as a statement of fact.")
-    elements: tuple[str, ...] = Field(default=(), description="Uids of the elements involved.")
-    region: Region | None = Field(default=None, description="Where, in studs, studs and plates.")
+    elements: tuple[str, ...] = Field(
+        default=(), description="Uids of the elements involved."
+    )
+    region: Region | None = Field(
+        default=None, description="Where, in studs, studs and plates."
+    )
 
     @computed_field
     @property
@@ -95,7 +106,11 @@ class Diagnostic(BaseModel):
 
     def sort_key(self) -> tuple[int, str, str]:
         """Return a key that sorts by severity, most serious first, then code and first uid."""
-        return (_RANK[self.severity], self.code, self.elements[0] if self.elements else "")
+        return (
+            _RANK[self.severity],
+            self.code,
+            self.elements[0] if self.elements else "",
+        )
 
 
 class ElementInfo(BaseModel):
@@ -104,15 +119,21 @@ class ElementInfo(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     part: str = Field(description="Part id.")
-    part_name: str | None = Field(description="Part name; null when the catalog cannot place it.")
+    part_name: str | None = Field(
+        description="Part name; null when the catalog cannot place it."
+    )
     color: int = Field(description="Color id.")
     color_name: str | None = Field(description="Color name; null for an unknown color.")
-    component: str | None = Field(default=None, description="Component defining the element.")
+    component: str | None = Field(
+        default=None, description="Component defining the element."
+    )
     source: Source | None = Field(
-        default=None, description="Script frames that placed it, innermost first; null if unknown."
+        default=None,
+        description="Script frames that placed it, innermost first; null if unknown.",
     )
     via: tuple[InstanceStep, ...] = Field(
-        default=(), description="Instances that copied it into the model, outermost first."
+        default=(),
+        description="Instances that copied it into the model, outermost first.",
     )
 
 
@@ -129,11 +150,18 @@ class Report(BaseModel):
     )
     element_count: int = Field(description="Number of elements checked.")
     errors: int = Field(description="Number of errors found, omitted ones included.")
-    warnings: int = Field(description="Number of warnings found, omitted ones included.")
-    diagnostics: tuple[Diagnostic, ...] = Field(description="Diagnostics, most serious first.")
-    omitted: int = Field(default=0, description="Number of diagnostics left out by the cap.")
+    warnings: int = Field(
+        description="Number of warnings found, omitted ones included."
+    )
+    diagnostics: tuple[Diagnostic, ...] = Field(
+        description="Diagnostics, most serious first."
+    )
+    omitted: int = Field(
+        default=0, description="Number of diagnostics left out by the cap."
+    )
     elements: dict[str, ElementInfo] = Field(
-        default_factory=dict, description="Every element named by the diagnostics, by uid."
+        default_factory=dict,
+        description="Every element named by the diagnostics, by uid.",
     )
 
     @computed_field
@@ -145,7 +173,10 @@ class Report(BaseModel):
 
 def render_report(report: Report) -> str:
     """Render a report as compiler-style text."""
-    blocks = [_render_diagnostic(diagnostic, report.elements) for diagnostic in report.diagnostics]
+    blocks = [
+        _render_diagnostic(diagnostic, report.elements)
+        for diagnostic in report.diagnostics
+    ]
     if report.omitted:
         blocks.append(f"... {_plural(report.omitted, 'more diagnostic')} not shown")
     sites = _sites(report)
@@ -174,7 +205,11 @@ def describe_element(uid: str, info: ElementInfo | None) -> str:
     """Return one line that says what an element is and which script line placed it."""
     if info is None:
         return uid
-    part = f"{info.part_name} ({info.part})" if info.part_name else f"unknown part {info.part}"
+    part = (
+        f"{info.part_name} ({info.part})"
+        if info.part_name
+        else f"unknown part {info.part}"
+    )
     color = info.color_name or f"unknown color {info.color}"
     text = f"{uid}: {part}, {color}"
     if info.source is not None:
@@ -207,7 +242,8 @@ def _sites(report: Report) -> Counter[Frame]:
         sites = {
             info.source.site
             for uid in diagnostic.elements
-            if (info := report.elements.get(uid)) is not None and info.source is not None
+            if (info := report.elements.get(uid)) is not None
+            and info.source is not None
         }
         counts.update(sites)
     return counts

@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Write models in agent-friendly coordinates.
 
 Coordinates are ``(x, y, z)``: x points east and y north, both in studs, and z points up, in
@@ -65,7 +66,12 @@ class _Scope:
         self.instance_sources: dict[str, Source] = {}
 
     def place(
-        self, part: str, at: Coordinates, color: int | str, rotation: str, id: str | None
+        self,
+        part: str,
+        at: Coordinates,
+        color: int | str,
+        rotation: str,
+        id: str | None,
     ) -> str:
         definition = self.catalog.part(part)
         if definition is None:
@@ -94,7 +100,9 @@ class _Scope:
         self.record(self.element_sources, element.id)
         return element.id
 
-    def instance(self, component: str, at: Coordinates, rotation: str, id: str | None) -> str:
+    def instance(
+        self, component: str, at: Coordinates, rotation: str, id: str | None
+    ) -> str:
         pending = _PendingInstance(
             id=self.claim(id, "i"),
             component=component,
@@ -198,7 +206,12 @@ class _Placer:
         return self._scope.place(part, at, color, rotation, id)
 
     def instance(
-        self, component: str, at: Coordinates, *, rotation: str = "R0", id: str | None = None
+        self,
+        component: str,
+        at: Coordinates,
+        *,
+        rotation: str = "R0",
+        id: str | None = None,
     ) -> str:
         """Place a copy of a component and return the instance's id.
 
@@ -235,7 +248,12 @@ class _Placer:
 
         Examples:
             >>> builder = ModelBuilder("block")
-            >>> cube = {(x, y, z): "Red" for x in range(4) for y in range(4) for z in range(6)}
+            >>> cube = {
+            ...     (x, y, z): "Red"
+            ...     for x in range(4)
+            ...     for y in range(4)
+            ...     for z in range(6)
+            ... }
             >>> len(builder.fill(cube, id="block"))
             4
         """
@@ -336,7 +354,9 @@ class ModelBuilder(_Placer):
         """Return where the build script has placed every element and instance so far."""
         return Provenance(
             model=self._scope.sources(),
-            components={name: scope.sources() for name, scope in self._components.items()},
+            components={
+                name: scope.sources() for name, scope in self._components.items()
+            },
         )
 
     def _dependency_order(self) -> list[str]:

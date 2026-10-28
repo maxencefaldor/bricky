@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Build a catalog from its sources: BrickLink for what exists, names and LDraw for shapes.
 
 Each source supplies what it knows best:
@@ -50,7 +51,9 @@ _PRINTED: Final = re.compile(r"p[a-z]{0,3}\d")
 class Coverage(BaseModel):
     """What an import found: parts and colors, the source of each part's shape, and the checks."""
 
-    sources: tuple[str, ...] = Field(description="The sources read, with their dates or releases.")
+    sources: tuple[str, ...] = Field(
+        description="The sources read, with their dates or releases."
+    )
     parts: int = Field(description="Parts imported.")
     shaped: int = Field(description="Parts with a shape, which can be placed.")
     by_source: dict[str, int] = Field(
@@ -70,7 +73,8 @@ class Coverage(BaseModel):
         description="LDraw files the import failed to convert, counted by reason, most first.",
     )
     compared: int = Field(
-        default=0, description="Parts shaped from their name and compared with their LDraw file."
+        default=0,
+        description="Parts shaped from their name and compared with their LDraw file.",
     )
     disagreements: tuple[str, ...] = Field(
         default=(),
@@ -100,7 +104,9 @@ def import_catalog(
         message = "an import needs BrickLink's downloads, an LDraw library, or both"
         raise BrickyError(message)
     if ldraw is not None:
-        sources.append(f"LDraw.org Parts Library, CC BY, {ldraw.release}, at {ldraw.root}")
+        sources.append(
+            f"LDraw.org Parts Library, CC BY, {ldraw.release}, at {ldraw.root}"
+        )
     _name_printed_parts(entries, ldraw)
     shaping = _Shaping()
     for count, key in enumerate(list(entries), start=1):
@@ -122,7 +128,9 @@ class _Shaping:
     compared: int = 0
     disagreements: list[str] = field(default_factory=list)
 
-    def shape(self, entries: dict[str, CatalogPart], key: str, ldraw: Library | None) -> None:
+    def shape(
+        self, entries: dict[str, CatalogPart], key: str, ldraw: Library | None
+    ) -> None:
         """Record the source of a part's shape, converting its LDraw file to shape or check it."""
         entry = entries[key]
         if entry.base is not None:
@@ -148,9 +156,13 @@ class _Shaping:
         if not difference:
             return
         if _lacks_anti_studs(named, from_ldraw):
-            self.disagreements.append(f"{key} {entry.name} keeps its name's shape: {difference}")
+            self.disagreements.append(
+                f"{key} {entry.name} keeps its name's shape: {difference}"
+            )
             return
-        self.disagreements.append(f"{key} {entry.name} takes LDraw's shape: {difference}")
+        self.disagreements.append(
+            f"{key} {entry.name} takes LDraw's shape: {difference}"
+        )
         rotation = _closest_rotation(named, from_ldraw)
         entries[key] = entry.model_copy(
             update={"shape": converted.model_copy(update={"rotation": rotation})}
@@ -199,9 +211,15 @@ def _name_printed_parts(entries: dict[str, CatalogPart], ldraw: Library | None) 
             continue
         for match in _PRINTED.finditer(key):
             base = entries.get(key[: match.start()])
-            if base is None or base.base is not None or not entry.name.startswith(base.name + " "):
+            if (
+                base is None
+                or base.base is not None
+                or not entry.name.startswith(base.name + " ")
+            ):
                 continue
-            if base.shape is not None or (ldraw is not None and _ldraw_number(ldraw, base)):
+            if base.shape is not None or (
+                ldraw is not None and _ldraw_number(ldraw, base)
+            ):
                 entries[key] = entry.model_copy(update={"base": base.id})
                 break
 
@@ -220,7 +238,9 @@ def _difference(named: Part, from_ldraw: Part) -> str:
     LDraw orients parts its own way, so the two agree when a rotation about the vertical axis
     brings LDraw's onto the name's: the same size, and studs and anti-studs in the same places.
     """
-    if any(_placed(from_ldraw, rotation) == _placed(named, "R0") for rotation in ALIASES):
+    if any(
+        _placed(from_ldraw, rotation) == _placed(named, "R0") for rotation in ALIASES
+    ):
         return ""
     facts = [_facts(named), _facts(from_ldraw)]
     where = " in other places" if facts[0] == facts[1] else ""
@@ -233,8 +253,12 @@ def _lacks_anti_studs(named: Part, from_ldraw: Part) -> bool:
     return any(
         rotated_size == size
         and rotated < connectors
-        and all(missing.kind is ConnectorKind.ANTI_STUD for missing in connectors - rotated)
-        for rotated_size, rotated in (_placed(from_ldraw, rotation) for rotation in ALIASES)
+        and all(
+            missing.kind is ConnectorKind.ANTI_STUD for missing in connectors - rotated
+        )
+        for rotated_size, rotated in (
+            _placed(from_ldraw, rotation) for rotation in ALIASES
+        )
     )
 
 
@@ -251,7 +275,9 @@ def _closest_rotation(named: Part, from_ldraw: Part) -> str:
 
 def _placed(part: Part, rotation: str) -> tuple[Vector, frozenset[Connector]]:
     """A part's size and connectors after a rotation, with its minimum corner at the origin."""
-    rotated = Box(Vector(0, 0, 0), part.size).transformed(Pose(Rotation.parse(rotation)))
+    rotated = Box(Vector(0, 0, 0), part.size).transformed(
+        Pose(Rotation.parse(rotation))
+    )
     pose = Pose(Rotation.parse(rotation), -rotated.min)
     connectors = frozenset(connector.transformed(pose) for connector in part.connectors)
     return rotated.max - rotated.min, connectors
@@ -273,7 +299,9 @@ def _describe(facts: tuple[tuple[int, int], int, int, int]) -> str:
 
 def _reason(error: str) -> str:
     """Remove the part number from an error, so failures group by reason."""
-    return re.sub(r"LDraw part \S+ ", "", re.sub(r"which \S+ uses", "which a part uses", error))
+    return re.sub(
+        r"LDraw part \S+ ", "", re.sub(r"which \S+ uses", "which a part uses", error)
+    )
 
 
 def _sample_colors() -> tuple[Color, ...]:

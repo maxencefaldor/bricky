@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import asyncio
 from pathlib import Path
 
@@ -84,7 +86,9 @@ def test_child_processes_capture_what_scripts_print(tmp_path):
 
 
 def test_child_output_is_cut_at_the_limit(tmp_path):
-    text = MODEL.replace("    return builder", "    print('x' * 5000)\n    return builder")
+    text = MODEL.replace(
+        "    return builder", "    print('x' * 5000)\n    return builder"
+    )
     output = run_child(write(tmp_path, text), limit=100).output
     assert len(output.stdout) == 100
     assert output.truncated
@@ -97,7 +101,9 @@ def test_endless_scripts_are_stopped(tmp_path):
 
 
 def test_failures_come_back_with_what_the_script_printed(tmp_path):
-    script = write(tmp_path, "def build():\n    print('working')\n    raise RuntimeError('boom')\n")
+    script = write(
+        tmp_path, "def build():\n    print('working')\n    raise RuntimeError('boom')\n"
+    )
     with pytest.raises(BrickyError) as caught:
         run_child(script)
     message = str(caught.value)
@@ -107,7 +113,9 @@ def test_failures_come_back_with_what_the_script_printed(tmp_path):
 
 def test_hard_crashes_are_reported(tmp_path):
     script = write(tmp_path, "import os\n\n\ndef build():\n    os._exit(7)\n")
-    with pytest.raises(BrickyError, match="exited with code 7 before reporting a result"):
+    with pytest.raises(
+        BrickyError, match="exited with code 7 before reporting a result"
+    ):
         run_child(script)
 
 
@@ -116,7 +124,9 @@ def test_results_cut_short_are_reported(tmp_path):
         "import os\nimport sys\nfrom pathlib import Path\n\n\n"
         "def build():\n    Path(sys.argv[2]).write_text('{\"model\": {')\n    os._exit(0)\n"
     )
-    with pytest.raises(BrickyError, match="exited with code 0 before reporting a result"):
+    with pytest.raises(
+        BrickyError, match="exited with code 0 before reporting a result"
+    ):
         run_child(write(tmp_path, text))
 
 

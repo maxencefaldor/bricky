@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Draw scenes with three.js in headless Chromium, through Playwright's asyncio API.
 
 The renderer serves its page and the vendored three.js from package data on a private origin and
@@ -20,7 +21,10 @@ from bricky.render.scene import Scene, View
 ORIGIN: Final = "https://bricky.invalid/"
 """The private origin the renderer serves its page from; the ``.invalid`` domain never resolves."""
 
-_TYPES: Final = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8"}
+_TYPES: Final = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+}
 _LAUNCH_ARGUMENTS: Final = ("--enable-unsafe-swiftshader",)
 
 
@@ -118,7 +122,9 @@ class Renderer:
         if self._page is not None:
             return self._page
         await self.start()
-        if self._browser is None:  # pragma: no cover - start() either launches or raises
+        if (
+            self._browser is None
+        ):  # pragma: no cover - start() either launches or raises
             message = "the renderer has no browser"
             raise BrickyError(message)
         page = await self._browser.new_page(device_scale_factor=1)
@@ -149,7 +155,9 @@ async def _serve(route: Route) -> None:
         name = url.removeprefix(ORIGIN).split("?", 1)[0]
         body = _asset(name)
         if body is not None:
-            content_type = _TYPES.get(PurePosixPath(name).suffix, "application/octet-stream")
+            content_type = _TYPES.get(
+                PurePosixPath(name).suffix, "application/octet-stream"
+            )
             await route.fulfill(status=200, body=body, content_type=content_type)
             return
     await route.abort()

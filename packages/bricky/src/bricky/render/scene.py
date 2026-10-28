@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Scenes: a model resolved into the boxes, meshes, studs, colors and marks a render draws.
 
 A scene is plain data in base units (0.4 mm), laid out as compact arrays so a large model crosses
@@ -95,7 +96,9 @@ class Clip(BaseModel):
 
     axis: Literal["x", "y", "z"]
     keep: Literal["below", "above"]
-    value: int = Field(description="The plane's position along the axis, in base units.")
+    value: int = Field(
+        description="The plane's position along the axis, in base units."
+    )
 
     @classmethod
     def parse(cls, text: str) -> Clip:
@@ -122,7 +125,9 @@ class Clip(BaseModel):
 
     def __str__(self) -> str:
         unit = to_plates if self.axis == "z" else to_studs
-        return f"{self.axis} {'<' if self.keep == 'below' else '>'} {unit(self.value):g}"
+        return (
+            f"{self.axis} {'<' if self.keep == 'below' else '>'} {unit(self.value):g}"
+        )
 
 
 class SceneColor(BaseModel):
@@ -145,7 +150,9 @@ class Label(BaseModel):
 class Mark(BaseModel):
     """A diagnostic's region: a box outlined over everything else."""
 
-    box: tuple[int, int, int, int, int, int] = Field(description="Corners, in base units.")
+    box: tuple[int, int, int, int, int, int] = Field(
+        description="Corners, in base units."
+    )
     text: str
     kind: Literal["error", "warning"]
 
@@ -154,7 +161,9 @@ class Mesh(BaseModel):
     """An element drawn by its faces, for an element with solids other than boxes."""
 
     element: int = Field(description="Index into Scene.elements.")
-    vertices: list[int] = Field(description="x, y, z of every corner, one after another.")
+    vertices: list[int] = Field(
+        description="x, y, z of every corner, one after another."
+    )
     faces: list[list[int]] = Field(
         description="Corner indices of each face, counter-clockwise seen from outside."
     )
@@ -167,7 +176,9 @@ class Scene(BaseModel):
     """Everything a render draws, in base units (0.4 mm)."""
 
     name: str
-    title: str = Field(description="One line describing the model, shown above the views.")
+    title: str = Field(
+        description="One line describing the model, shown above the views."
+    )
     colors: list[SceneColor]
     elements: list[tuple[int, int]] = Field(
         description="Per element: its color's index in colors, and its flags."
@@ -180,7 +191,8 @@ class Scene(BaseModel):
         )
     )
     meshes: list[Mesh] = Field(
-        default_factory=list, description="Elements with solids other than boxes, by their faces."
+        default_factory=list,
+        description="Elements with solids other than boxes, by their faces.",
     )
     studs: list[tuple[int, int, int, int, int]] = Field(
         description="Per stud not seated in an anti-stud: x, y, z of its base, axis code "
@@ -242,7 +254,9 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
             if element.uid in new:
                 flags[i] |= Flag.CHANGED
     if highlight:
-        chosen = _select(model, [element.uid for element in elements], provenance, highlight)
+        chosen = _select(
+            model, [element.uid for element in elements], provenance, highlight
+        )
         _highlight(chosen, elements, flags, labels)
     meshed = [
         i
@@ -261,7 +275,9 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
         name=model.name,
         title=_title(model, _clipped(body, clips), len(elements), report),
         colors=colors,
-        elements=[(color_index[e.color], int(flags[i])) for i, e in enumerate(elements)],
+        elements=[
+            (color_index[e.color], int(flags[i])) for i, e in enumerate(elements)
+        ],
         uids=[element.uid for element in elements],
         boxes=boxes,
         meshes=meshes,
@@ -285,7 +301,10 @@ def _colors(
             SceneColor(id=color_id, name=color.name, rgb=color.rgb, type=color.type)
             if color is not None
             else SceneColor(
-                id=color_id, name=f"unknown {color_id}", rgb=_UNKNOWN_RGB, type=ColorType.SOLID
+                id=color_id,
+                name=f"unknown {color_id}",
+                rgb=_UNKNOWN_RGB,
+                type=ColorType.SOLID,
             )
         )
     return colors, {color_id: i for i, color_id in enumerate(color_ids)}
@@ -312,11 +331,16 @@ def _mark_diagnostics(
             text = f"{diagnostic.code} {elements[members[0]].uid}"
             labels.append(Label(element=members[0], text=text, kind=kind))
         if diagnostic.region is not None:
-            marks.append(Mark(box=_box(diagnostic.region), text=diagnostic.code, kind=kind))
+            marks.append(
+                Mark(box=_box(diagnostic.region), text=diagnostic.code, kind=kind)
+            )
 
 
 def _highlight(
-    chosen: set[int], elements: Sequence[PlacedElement], flags: list[Flag], labels: list[Label]
+    chosen: set[int],
+    elements: Sequence[PlacedElement],
+    flags: list[Flag],
+    labels: list[Label],
 ) -> None:
     """Highlight the chosen elements and draw the others faintly, unless a diagnostic marks them."""
     for i in range(len(elements)):
@@ -326,7 +350,8 @@ def _highlight(
             flags[i] |= Flag.GHOST
     if len(chosen) <= _MAX_HIGHLIGHT_LABELS:
         labels.extend(
-            Label(element=i, text=elements[i].uid, kind="highlight") for i in sorted(chosen)
+            Label(element=i, text=elements[i].uid, kind="highlight")
+            for i in sorted(chosen)
         )
 
 
@@ -360,7 +385,16 @@ def _boxes(  # noqa: PLR0913 - keyword-only options, one per concern
     else:
         masks = [ALL_FACES] * len(solids)
     return [
-        (solid.min.x, solid.min.y, solid.min.z, solid.max.x, solid.max.y, solid.max.z, i, mask)
+        (
+            solid.min.x,
+            solid.min.y,
+            solid.min.z,
+            solid.max.x,
+            solid.max.y,
+            solid.max.z,
+            i,
+            mask,
+        )
         for (solid, i), mask in zip(solids, masks, strict=True)
     ]
 
@@ -375,11 +409,15 @@ def _mesh(index: int, element: PlacedElement) -> Mesh:
     faces: list[tuple[tuple[int, int, int], ...]] = []
     for solid in element.solids:
         convex = solid if isinstance(solid, Convex) else solid.as_convex()
-        faces.extend(tuple(convex.vertices[i].as_tuple() for i in face) for face in convex.faces)
+        faces.extend(
+            tuple(convex.vertices[i].as_tuple() for i in face) for face in convex.faces
+        )
     inside = Counter(frozenset(face) for face in faces)
     outer = [face for face in faces if inside[frozenset(face)] == 1]
     corners: dict[tuple[int, int, int], int] = {}
-    indexed = [[corners.setdefault(point, len(corners)) for point in face] for face in outer]
+    indexed = [
+        [corners.setdefault(point, len(corners)) for point in face] for face in outer
+    ]
     normals: dict[tuple[int, int], list[tuple[float, float, float]]] = {}
     for face, points in zip(indexed, outer, strict=True):
         normal = _unit(_newell(points))
@@ -431,7 +469,9 @@ def _exposed_studs(world: World) -> list[tuple[int, int, int, int, int]]:
         for i, element in enumerate(world.elements)
         for connector in element.connectors
         if connector.kind is ConnectorKind.STUD
-        and not any(j != i for j in anti_studs.get((connector.position, -connector.normal), ()))
+        and not any(
+            j != i for j in anti_studs.get((connector.position, -connector.normal), ())
+        )
     ]
 
 
@@ -450,7 +490,11 @@ def _clipped(bounds: Box, clips: Sequence[Clip]) -> Box:
             low[axis] = max(low[axis], clip.value)
     if any(a >= b for a, b in zip(low, high, strict=True)):
         listed = ", ".join(str(clip) for clip in clips)
-        which = f"the clip {listed} leaves" if len(clips) == 1 else f"the clips {listed} leave"
+        which = (
+            f"the clip {listed} leaves"
+            if len(clips) == 1
+            else f"the clips {listed} leave"
+        )
         message = f"{which} nothing of the model to draw"
         raise BrickyError(message)
     return Box(Vector(*low), Vector(*high))
@@ -513,7 +557,9 @@ def _select(
                 if any(matches(frame) for frame in _frames(provenance, model, uid))
             }
         else:
-            hits = {i for i, uid in enumerate(uids) if fnmatch.fnmatchcase(uid, selector)}
+            hits = {
+                i for i, uid in enumerate(uids) if fnmatch.fnmatchcase(uid, selector)
+            }
         if not hits:
             message = f"highlight {selector!r} matches no element"
             raise BrickyError(message)
@@ -589,12 +635,18 @@ def visible_faces(boxes: Sequence[Box], opaque: Sequence[bool]) -> list[int]:
             for side, coordinate, facing in ((0, low[axis], 1), (1, high[axis], 0)):
                 buckets = planes.get((axis, facing, coordinate))
                 candidates = (
-                    {j for bucket in _buckets(*face) for j in buckets.get(bucket, ())} - {i}
+                    {j for bucket in _buckets(*face) for j in buckets.get(bucket, ())}
+                    - {i}
                     if buckets
                     else set()
                 )
                 rectangles = [
-                    (corners[j][0][u], corners[j][0][v], corners[j][1][u], corners[j][1][v])
+                    (
+                        corners[j][0][u],
+                        corners[j][0][v],
+                        corners[j][1][u],
+                        corners[j][1][v],
+                    )
                     for j in candidates
                 ]
                 if not _covered(face, rectangles):
@@ -625,7 +677,10 @@ def _covered(
     touching = [
         rectangle
         for rectangle in rectangles
-        if rectangle[0] < u1 and u0 < rectangle[2] and rectangle[1] < v1 and v0 < rectangle[3]
+        if rectangle[0] < u1
+        and u0 < rectangle[2]
+        and rectangle[1] < v1
+        and v0 < rectangle[3]
     ]
     if not touching:
         return False
@@ -648,7 +703,10 @@ def _covered(
     for a, b in pairwise(us):
         for c, d in pairwise(vs):
             if not any(
-                rectangle[0] <= a and b <= rectangle[2] and rectangle[1] <= c and d <= rectangle[3]
+                rectangle[0] <= a
+                and b <= rectangle[2]
+                and rectangle[1] <= c
+                and d <= rectangle[3]
                 for rectangle in touching
             ):
                 return False

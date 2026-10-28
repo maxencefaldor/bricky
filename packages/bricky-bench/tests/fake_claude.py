@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """A stand-in for Claude Code in print mode, for testing the runner without a model.
 
 The stand-in copies the script named by ``FAKE_SOLUTION`` to the path the prompt asks for, and
@@ -29,7 +30,12 @@ def main() -> None:
             "type": "assistant",
             "message": {"content": [{"type": "text", "text": "Building."}, build]},
         },
-        {"type": "result", "subtype": "success", "num_turns": 3, "total_cost_usd": 0.12},
+        {
+            "type": "result",
+            "subtype": "success",
+            "num_turns": 3,
+            "total_cost_usd": 0.12,
+        },
     ]
     for event in events:
         sys.stdout.write(json.dumps(event) + "\n")

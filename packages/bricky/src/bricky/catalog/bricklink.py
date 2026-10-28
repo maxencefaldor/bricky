@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Import BrickLink's catalog: every part and every color, from BrickLink's own downloads.
 
 BrickLink, the LEGO Group's marketplace, publishes its whole catalog as XML files at
@@ -38,8 +39,12 @@ class BrickLinkColor(BaseModel):
 
     id: int
     name: str
-    rgb: str = Field(description="Hexadecimal RGB without the '#', as BrickLink writes it.")
-    type: str = Field(description="BrickLink's color type, such as 'Solid' or 'Transparent'.")
+    rgb: str = Field(
+        description="Hexadecimal RGB without the '#', as BrickLink writes it."
+    )
+    type: str = Field(
+        description="BrickLink's color type, such as 'Solid' or 'Transparent'."
+    )
 
 
 class BrickLinkItem(BaseModel):
@@ -49,7 +54,9 @@ class BrickLinkItem(BaseModel):
     id: str
     name: str
     category: int
-    alternates: tuple[str, ...] = Field(default=(), description="Other ids of the item.")
+    alternates: tuple[str, ...] = Field(
+        default=(), description="Other ids of the item."
+    )
 
 
 class BrickLinkCode(BaseModel):
@@ -68,7 +75,9 @@ class Downloads(BaseModel):
     categories: dict[int, str]
     parts: tuple[BrickLinkItem, ...]
     codes: tuple[BrickLinkCode, ...]
-    files: dict[str, Path] = Field(description="The file each download was read from, by kind.")
+    files: dict[str, Path] = Field(
+        description="The file each download was read from, by kind."
+    )
 
 
 _PARTS: Final = "parts"
@@ -92,14 +101,18 @@ def read_downloads(folder: Path) -> Downloads:
         kind, records = _read(path)
         if kind is not None:
             if kind in found:
-                message = f"{path} and {found[kind][0]} are both BrickLink {kind} downloads"
+                message = (
+                    f"{path} and {found[kind][0]} are both BrickLink {kind} downloads"
+                )
                 raise BrickyError(message)
             found[kind] = (path, records)
     missing = [kind for kind in ("colors", _PARTS) if kind not in found]
     if missing:
         names = {"colors": "Colors", _PARTS: "Catalog Items (Parts)"}
         wanted = " and ".join(names[kind] for kind in missing)
-        message = f"{folder} has no BrickLink {wanted} download, as XML, from {DOWNLOAD_PAGE}"
+        message = (
+            f"{folder} has no BrickLink {wanted} download, as XML, from {DOWNLOAD_PAGE}"
+        )
         raise BrickyError(message)
     records = {kind: found[kind][1] if kind in found else [] for kind in _KINDS}
     try:
@@ -114,7 +127,8 @@ def read_downloads(folder: Path) -> Downloads:
                 for record in records["colors"]
             ),
             categories={
-                int(record["CATEGORY"]): record["CATEGORYNAME"] for record in records["categories"]
+                int(record["CATEGORY"]): record["CATEGORYNAME"]
+                for record in records["categories"]
             },
             parts=tuple(
                 BrickLinkItem(
@@ -122,7 +136,9 @@ def read_downloads(folder: Path) -> Downloads:
                     id=record["ITEMID"],
                     name=record["ITEMNAME"],
                     category=record["CATEGORY"],
-                    alternates=tuple(record.get("ALTITEMIDS", "").replace(",", " ").split()),
+                    alternates=tuple(
+                        record.get("ALTITEMIDS", "").replace(",", " ").split()
+                    ),
                 )
                 for record in records[_PARTS]
                 if record.get("ITEMTYPE") == "P"
@@ -209,7 +225,10 @@ def _colors(found: Iterable[BrickLinkColor]) -> tuple[list[Color], tuple[str, ..
         names.add(color.name.casefold())
         colors.append(
             Color(
-                id=color.id, name=color.name, type=color_type(color.type, color.name), rgb=f"#{rgb}"
+                id=color.id,
+                name=color.name,
+                type=color_type(color.type, color.name),
+                rgb=f"#{rgb}",
             )
         )
     return colors, tuple(skipped)

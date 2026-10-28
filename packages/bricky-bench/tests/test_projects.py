@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 import asyncio
 from pathlib import Path
 
@@ -41,12 +43,17 @@ def test_references_build_without_errors(project):
 
 def test_projects_are_chosen_by_name_or_number():
     root = ROOT / "bench" / "projects"
-    assert [p.id for p in load_projects(root, ("4", "01-wall"))] == ["04-house-plans", "01-wall"]
+    assert [p.id for p in load_projects(root, ("4", "01-wall"))] == [
+        "04-house-plans",
+        "01-wall",
+    ]
     with pytest.raises(BrickyError, match="no project '42'"):
         load_projects(root, ("42",))
 
 
 def test_pictures_are_captioned_so_they_give_no_counts_away():
-    renders = [item for p in PROJECTS for item in p.spec.generate if isinstance(item, Render)]
+    renders = [
+        item for p in PROJECTS for item in p.spec.generate if isinstance(item, Render)
+    ]
     assert renders
     assert all(item.caption for item in renders)

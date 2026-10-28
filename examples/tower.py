@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """A 4 x 4 tower of interlocking 2 x 4 bricks, capped with tiles.
 
 Each level rotates its bricks by 90 degrees, so every brick bridges the two below it.

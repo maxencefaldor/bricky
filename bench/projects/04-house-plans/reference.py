@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Reference for project 04: a small house with a door, glazed windows, a flat roof and a chimney.
 
 The walls are one stud thick and five bricks tall, laid in running bond with interlocking corners:
@@ -34,7 +35,11 @@ def opening(x: int, y: int, course: int) -> str | None:
 
 
 def lay(
-    builder: ModelBuilder, cells: list[tuple[int, int]], along_x: bool, z: int, course: int
+    builder: ModelBuilder,
+    cells: list[tuple[int, int]],
+    along_x: bool,
+    z: int,
+    course: int,
 ) -> None:
     """Fill a straight run of wall cells with bricks, one color at a time, longest first."""
     i = 0
@@ -48,7 +53,10 @@ def lay(
             length = next(size for size in BRICKS if size <= j - start)
             x, y = cells[start]
             builder.place(
-                BRICKS[length], at=(x, y, z), rotation="R90" if along_x else "R0", color=color
+                BRICKS[length],
+                at=(x, y, z),
+                rotation="R90" if along_x else "R0",
+                color=color,
             )
             start += length
         i = j
@@ -80,8 +88,12 @@ def build() -> ModelBuilder:
     # Roof: Dark Bluish Gray plates, 12 x 8 studs, on top of the walls.
     roof_z = 1 + 3 * COURSES
     for y in range(SOUTH, NORTH, 2):
-        builder.place("3034", at=(WEST, y, roof_z), rotation="R90", color="Dark Bluish Gray")
-        builder.place("3020", at=(WEST + 8, y, roof_z), rotation="R90", color="Dark Bluish Gray")
+        builder.place(
+            "3034", at=(WEST, y, roof_z), rotation="R90", color="Dark Bluish Gray"
+        )
+        builder.place(
+            "3020", at=(WEST + 8, y, roof_z), rotation="R90", color="Dark Bluish Gray"
+        )
     # Chimney: two courses of Red 2 x 2 bricks.
     for course in range(2):
         builder.place("3003", at=(10, 6, roof_z + 1 + 3 * course), color="Red")

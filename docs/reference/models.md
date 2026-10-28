@@ -1,7 +1,7 @@
 # Models
 
-Build scripts write models with a `ModelBuilder`. A model stores part ids, colors and poses only;
-everything else derives from the catalog.
+Build scripts write models with a `ModelBuilder`.
+A model stores part ids, colors and poses only; everything else derives from the catalog.
 
 ::: bricky.builder.ModelBuilder
 

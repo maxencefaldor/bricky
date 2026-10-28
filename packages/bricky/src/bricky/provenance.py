@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Provenance: the build-script lines that placed each element and instance.
 
 A build script places parts by calling :meth:`ModelBuilder.place` and
@@ -35,12 +36,20 @@ class Frame(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    file: str = Field(description="Script path, relative to the working directory when inside it.")
+    file: str = Field(
+        description="Script path, relative to the working directory when inside it."
+    )
     line: int = Field(ge=1, description="Line number.")
-    function: str = Field(description="Enclosing function, or '<module>' at the top level.")
+    function: str = Field(
+        description="Enclosing function, or '<module>' at the top level."
+    )
 
     def __str__(self) -> str:
-        where = "at module level" if self.function == "<module>" else f"in {self.function}()"
+        where = (
+            "at module level"
+            if self.function == "<module>"
+            else f"in {self.function}()"
+        )
         return f"{self.file}:{self.line} {where}"
 
 
@@ -49,7 +58,9 @@ class Source(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    frames: tuple[Frame, ...] = Field(min_length=1, description="Script frames, innermost first.")
+    frames: tuple[Frame, ...] = Field(
+        min_length=1, description="Script frames, innermost first."
+    )
 
     @property
     def site(self) -> Frame:
@@ -75,14 +86,22 @@ class ScopeSources(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    elements: dict[str, Source] = Field(default_factory=dict, description="By element id.")
-    instances: dict[str, Source] = Field(default_factory=dict, description="By instance id.")
+    elements: dict[str, Source] = Field(
+        default_factory=dict, description="By element id."
+    )
+    instances: dict[str, Source] = Field(
+        default_factory=dict, description="By instance id."
+    )
 
     def relative_to(self, root: Path) -> ScopeSources:
         """Return these sources with file paths made relative to ``root`` where possible."""
         return ScopeSources(
-            elements={key: source.relative_to(root) for key, source in self.elements.items()},
-            instances={key: source.relative_to(root) for key, source in self.instances.items()},
+            elements={
+                key: source.relative_to(root) for key, source in self.elements.items()
+            },
+            instances={
+                key: source.relative_to(root) for key, source in self.instances.items()
+            },
         )
 
 
@@ -91,7 +110,9 @@ class Provenance(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    model: ScopeSources = Field(default_factory=ScopeSources, description="Top-level scope.")
+    model: ScopeSources = Field(
+        default_factory=ScopeSources, description="Top-level scope."
+    )
     components: dict[str, ScopeSources] = Field(
         default_factory=dict, description="Each component's scope, by component name."
     )
@@ -101,7 +122,8 @@ class Provenance(BaseModel):
         return Provenance(
             model=self.model.relative_to(root),
             components={
-                name: sources.relative_to(root) for name, sources in self.components.items()
+                name: sources.relative_to(root)
+                for name, sources in self.components.items()
             },
         )
 
@@ -116,7 +138,9 @@ class Provenance(BaseModel):
         instances = model.instances
         steps: list[InstanceStep] = []
         for instance_id in instance_ids:
-            instance = next((item for item in instances if item.id == instance_id), None)
+            instance = next(
+                (item for item in instances if item.id == instance_id), None
+            )
             if instance is None or instance.component not in model.components:
                 return Trace()
             steps.append(
@@ -129,7 +153,11 @@ class Provenance(BaseModel):
             scope_name = instance.component
             scope = self.components.get(scope_name, ScopeSources())
             instances = model.components[scope_name].instances
-        return Trace(component=scope_name, source=scope.elements.get(element_id), via=tuple(steps))
+        return Trace(
+            component=scope_name,
+            source=scope.elements.get(element_id),
+            via=tuple(steps),
+        )
 
 
 class InstanceStep(BaseModel):
@@ -139,7 +167,9 @@ class InstanceStep(BaseModel):
 
     id: str = Field(description="Instance id within its scope.")
     component: str = Field(description="Component the instance places.")
-    source: Source | None = Field(default=None, description="Where the instance was placed.")
+    source: Source | None = Field(
+        default=None, description="Where the instance was placed."
+    )
 
 
 class Trace(BaseModel):
@@ -147,9 +177,15 @@ class Trace(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    component: str | None = Field(default=None, description="Component defining the element.")
-    source: Source | None = Field(default=None, description="Where the element was placed.")
-    via: tuple[InstanceStep, ...] = Field(default=(), description="Instances, outermost first.")
+    component: str | None = Field(
+        default=None, description="Component defining the element."
+    )
+    source: Source | None = Field(
+        default=None, description="Where the element was placed."
+    )
+    via: tuple[InstanceStep, ...] = Field(
+        default=(), description="Instances, outermost first."
+    )
 
     def sources(self) -> Iterator[Source]:
         """Every source on the trace: the element's own, then each instance's."""
@@ -165,7 +201,9 @@ class SourceMap(BaseModel):
 
     format: Literal["bricky.sourcemap/1"] = SOURCE_MAP_FORMAT
     script: str = Field(description="The build script that produced the model.")
-    model_sha256: str = Field(description="SHA-256 of the model file this map describes.")
+    model_sha256: str = Field(
+        description="SHA-256 of the model file this map describes."
+    )
     provenance: Provenance
 
 
@@ -225,7 +263,8 @@ def _library_roots() -> tuple[Path, ...]:
     paths = sysconfig.get_paths()
     roots = {_PACKAGE}
     roots.update(
-        Path(paths[key]).resolve() for key in ("stdlib", "platstdlib", "purelib", "platlib")
+        Path(paths[key]).resolve()
+        for key in ("stdlib", "platstdlib", "purelib", "platlib")
     )
     return tuple(sorted(roots))
 

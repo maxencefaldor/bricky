@@ -1,3 +1,5 @@
+# Copyright 2026 Maxence Faldor
+
 from pathlib import Path
 
 from bricky import ModelBuilder, save_model
@@ -14,7 +16,9 @@ def wall(builder: ModelBuilder, x: int) -> str:
 def test_capture_records_the_script_stack_innermost_first():
     source = capture()
     assert source is not None
-    assert source.site.function == "test_capture_records_the_script_stack_innermost_first"
+    assert (
+        source.site.function == "test_capture_records_the_script_stack_innermost_first"
+    )
     assert Path(source.site.file).name == HERE
 
 
@@ -66,7 +70,9 @@ def test_source_maps_are_ignored_once_the_model_changes(tmp_path):
     wall(builder, 0)
     path = tmp_path / "m.bricky.json"
     save_model(builder.build(), path)
-    written = save_source_map(builder.provenance(), script=Path("m.py"), model_path=path)
+    written = save_source_map(
+        builder.provenance(), script=Path("m.py"), model_path=path
+    )
     assert written == source_map_path(path) == tmp_path / "m.bricky.map.json"
     assert load_source_map(path) == builder.provenance()
     path.write_text(path.read_text().replace('"m"', '"edited"'))

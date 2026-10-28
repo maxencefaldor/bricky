@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Exact integer units for LEGO® System geometry.
 
 bricky measures every length in *base units* of 0.4 mm, the largest length that divides every

@@ -1,9 +1,19 @@
+# Copyright 2026 Maxence Faldor
+
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
-from bricky import Component, Element, Instance, Model, ModelBuilder, load_model, save_model
+from bricky import (
+    Component,
+    Element,
+    Instance,
+    Model,
+    ModelBuilder,
+    load_model,
+    save_model,
+)
 from bricky.analysis import build_world
 from bricky.catalog import default_catalog
 from bricky.geometry import ROTATIONS, Box, Vector
@@ -21,7 +31,9 @@ def test_place_puts_the_rotated_corner_at_the_given_point():
     builder.place("3001", at=(0, 6, 0), rotation="R180", color="Red")
     upright, rotated, reversed_ = world_bounds(builder.build())
     assert upright == Box(Vector(0, 0, 0), Vector(40, 80, 24))
-    assert rotated == Box(Vector(100, 20, 24), Vector(180, 60, 48))  # 4 studs east, 2 north
+    assert rotated == Box(
+        Vector(100, 20, 24), Vector(180, 60, 48)
+    )  # 4 studs east, 2 north
     assert reversed_ == Box(Vector(0, 120, 0), Vector(40, 200, 24))
 
 
@@ -66,7 +78,10 @@ def test_rotation_names_are_canonicalised():
 def test_models_reject_duplicate_ids_and_unknown_components():
     with pytest.raises(ValidationError, match="duplicate id"):
         Model(
-            elements=(Element(id="a", part="3001", color=5), Element(id="a", part="3001", color=5))
+            elements=(
+                Element(id="a", part="3001", color=5),
+                Element(id="a", part="3001", color=5),
+            )
         )
     with pytest.raises(ValidationError, match="unknown component"):
         Model(instances=(Instance(id="i", component="nope"),))
@@ -133,7 +148,9 @@ def test_nested_components_follow_the_same_corner_rule():
     pair.instance("brick", at=(0, 4, 0))
     builder.instance("pair", at=(10, 10, 0), rotation="R90")
     bounds = Box.bounding(world_bounds(builder.build()))
-    assert bounds == Box(Vector(10 * STUD, 10 * STUD, 0), Vector(18 * STUD, 12 * STUD, 3 * PLATE))
+    assert bounds == Box(
+        Vector(10 * STUD, 10 * STUD, 0), Vector(18 * STUD, 12 * STUD, 3 * PLATE)
+    )
 
 
 def test_unknown_empty_and_cyclic_components_fail_when_built():

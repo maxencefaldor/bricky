@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Scores: what is true of the model an agent ends with, and how closely it matches a reference.
 
 A score has two parts. The facts come from building the agent's final script with bricky: whether
@@ -36,7 +37,9 @@ class Fidelity(BaseModel):
     color: float = Field(
         description="Like shape, but a voxel filled in both counts only when the colors match."
     )
-    rotation: str = Field(description="The rotation of the agent's model that matched best.")
+    rotation: str = Field(
+        description="The rotation of the agent's model that matched best."
+    )
     shift: tuple[int, int, int] = Field(
         description="The shift, in studs and plates, that lined the rotated model up."
     )
@@ -49,7 +52,8 @@ class Score(BaseModel):
 
     built: bool = Field(description="Whether the final script built a model.")
     failure: str | None = Field(
-        default=None, description="Why the final script built no model; null when it built one."
+        default=None,
+        description="Why the final script built no model; null when it built one.",
     )
     elements: int = 0
     errors: int = 0
@@ -58,7 +62,8 @@ class Score(BaseModel):
         default_factory=dict, description="Diagnostics by code, such as {'E301': 2}."
     )
     fidelity: Fidelity | None = Field(
-        default=None, description="Match against the reference, for projects that have one."
+        default=None,
+        description="Match against the reference, for projects that have one.",
     )
 
 
@@ -74,7 +79,9 @@ def facts(report: Report, elements: int) -> Score:
     )
 
 
-def compare(model: Mapping[VoxelKey, Voxel], reference: Mapping[VoxelKey, Voxel]) -> Fidelity:
+def compare(
+    model: Mapping[VoxelKey, Voxel], reference: Mapping[VoxelKey, Voxel]
+) -> Fidelity:
     """Match a model's voxels against a reference's, over each rotation and three ways to line up.
 
     For each rotation, the comparison shifts the rotated model so its bounding box's low corner,
@@ -115,7 +122,9 @@ def compare(model: Mapping[VoxelKey, Voxel], reference: Mapping[VoxelKey, Voxel]
     )
 
 
-def _bounds(voxels: Mapping[VoxelKey, int]) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+def _bounds(
+    voxels: Mapping[VoxelKey, int],
+) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
     xs, ys, zs = zip(*voxels, strict=True)
     return (min(xs), min(ys), min(zs)), (max(xs), max(ys), max(zs))
 
@@ -125,8 +134,12 @@ def _shifts(
 ) -> set[tuple[int, int, int]]:
     """The shifts that line up the two models' low corners, high corners or centers."""
     (low, high), (reference_low, reference_high) = _bounds(rotated), _bounds(reference)
-    by_low = tuple(theirs - ours for theirs, ours in zip(reference_low, low, strict=True))
-    by_high = tuple(theirs - ours for theirs, ours in zip(reference_high, high, strict=True))
+    by_low = tuple(
+        theirs - ours for theirs, ours in zip(reference_low, low, strict=True)
+    )
+    by_high = tuple(
+        theirs - ours for theirs, ours in zip(reference_high, high, strict=True)
+    )
     by_center = tuple(
         (their_low + their_high) // 2 - (our_low + our_high) // 2
         for their_low, their_high, our_low, our_high in zip(

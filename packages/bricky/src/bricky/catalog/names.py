@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Read a part's shape from its BrickLink name.
 
 BrickLink names ordinary building parts by a strict pattern: the kind of part, its size in studs,
@@ -57,7 +58,14 @@ _NEUTRAL: Final = frozenset(
 """Details that leave a part's outer shape and connectors as bricky models them."""
 
 _STUD_KINDS: Final = frozenset(
-    {"Open Stud", "Open Studs", "Hollow Stud", "Hollow Studs", "Solid Stud", "Solid Studs"}
+    {
+        "Open Stud",
+        "Open Studs",
+        "Hollow Stud",
+        "Hollow Studs",
+        "Solid Stud",
+        "Solid Studs",
+    }
 )
 """Details that say how a part's studs are made: neutral for a part with studs on top, and the
 mark of a different part on a tile or a curved slope."""
@@ -77,14 +85,20 @@ def _pattern(head: str) -> re.Pattern[str]:
 _BLOCK: Final = _pattern(rf"(?P<kind>Brick|Plate|Tile) {_SIZE}{_HEIGHT}{_DETAIL}")
 _BASEPLATE: Final = _pattern(rf"Baseplate {_SIZE}")
 _SLOPE: Final = _pattern(rf"Slope (?P<angle>\d+) {_SIZE}{_HEIGHT}{_DETAIL}")
-_INVERTED: Final = _pattern(rf"Slope, Inverted (?P<angle>\d+) {_SIZE}{_HEIGHT}{_DETAIL}")
+_INVERTED: Final = _pattern(
+    rf"Slope, Inverted (?P<angle>\d+) {_SIZE}{_HEIGHT}{_DETAIL}"
+)
 _CURVED: Final = _pattern(rf"Slope, Curved {_SIZE}{_HEIGHT}{_DETAIL}")
-_ROUND: Final = _pattern(rf"(?P<kind>Brick|Plate|Tile), Round {_SIZE}{_HEIGHT}{_DETAIL}")
+_ROUND: Final = _pattern(
+    rf"(?P<kind>Brick|Plate|Tile), Round {_SIZE}{_HEIGHT}{_DETAIL}"
+)
 _SIDE_STUDS: Final = _pattern(
     r"Brick, Modified 1 x (?P<length>\d+) with (?:(?P<count>\d+) )?Studs? on (?:(?P<sides>\d) )?"
     r"Sides?(?:, (?P<arrangement>Adjacent|Opposite))?"
 )
-_JUMPER: Final = _pattern(rf"Plate, Modified {_SIZE} with (?P<detail>.*\b1 Stud\b.*) \(Jumper\)")
+_JUMPER: Final = _pattern(
+    rf"Plate, Modified {_SIZE} with (?P<detail>.*\b1 Stud\b.*) \(Jumper\)"
+)
 _ARCH: Final = _pattern(rf"(?:Brick, )?Arch 1 x (?P<b>\d+){_HEIGHT}{_DETAIL}")
 
 _SIDES_OF_ONE: Final[dict[tuple[int, bool], tuple[Side, ...]]] = {
@@ -143,7 +157,9 @@ def height_in_plates(height: str | None, default: int) -> int | None:
     return int(fraction) * 3
 
 
-def _neutral(detail: str | None, *, studs: bool, allowed: frozenset[str] = frozenset()) -> bool:
+def _neutral(
+    detail: str | None, *, studs: bool, allowed: frozenset[str] = frozenset()
+) -> bool:
     """Whether every fragment of a detail is neutral, splitting at "with", "and", commas and dashes.
 
     Details about studs are neutral only for a part with studs on top. ``allowed`` adds the details
@@ -169,14 +185,18 @@ def _block(name: str) -> Shape | None:
     if height is None:
         return None
     size = (int(match["a"]), int(match["b"]))
-    return BlockShape(family=kind, size=size, height=height if match["height"] else None)
+    return BlockShape(
+        family=kind, size=size, height=height if match["height"] else None
+    )
 
 
 def _baseplate(name: str) -> Shape | None:
     match = _BASEPLATE.match(name)
     if match is None:
         return None
-    return BaseplateShape(family=Family.BASEPLATE, size=(int(match["a"]), int(match["b"])))
+    return BaseplateShape(
+        family=Family.BASEPLATE, size=(int(match["a"]), int(match["b"]))
+    )
 
 
 def _slope(name: str) -> Shape | None:
@@ -197,7 +217,11 @@ def _slope(name: str) -> Shape | None:
     if not _neutral(match["detail"], studs=run < depth):
         return None
     return SlopeShape(
-        family=Family.SLOPE, size=(width, depth), height=height, run=run, studs=run < depth
+        family=Family.SLOPE,
+        size=(width, depth),
+        height=height,
+        run=run,
+        studs=run < depth,
     )
 
 
@@ -237,13 +261,19 @@ def _curved_slope(name: str) -> Shape | None:
     Curved slopes come in several heights, so a name without one describes no single shape.
     """
     match = _CURVED.match(name)
-    if match is None or match["height"] is None or not _neutral(match["detail"], studs=False):
+    if (
+        match is None
+        or match["height"] is None
+        or not _neutral(match["detail"], studs=False)
+    ):
         return None
     height = height_in_plates(match["height"], 0)
     if not height:
         return None
     depth, width = int(match["a"]), int(match["b"])
-    return CurvedSlopeShape(family=Family.CURVED_SLOPE, size=(width, depth), height=height)
+    return CurvedSlopeShape(
+        family=Family.CURVED_SLOPE, size=(width, depth), height=height
+    )
 
 
 def _round(name: str) -> Shape | None:
@@ -314,7 +344,9 @@ def _arch(name: str) -> Shape | None:
     height = height_in_plates(match["height"], 3)
     if height is None or length < 3 or height < 2:  # noqa: PLR2004 - two legs and an opening
         return None
-    return ArchShape(family=Family.ARCH, size=(1, length), height=height, span=length - 2)
+    return ArchShape(
+        family=Family.ARCH, size=(1, length), height=height, span=length - 2
+    )
 
 
 _READERS: Final[tuple[Callable[[str], Shape | None], ...]] = (

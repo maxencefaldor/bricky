@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The analysis context: shared analyses, each computed once, on first use."""
 
 from functools import cached_property

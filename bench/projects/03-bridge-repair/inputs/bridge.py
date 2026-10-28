@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """A footbridge over a stream: two stone piers, a wooden deck and white railings.
 
 The bridge runs 12 studs along x and is 4 studs wide (y 0 to 4).

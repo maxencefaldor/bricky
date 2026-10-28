@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Connections: which elements join, stud in anti-stud.
 
 A stud fits an anti-stud when the two sit at the same world position, facing each other.

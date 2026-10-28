@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """A colonnade: one column component, placed four times, under a two-layer beam.
 
 The model stores the column once and places four instances of it, so a change to the column

@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """MCP server exposing bricky's commands to any agent harness.
 
 The server generates every tool from a request model in :mod:`bricky.service`, so tool arguments,
@@ -20,7 +21,13 @@ from typing import Annotated, Final, Protocol, runtime_checkable
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from mcp.types import CallToolResult, ContentBlock, ImageContent, TextContent, ToolAnnotations
+from mcp.types import (
+    CallToolResult,
+    ContentBlock,
+    ImageContent,
+    TextContent,
+    ToolAnnotations,
+)
 from pydantic import BaseModel
 
 from bricky import service
@@ -52,7 +59,10 @@ target.
 
 READ_ONLY: Final = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 WRITES_FILES: Final = ToolAnnotations(
-    read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False
+    read_only_hint=False,
+    destructive_hint=False,
+    idempotent_hint=True,
+    open_world_hint=False,
 )
 
 
@@ -117,7 +127,9 @@ def tool_from[RequestModel: BaseModel, ResultModel: BaseModel](
             raise ToolError(str(error)) from error
         content: list[ContentBlock] = [TextContent(type="text", text=_text(result))]
         content.extend(_images(result))
-        return CallToolResult(content=content, structured_content=result.model_dump(mode="json"))
+        return CallToolResult(
+            content=content, structured_content=result.model_dump(mode="json")
+        )
 
     tool.__signature__ = inspect.Signature(  # ty: ignore[unresolved-attribute]
         parameters, return_annotation=Annotated[CallToolResult, result_type]
@@ -158,12 +170,28 @@ def create_server(session: service.Session | None = None) -> MCPServer:
             structured_output=True,
         )
 
-    register("build_model", service.BuildRequest, service.build, service.BuildResult, WRITES_FILES)
     register(
-        "render_model", service.RenderRequest, service.render, service.RenderResult, WRITES_FILES
+        "build_model",
+        service.BuildRequest,
+        service.build,
+        service.BuildResult,
+        WRITES_FILES,
+    )
+    register(
+        "render_model",
+        service.RenderRequest,
+        service.render,
+        service.RenderResult,
+        WRITES_FILES,
     )
     register("check_model", service.CheckRequest, service.check, Report, READ_ONLY)
-    register("search_parts", service.PartsRequest, service.parts, service.PartsResult, READ_ONLY)
+    register(
+        "search_parts",
+        service.PartsRequest,
+        service.parts,
+        service.PartsResult,
+        READ_ONLY,
+    )
     register(
         "show_part",
         service.CatalogShowRequest,
@@ -172,11 +200,25 @@ def create_server(session: service.Session | None = None) -> MCPServer:
         WRITES_FILES,
     )
     register(
-        "search_colors", service.ColorsRequest, service.colors, service.ColorsResult, READ_ONLY
+        "search_colors",
+        service.ColorsRequest,
+        service.colors,
+        service.ColorsResult,
+        READ_ONLY,
     )
-    register("list_passes", service.PassesRequest, service.passes, service.PassesResult, READ_ONLY)
     register(
-        "explain_code", service.ExplainRequest, service.explain, service.ExplainResult, READ_ONLY
+        "list_passes",
+        service.PassesRequest,
+        service.passes,
+        service.PassesResult,
+        READ_ONLY,
+    )
+    register(
+        "explain_code",
+        service.ExplainRequest,
+        service.explain,
+        service.ExplainResult,
+        READ_ONLY,
     )
     return server
 

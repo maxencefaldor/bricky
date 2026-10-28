@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Renders: pictures of a model, for the agent that builds it and the people who review it.
 
 A render is the richest feedback a build gets. The report states whether a model is valid; the

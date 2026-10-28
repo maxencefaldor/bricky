@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """bricky-bench: benchmark projects for agents that build LEGO® models with bricky.
 
 Projects live in ``bench/projects``. ``bricky-bench run`` runs them with Claude Code and scores

@@ -1,7 +1,7 @@
 # bricky-bench
 
-The benchmark runner for [bricky](../../README.md). The projects, and how to run them, are in
-[`bench/`](../../bench/README.md).
+The benchmark runner for [bricky](../../README.md).
+The projects, and how to run them, are in [`bench/`](../../bench/README.md).
 
 ```sh
 uv run bricky-bench list               # the ten projects

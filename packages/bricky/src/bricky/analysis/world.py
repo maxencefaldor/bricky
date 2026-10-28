@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """Resolve a model against the catalog and place every element in world space."""
 
 from dataclasses import dataclass
@@ -75,7 +76,9 @@ def build_world(model: Model, catalog: Catalog) -> World:
                     color=element.color,
                     pose=pose,
                     solids=solids,
-                    connectors=tuple(connector.transformed(pose) for connector in part.connectors),
+                    connectors=tuple(
+                        connector.transformed(pose) for connector in part.connectors
+                    ),
                     bounds=Box.bounding(solid.bounds for solid in solids),
                 )
             )

@@ -1,3 +1,4 @@
+# Copyright 2026 Maxence Faldor
 """The canonical model format: what a build is, stored once.
 
 A model is a small tree: top-level elements and instances, plus the named components that
@@ -25,7 +26,9 @@ def _canonical_rotation(value: str) -> str:
 type RotationName = Annotated[
     str,
     AfterValidator(_canonical_rotation),
-    Field(description="Grid rotation, such as '+x+y' (the identity), '+y-x' or the alias 'R90'."),
+    Field(
+        description="Grid rotation, such as '+x+y' (the identity), '+y-x' or the alias 'R90'."
+    ),
 ]
 type Identifier = Annotated[
     str,
@@ -46,7 +49,9 @@ class Element(_Record):
 
     id: Identifier
     part: str = Field(description="Part id in the BrickLink catalog, such as '3001'.")
-    color: int = Field(description="Color id in the BrickLink catalog, such as 5 (Red).")
+    color: int = Field(
+        description="Color id in the BrickLink catalog, such as 5 (Red)."
+    )
     rotation: RotationName = "+x+y"
     position: Position = (0, 0, 0)
 
@@ -81,7 +86,10 @@ class Model(_Record):
         _check_scope("the model", self.elements, self.instances, self.components)
         for name, component in self.components.items():
             _check_scope(
-                f"component {name!r}", component.elements, component.instances, self.components
+                f"component {name!r}",
+                component.elements,
+                component.instances,
+                self.components,
             )
         _check_acyclic(self.components)
         return self
@@ -96,7 +104,9 @@ class Model(_Record):
                 size(instance.component) for instance in component.instances
             )
 
-        return len(self.elements) + sum(size(instance.component) for instance in self.instances)
+        return len(self.elements) + sum(
+            size(instance.component) for instance in self.instances
+        )
 
 
 def _check_scope(
@@ -114,7 +124,9 @@ def _check_scope(
     for instance in instances:
         if instance.component not in components:
             name = instance.component
-            message = f"instance {instance.id!r} in {scope} places unknown component {name!r}"
+            message = (
+                f"instance {instance.id!r} in {scope} places unknown component {name!r}"
+            )
             raise ValueError(message)
 
 
