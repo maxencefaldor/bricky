@@ -78,23 +78,12 @@ The picture marks the same elements, so the agent sees where they are:
 ## The catalog
 
 Until a catalog is imported, bricky uses a sample of 112 common parts and 40 colors.
-The full catalog comes from BrickLink's catalog downloads and, for shapes, the LDraw.org Parts Library:
+The full catalog comes from BrickLink's catalog downloads and, for shapes, the [LDraw.org Parts Library](https://library.ldraw.org), under CC BY 4.0:
 
 ```sh
 uv run bricky catalog import --bricklink ~/bricklink --ldraw ~/ldraw
 ```
 
 [The catalog guide](https://maxencefaldor.github.io/bricky/guide/catalog/) explains where each shape comes from and how the import checks names against LDraw.
-
-## Contributing
-
-`AGENTS.md` holds the architecture, conventions, vocabulary and writing rules, for people and agents alike.
-A change is done when `ruff format`, `ruff check`, `ty check`, `rumdl check .` and `pytest` pass.
-
-## License
-
-[Apache-2.0](LICENSE).
-three.js, vendored for renders, is under the MIT license in `packages/bricky/src/bricky/render/assets/three/`.
-Part shapes converted from the [LDraw.org Parts Library](https://library.ldraw.org) are licensed under CC BY 4.0.
 
 LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this project.
