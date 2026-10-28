@@ -52,7 +52,7 @@ def world_voxels(world: World) -> dict[VoxelKey, Voxel]:
 def model_voxels(model: Model, catalog: Catalog | None = None) -> dict[VoxelKey, Voxel]:
     """Return every filled voxel of a model, keyed by its minimum corner in studs and plates.
 
-    Example:
+    Examples:
         >>> from bricky import ModelBuilder, voxels
         >>> builder = ModelBuilder("wall")
         >>> builder.place("3004", at=(0, 0, 0), color="Red")  # Brick 1 x 2

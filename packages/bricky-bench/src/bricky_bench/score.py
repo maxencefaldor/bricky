@@ -79,8 +79,8 @@ def compare(model: Mapping[VoxelKey, Voxel], reference: Mapping[VoxelKey, Voxel]
 
     For each rotation, the comparison shifts the rotated model so its bounding box's low corner,
     high corner or center meets the reference's; levels always line up by the low corner. The
-    candidate with the most voxels filled in the same color in both models wins, and the most
-    voxels filled in both breaks ties.
+    candidate with the most voxels filled in both models wins, and the most voxels filled in the
+    same color in both breaks ties.
     """
     ours = {key: voxel.color for key, voxel in model.items()}
     theirs = {key: voxel.color for key, voxel in reference.items()}
@@ -102,7 +102,7 @@ def compare(model: Mapping[VoxelKey, Voxel], reference: Mapping[VoxelKey, Voxel]
                 yield matched, shared, name, shift
 
     matched, shared, name, shift = max(
-        candidates(), key=lambda candidate: (candidate[0], candidate[1])
+        candidates(), key=lambda candidate: (candidate[1], candidate[0])
     )
     union = len(ours) + len(theirs) - shared
     return Fidelity(

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="BRICKY_",
+        env_ignore_empty=True,
         pyproject_toml_table_header=("tool", "bricky"),
         extra="ignore",
     )

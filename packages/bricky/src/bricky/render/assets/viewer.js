@@ -846,7 +846,7 @@ export async function mount(element, scene) {
     });
     render();
   };
-  return { look, clip, topPlates: scene.bounds[5] / PLATE };
+  return { look, clip, topPlates: Math.ceil(scene.bounds[5] / PLATE) };
 }
 
 // Headless pages call these through window.bricky.

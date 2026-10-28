@@ -78,9 +78,10 @@ def _describe(
     for unknown in context.world.unknown:
         if unknown.uid in uids:
             color = catalog.color(unknown.color)
+            entry = catalog.entry(unknown.part)
             found[unknown.uid] = ElementInfo(
                 part=unknown.part,
-                part_name=None,
+                part_name=entry.name if entry else None,
                 color=unknown.color,
                 color_name=color.name if color else None,
             )

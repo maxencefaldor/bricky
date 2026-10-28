@@ -1,7 +1,7 @@
 # Working on bricky
 
-bricky is a compiler-style toolkit that lets AI agents design buildable LEGO® models. Read
-`README.md` for what it does. This file says how to change it.
+bricky is a compiler-style toolkit that lets AI agents design buildable LEGO® models. `README.md`
+and the docs say what it does; the rules below say how to change it.
 
 ## Commands
 
@@ -91,7 +91,8 @@ Each concept has one name, used in code, docs, messages and pictures alike.
 | element | One part in one color, placed in a model, with an `id` |
 | uid | An element's id behind the ids of the instances that hold it, such as `bay2/e3` |
 | component, instance | A group of elements stored once, and one placed copy of it |
-| position, rotation, pose | Where an element's minimum corner sits, how it is rotated, and both |
+| at | The minimum corner of what a script places, in studs and plates, whatever its rotation |
+| position, rotation, pose | Where an element's origin lands, how it is rotated, and both |
 | stud, anti-stud | A connector on a part's face, and the socket under a part that a stud fits |
 | connection | Two elements joined by studs of one in anti-studs of the other |
 | shape, family | A part's catalog data, and the generator that turns it into geometry |

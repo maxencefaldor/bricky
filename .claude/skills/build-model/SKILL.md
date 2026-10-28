@@ -69,11 +69,11 @@ def build() -> ModelBuilder:
 - Read positions off the orthographic views: their rulers use the same units as `at`.
 - Look closer with `uv run bricky render models/<name>.bricky.json`, which writes
   `models/<name>.<view>.png` and leaves the build's picture alone:
-  - `--views front --views top` for single, larger views.
-  - `--highlight "lintel*"` or `--highlight @horseshoe` (a function of your script) to see what
-    those parts are; everything else is drawn faintly.
-  - `--clip "z<120"` (plates) or `--clip "x<10"` (studs) to clip the model open and look inside.
-  - `--html` to write a viewer you can orbit in a browser.
+    - `--views front --views top` for single, larger views.
+    - `--highlight "lintel*"` or `--highlight @horseshoe` (a function of your script) to see what
+      those parts are; everything else is drawn faintly.
+    - `--clip "z<120"` (plates) or `--clip "x<10"` (studs) to clip the model open and look inside.
+    - `--html` to write a viewer you can orbit in a browser.
 
 ## Building well
 
