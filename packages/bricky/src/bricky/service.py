@@ -14,6 +14,7 @@ import sys
 import time
 from collections import Counter
 from collections.abc import Sequence
+from fractions import Fraction
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Final, Self
@@ -51,14 +52,14 @@ from bricky.files import (
     save_source_map,
     write_file,
 )
-from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Vector
+from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Solid
 from bricky.model import Element, Model
 from bricky.passes import installed_codes, installed_passes
 from bricky.provenance import Provenance
 from bricky.render import Clip, Renderer, View, build_scene, write_html
 from bricky.runner import RunResult
 from bricky.settings import Settings
-from bricky.units import STUD, to_plates, to_studs
+from bricky.units import PLATE, STUD, to_plates, to_studs
 
 _PROFILE_HELP: Final = (
     "Profile to run, such as 'digital' or 'physical'; defaults to the configured one."
@@ -1123,18 +1124,12 @@ def _heights(part: Part) -> tuple[str, ...]:
     """A map of how tall a part stands over each stud square's center, north up; empty if flat."""
     width, length = part.footprint
 
-    def top(x: int, y: int) -> int:
-        center = Vector(x * STUD + STUD // 2, y * STUD + STUD // 2, 0)
-        return next(
-            (
-                z + 1
-                for z in reversed(range(part.size.z))
-                if any(solid.contains(Vector(center.x, center.y, z)) for solid in part.solids)
-            ),
-            0,
-        )
+    def height(x: int, y: int) -> str:
+        center = x * STUD + STUD // 2, y * STUD + STUD // 2
+        tops = [top for solid in part.solids if (top := _top(solid, *center)) is not None]
+        return _plates_text(max(tops, default=Fraction(0)))
 
-    tops = [[f"{to_plates(top(x, y)):.3g}" for x in range(width)] for y in reversed(range(length))]
+    tops = [[height(x, y) for x in range(width)] for y in reversed(range(length))]
     if all(cell == tops[0][0] for row in tops for cell in row):
         return ()
     span = max(len(cell) for row in tops for cell in row)
@@ -1142,6 +1137,25 @@ def _heights(part: Part) -> tuple[str, ...]:
         "height over each square in plates, north up:",
         *("    " + " ".join(cell.rjust(span) for cell in row) for row in tops),
     )
+
+
+def _top(solid: Solid, x: int, y: int) -> Fraction | None:
+    """The height of a solid's top over the point (x, y), in base units; ``None`` off the solid."""
+    low, high = Fraction(-(10**9)), Fraction(10**9)
+    for normal, offset in (solid if isinstance(solid, Convex) else solid.as_convex()).planes:
+        rest = offset - normal.x * x - normal.y * y  # the plane holds normal.z * z <= rest
+        if normal.z > 0:
+            high = min(high, Fraction(rest, normal.z))
+        elif normal.z < 0:
+            low = max(low, Fraction(rest, normal.z))
+        elif rest < 0:
+            return None
+    return high if low < high else None
+
+
+def _plates_text(units: Fraction) -> str:
+    """A height in base units, written in plates to three decimals at most: 1.875, 3, 10.125."""
+    return f"{float(units / PLATE):.3f}".rstrip("0").rstrip(".")
 
 
 class CatalogVerifyRequest(BaseModel):

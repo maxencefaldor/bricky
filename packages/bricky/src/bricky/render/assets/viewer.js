@@ -578,7 +578,7 @@ function drawPanel(view, width, height) {
 
   svg.append(text(12, 20, `${VIEWS[view].title}`, { weight: 700, fill: INK.text }));
   svg.append(text(12 + measure(VIEWS[view].title, 700) + 8, 20, VIEWS[view].note, { fill: INK.quiet }));
-  if (VIEWS[view].azimuth !== undefined) drawCompass(svg, camera, center, width);
+  if (azimuth !== undefined) drawCompass(svg, camera, center, width);
   else drawRulers(svg, view, orthographic, width, height);
   drawLabels(svg, camera, width, height);
   panel.append(canvas, svg);

@@ -44,7 +44,7 @@ by layer with the biggest parts that fit, every part resting on the layer below.
 
 ## Colosseum
 
-`examples/colosseum.py`: the Colosseum in Rome at 1:150, 45,496 elements on a plaza of 25
+`examples/colosseum.py`: the Colosseum in Rome at 1:150, 44,968 elements on a plaza of 25
 baseplates. Functions draw the monument as voxels on elliptical rings, and `builder.fill` lays
 them in bricks and plates:
 

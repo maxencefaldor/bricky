@@ -48,7 +48,7 @@ underside anti-studs, north up:
     o o
 height over each square in plates, north up:
        3    3
-    1.88 1.88
+    1.75 1.75
 ```
 
 `--render` also draws the part, into bricky's cache folder, outside the workspace.

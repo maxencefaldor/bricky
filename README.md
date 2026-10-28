@@ -79,7 +79,7 @@ The picture marks the same elements, so the agent sees where they are:
 
 ![The cottage example: slopes, an arch, round parts, a tile on a side stud and a jumper](docs/images/cottage.png)
 
-![The Colosseum example, 45,496 elements filled from voxels, from the north-west](docs/images/colosseum-north-west.png)
+![The Colosseum example, 44,968 elements filled from voxels, from the north-west](docs/images/colosseum-north-west.png)
 
 ## The catalog
 

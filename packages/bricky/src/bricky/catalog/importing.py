@@ -34,13 +34,11 @@ from bricky.catalog.bricklink import Downloads, bricklink_parts, downloaded
 from bricky.catalog.families import build_part
 from bricky.catalog.ldraw import Library, ldraw_parts, ldraw_shape
 from bricky.catalog.models import (
-    BoxesShape,
     CatalogPart,
     Color,
     Connector,
     ConnectorKind,
     Part,
-    Shape,
 )
 from bricky.errors import BrickyError
 from bricky.geometry import ALIASES, Box, Pose, Rotation, Vector
@@ -145,14 +143,15 @@ class _Shaping:
             self.origin[key] = "LDraw"
             return
         self.compared += 1
-        difference = _difference(entry, entry.shape, converted)
+        named, from_ldraw = build_part(entry, entry.shape), build_part(entry, converted)
+        difference = _difference(named, from_ldraw)
         if not difference:
             return
-        if _lacks_anti_studs(entry, entry.shape, converted):
+        if _lacks_anti_studs(named, from_ldraw):
             self.disagreements.append(f"{key} {entry.name} keeps its name's shape: {difference}")
             return
         self.disagreements.append(f"{key} {entry.name} takes LDraw's shape: {difference}")
-        rotation = _closest_rotation(entry, entry.shape, converted)
+        rotation = _closest_rotation(named, from_ldraw)
         entries[key] = entry.model_copy(
             update={"shape": converted.model_copy(update={"rotation": rotation})}
         )
@@ -215,40 +214,36 @@ def _ldraw_number(library: Library, entry: CatalogPart) -> str | None:
     return None
 
 
-def _difference(entry: CatalogPart, named: Shape, converted: Shape) -> str:
-    """Describe how a part's shapes from its name and from LDraw differ; empty when they agree.
+def _difference(named: Part, from_ldraw: Part) -> str:
+    """Describe how a part built from its name and from LDraw differ; empty when they agree.
 
-    LDraw orients parts its own way, so the shapes agree when a rotation about the vertical axis
+    LDraw orients parts its own way, so the two agree when a rotation about the vertical axis
     brings LDraw's onto the name's: the same size, and studs and anti-studs in the same places.
     """
-    a, b = build_part(entry, named), build_part(entry, converted)
-    if any(_placed(b, rotation) == _placed(a, "R0") for rotation in ALIASES):
+    if any(_placed(from_ldraw, rotation) == _placed(named, "R0") for rotation in ALIASES):
         return ""
-    facts = [_facts(a), _facts(b)]
+    facts = [_facts(named), _facts(from_ldraw)]
     where = " in other places" if facts[0] == facts[1] else ""
     return f"its name gives {_describe(facts[0])}; LDraw gives {_describe(facts[1])}{where}"
 
 
-def _lacks_anti_studs(entry: CatalogPart, named: Shape, converted: Shape) -> bool:
-    """Whether LDraw's shape, in some rotation, is the name's with only some anti-studs missing."""
-    a, b = build_part(entry, named), build_part(entry, converted)
-    size, connectors = _placed(a, "R0")
-    for rotation in ALIASES:
-        rotated_size, rotated = _placed(b, rotation)
-        if rotated_size == size and rotated < connectors:
-            missing = connectors - rotated
-            if all(connector.kind is ConnectorKind.ANTI_STUD for connector in missing):
-                return True
-    return False
+def _lacks_anti_studs(named: Part, from_ldraw: Part) -> bool:
+    """Whether LDraw's part, in some rotation, is the name's with only some anti-studs missing."""
+    size, connectors = _placed(named, "R0")
+    return any(
+        rotated_size == size
+        and rotated < connectors
+        and all(missing.kind is ConnectorKind.ANTI_STUD for missing in connectors - rotated)
+        for rotated_size, rotated in (_placed(from_ldraw, rotation) for rotation in ALIASES)
+    )
 
 
-def _closest_rotation(entry: CatalogPart, named: Shape, converted: BoxesShape) -> str:
-    """The rotation of LDraw's shape that best matches the name's: its size, then connectors."""
-    a, b = build_part(entry, named), build_part(entry, converted)
-    target_size, target_connectors = _placed(a, "R0")
+def _closest_rotation(named: Part, from_ldraw: Part) -> str:
+    """The rotation of LDraw's part that best matches the name's: its size, then connectors."""
+    target_size, target_connectors = _placed(named, "R0")
 
     def closeness(rotation: str) -> tuple[bool, int]:
-        size, connectors = _placed(b, rotation)
+        size, connectors = _placed(from_ldraw, rotation)
         return size == target_size, len(connectors & target_connectors)
 
     return max(ALIASES, key=closeness)
