@@ -18,9 +18,6 @@ dependencies = ["bricky", "mcp>=2"]
 [project.scripts]
 bricky-mcp = "bricky_mcp.server:main"
 
-[tool.uv.sources]
-bricky = { workspace = true }
-
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14"]
 build-backend = "uv_build"

@@ -14,16 +14,16 @@ dev = [
     { name = "bricky", editable = "packages/bricky" },
     { name = "bricky-bench", editable = "packages/bricky-bench" },
     { name = "bricky-mcp", editable = "packages/bricky-mcp" },
-    { name = "hypothesis", specifier = ">=6.170" },
-    { name = "pytest", specifier = ">=9.1" },
-    { name = "pytest-github-actions-annotate-failures", specifier = ">=0.4.2" },
-    { name = "ruff", specifier = ">=0.17" },
-    { name = "rumdl", specifier = ">=0.3" },
-    { name = "ty", specifier = ">=0.0.92" },
+    { name = "hypothesis" },
+    { name = "pytest" },
+    { name = "pytest-github-actions-annotate-failures" },
+    { name = "ruff" },
+    { name = "rumdl" },
+    { name = "ty" },
 ]
 docs = [
-    { name = "mkdocstrings-python", specifier = ">=2" },
-    { name = "zensical", specifier = ">=0.0.73" },
+    { name = "mkdocstrings-python" },
+    { name = "zensical" },
 ]
 
 [[package]]
