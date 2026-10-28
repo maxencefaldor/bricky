@@ -437,9 +437,9 @@ FIGURES: Final = (
     # The home page and the cards: bare perspectives, with no text on them
     Figure(
         "hero",
-        EXAMPLES / "colosseum.py",
-        view=View.PERSPECTIVE_NORTH_WEST,
-        size=(1600, 1000),
+        EXAMPLES / "japanese_garden.py",
+        view=View.PERSPECTIVE,
+        size=(1600, 1200),
         bare=True,
     ),
     card("card-coordinates", rotations, highlight=("R*",)),
@@ -454,8 +454,13 @@ FIGURES: Final = (
             f"gallery-{name}", EXAMPLES / script, view=view, size=(1200, 900), bare=True
         )
         for name, script, view in (
-            ("tower", "tower.py", View.PERSPECTIVE),
-            ("colonnade", "colonnade.py", View.PERSPECTIVE),
+            ("street-corner", "street_corner.py", View.PERSPECTIVE),
+            ("japanese-garden", "japanese_garden.py", View.PERSPECTIVE),
+            ("pirate-ship", "pirate_ship.py", View.PERSPECTIVE),
+            ("lighthouse-island", "lighthouse_island.py", View.PERSPECTIVE),
+            ("steam-train", "steam_train.py", View.PERSPECTIVE),
+            ("macaw", "macaw.py", View.PERSPECTIVE),
+            ("great-wave", "great_wave.py", View.PERSPECTIVE),
             ("cottage", "cottage.py", View.PERSPECTIVE),
             ("elizabeth-tower", "elizabeth_tower.py", View.PERSPECTIVE),
             ("colosseum", "colosseum.py", View.PERSPECTIVE_NORTH_WEST),
@@ -629,34 +634,43 @@ function photograph(scene, options) {
   ground.receiveShadow = true;
   three.add(ground);
 
-  // Center the model and its shadow, then move the camera until they fill the image.
-  // Each corner of the model's box casts a shadow along the sunlight, onto the ground.
+  // Center the model, then move the camera until it and its shadow fill the image.
+  // The top corners of each element cast the shadow along the sunlight, onto the floor.
   const floor = model.bounds.min.y;
-  const framed = corners(model.bounds).flatMap((corner) => [
-    corner,
-    corner.clone().addScaledVector(light, -(corner.y - floor) / light.y),
-  ]);
+  const box = corners(model.bounds);
+  const shadows = model.elementBounds
+    .filter((bounds) => !bounds.isEmpty())
+    .flatMap((bounds) => corners(bounds).filter((corner) => corner.y === bounds.max.y))
+    .map((corner) => corner.addScaledVector(light, -(corner.y - floor) / light.y));
   const camera = new THREE.PerspectiveCamera(
     LENS, width / height, radius / 100, radius * 100,
   );
   const half = Math.tan(THREE.MathUtils.degToRad(LENS) / 2);
   const target = center.clone();
   let distance = radius * 4;
-  for (let step = 0; step < 12; step++) {
-    aim(camera, target, azimuth, distance);
+  const extent = (points) => {
     let left = Infinity, right = -Infinity, low = Infinity, high = -Infinity;
-    for (const corner of framed) {
+    for (const corner of points) {
       const point = corner.clone().project(camera);
       left = Math.min(left, point.x);
       right = Math.max(right, point.x);
       low = Math.min(low, point.y);
       high = Math.max(high, point.y);
     }
+    return { left, right, low, high };
+  };
+  for (let step = 0; step < 12; step++) {
+    aim(camera, target, azimuth, distance);
+    const body = extent(box);
+    const all = extent([...box, ...shadows]);
+    const middle = (body.left + body.right) / 2;
+    const level = (body.low + body.high) / 2;
     const sideways = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
-    const shift = ((left + right) / 2) * distance * half * camera.aspect;
-    target.addScaledVector(sideways, shift);
-    target.y += ((low + high) / 2) * distance * half / Math.cos(ELEVATION);
-    distance *= 0.4 + 0.6 * (Math.max((right - left) / 2, (high - low) / 2) / FILL);
+    target.addScaledVector(sideways, middle * distance * half * camera.aspect);
+    target.y += level * distance * half / Math.cos(ELEVATION);
+    const across = Math.max(all.right - middle, middle - all.left);
+    const tall = Math.max(all.high - level, level - all.low);
+    distance *= 0.4 + 0.6 * (Math.max(across, tall) / FILL);
   }
   aim(camera, target, azimuth, distance);
   // Edges fade when studs are small on screen, as in the renderer's images.

@@ -123,7 +123,7 @@ Four sections of the docs go further than the tutorial:
 
 -   🖼️ **[Gallery](gallery.md)**
 
-    Larger models in a 3D viewer, from a tower to the Colosseum, each with its script.
+    Larger models in a 3D viewer, from a steam train to the Colosseum, each with its script.
 
 -   📚 **[Reference](reference/index.md)**
 

@@ -2,7 +2,7 @@
 
 A compiler-style toolkit that lets AI agents design buildable LEGO® models.
 
-[![The Colosseum example: 44,968 elements on a plaza of baseplates](docs/images/hero.png)](https://maxencefaldor.github.io/bricky/gallery/)
+[![The Japanese garden example: a pagoda, a torii and cherry trees in bloom around a koi pond](docs/images/hero.png)](https://maxencefaldor.github.io/bricky/gallery/)
 
 An AI agent can describe a castle, but it cannot tell whether the castle's bricks hold together.
 

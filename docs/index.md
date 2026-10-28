@@ -18,7 +18,7 @@ Each build places every part in exact geometry, reports each error with the scri
 
 [Get started](get-started.md){ .md-button .md-button--primary } [Gallery in 3D](gallery.md){ .md-button }
 
-![The Colosseum example: 44,968 elements on a plaza of baseplates](images/hero.png){ .bricky-hero-image }
+![The Japanese garden example: a pagoda, a torii and cherry trees in bloom around a koi pond](images/hero.png){ .bricky-hero-image }
 
 </div>
 
@@ -34,7 +34,7 @@ Each build places every part in exact geometry, reports each error with the scri
 
 -   🖼️ **[Gallery](gallery.md)**
 
-    Every example in a 3D viewer, from a tower of 20 elements to the Colosseum.
+    Every example in a 3D viewer, from a Japanese garden and a pirate ship to the Colosseum.
 
 -   📚 **[Reference](reference/index.md)**
 
