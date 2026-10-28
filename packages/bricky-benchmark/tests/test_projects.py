@@ -7,11 +7,11 @@ import pytest
 
 from bricky import BrickyError, Settings, check_model, default_catalog
 from bricky.service import run_script
-from bricky_bench.prepare import layers_text
-from bricky_bench.projects import Layers, Project, Render, load_projects
+from bricky_benchmark.prepare import layers_text
+from bricky_benchmark.projects import Layers, Project, Render, load_projects
 
 ROOT = Path(__file__).parents[3]
-PROJECTS = load_projects(ROOT / "bench" / "projects")
+PROJECTS = load_projects(ROOT / "benchmark" / "projects")
 
 
 def test_ten_projects_span_every_difficulty() -> None:
@@ -43,7 +43,7 @@ def test_references_build_without_errors(project: Project) -> None:
 
 
 def test_projects_are_chosen_by_name_or_number() -> None:
-    root = ROOT / "bench" / "projects"
+    root = ROOT / "benchmark" / "projects"
     assert [p.id for p in load_projects(root, ("4", "01-wall"))] == [
         "04-house-plans",
         "01-wall",

@@ -2,7 +2,7 @@
 
 from bricky import ModelBuilder, check_model, voxels
 from bricky.analysis import Voxel, VoxelKey
-from bricky_bench.score import compare, facts
+from bricky_benchmark.score import compare, facts
 
 
 def grid(*rows: str, z: int = 0) -> dict[VoxelKey, Voxel]:

@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 
 from bricky.service import Session
-from bricky_bench.projects import load_projects
-from bricky_bench.run import (
+from bricky_benchmark.projects import load_projects
+from bricky_benchmark.run import (
     Agent,
     Completed,
     Record,
@@ -20,7 +20,7 @@ from bricky_bench.run import (
 
 ROOT = Path(__file__).parents[3]
 FAKE = Path(__file__).with_name("fake_claude.py")
-PROJECTS = {p.id: p for p in load_projects(ROOT / "bench" / "projects")}
+PROJECTS = {p.id: p for p in load_projects(ROOT / "benchmark" / "projects")}
 
 
 def test_prompts_end_with_where_to_work_and_where_the_answer_goes() -> None:

@@ -5,14 +5,14 @@ requires-python = ">=3.15"
 [manifest]
 members = [
     "bricky",
-    "bricky-bench",
+    "bricky-benchmark",
     "bricky-mcp",
 ]
 
 [manifest.dependency-groups]
 dev = [
     { name = "bricky", editable = "packages/bricky" },
-    { name = "bricky-bench", editable = "packages/bricky-bench" },
+    { name = "bricky-benchmark", editable = "packages/bricky-benchmark" },
     { name = "bricky-mcp", editable = "packages/bricky-mcp" },
     { name = "hypothesis" },
     { name = "pytest" },
@@ -78,9 +78,9 @@ requires-dist = [
 ]
 
 [[package]]
-name = "bricky-bench"
+name = "bricky-benchmark"
 version = "0.2.0"
-source = { editable = "packages/bricky-bench" }
+source = { editable = "packages/bricky-benchmark" }
 dependencies = [
     { name = "bricky" },
     { name = "pydantic" },

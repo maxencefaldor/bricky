@@ -28,7 +28,7 @@ from bricky.service import run_script
 ROOT: Final = Path(__file__).resolve().parent.parent
 IMAGES: Final = ROOT / "docs" / "images"
 EXAMPLES: Final = ROOT / "examples"
-BENCH: Final = ROOT / "bench" / "projects"
+BENCHMARK: Final = ROOT / "benchmark" / "projects"
 
 type Make = Callable[[Catalog], ModelBuilder]
 
@@ -429,14 +429,17 @@ FIGURES: Final = (
 )
 
 COPIES: Final = {
-    "bench-heart.png": BENCH / "02-pixel-heart" / "inputs" / "heart.png",
-    "bench-house.png": BENCH / "04-house-plans" / "inputs" / "plans.png",
-    "bench-toadstool.png": BENCH / "05-mushroom-layers" / "inputs" / "toadstool.png",
-    "bench-lighthouse.png": BENCH
+    "benchmark-heart.png": BENCHMARK / "02-pixel-heart" / "inputs" / "heart.png",
+    "benchmark-house.png": BENCHMARK / "04-house-plans" / "inputs" / "plans.png",
+    "benchmark-toadstool.png": BENCHMARK
+    / "05-mushroom-layers"
+    / "inputs"
+    / "toadstool.png",
+    "benchmark-lighthouse.png": BENCHMARK
     / "06-lighthouse-picture"
     / "inputs"
     / "lighthouse.png",
-    "bench-castle.png": BENCH / "09-castle-plans" / "inputs" / "plans.png",
+    "benchmark-castle.png": BENCHMARK / "09-castle-plans" / "inputs" / "plans.png",
 }
 """Benchmark inputs the docs show as they are."""
 

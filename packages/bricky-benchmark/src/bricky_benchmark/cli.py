@@ -1,7 +1,7 @@
 # Copyright 2026 Maxence Faldor
-"""The ``bricky-bench`` command line: list projects, prepare their inputs, run them.
+"""The ``bricky-benchmark`` command line: list projects, prepare their inputs, run them.
 
-Run it from the bricky repository root, where ``bench/projects`` lives.
+Run it from the bricky repository root, where ``benchmark/projects`` lives.
 """
 
 import sys
@@ -21,9 +21,9 @@ from pydantic_settings import (
 
 from bricky.errors import BrickyError
 from bricky.service import Session
-from bricky_bench.prepare import prepare
-from bricky_bench.projects import load_projects
-from bricky_bench.run import Agent, run_projects, summary_table
+from bricky_benchmark.prepare import prepare
+from bricky_benchmark.projects import load_projects
+from bricky_benchmark.run import Agent, run_projects, summary_table
 
 _PROJECTS_HELP = "Folder holding the projects."
 _PROJECT_HELP = (
@@ -35,7 +35,7 @@ class _Selection(BaseModel):
     """The projects a command works on."""
 
     projects_dir: Path = Field(
-        default=Path("bench/projects"), description=_PROJECTS_HELP
+        default=Path("benchmark/projects"), description=_PROJECTS_HELP
     )
     project: tuple[str, ...] = Field(default=(), description=_PROJECT_HELP)
 
@@ -73,7 +73,7 @@ class RunCommand(_Selection):
     repeats: int = Field(default=1, ge=1, description="Runs of each project.")
     jobs: int = Field(default=1, ge=1, description="Runs at the same time.")
     output: Path = Field(
-        default=Path("bench/runs"),
+        default=Path("benchmark/runs"),
         description="Folder for run folders, one per invocation.",
     )
     model: str | None = Field(
@@ -103,11 +103,11 @@ class RunCommand(_Selection):
         print(f"\nruns kept in {output}")
 
 
-class BrickyBench(BaseSettings):
+class BrickyBenchmark(BaseSettings):
     """Benchmark agents that build LEGO® models with bricky."""
 
     model_config = SettingsConfigDict(
-        cli_prog_name="bricky-bench",
+        cli_prog_name="bricky-benchmark",
         cli_kebab_case=True,
         cli_implicit_flags=True,
         cli_hide_none_type=True,
@@ -142,7 +142,7 @@ class BrickyBench(BaseSettings):
 def main(argv: Sequence[str] | None = None) -> None:
     """Run the command line, exiting with status 2 on an error."""
     try:
-        CliApp.run(BrickyBench, cli_args=None if argv is None else list(argv))
+        CliApp.run(BrickyBenchmark, cli_args=None if argv is None else list(argv))
     except BrickyError as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(2) from None

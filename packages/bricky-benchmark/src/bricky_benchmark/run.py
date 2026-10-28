@@ -31,9 +31,9 @@ from bricky.analysis import Voxel, VoxelKey
 from bricky.errors import BrickyError
 from bricky.files import load_model, write_file
 from bricky.service import BuildResult, Session
-from bricky_bench.prepare import reference_model
-from bricky_bench.projects import Project
-from bricky_bench.score import Score, compare, facts
+from bricky_benchmark.prepare import reference_model
+from bricky_benchmark.projects import Project
+from bricky_benchmark.score import Score, compare, facts
 
 SKILL: Final = Path(".claude/skills/build-model")
 """The skill the agent works with, relative to the repository root."""
@@ -169,7 +169,7 @@ async def run_projects(  # noqa: PLR0913 - keyword-only options, one per concern
         if not (repository / needed).is_dir():
             message = (
                 f"{repository} has no {needed}; "
-                "run bricky-bench from the bricky repository root"
+                "run bricky-benchmark from the bricky repository root"
             )
             raise BrickyError(message)
     references: dict[str, dict[VoxelKey, Voxel]] = {}
@@ -177,7 +177,7 @@ async def run_projects(  # noqa: PLR0913 - keyword-only options, one per concern
         if project.reference is not None:
             references[project.id] = voxels(await reference_model(project, session))
     gate = asyncio.Semaphore(jobs)
-    with tempfile.TemporaryDirectory(prefix="bricky-bench-wheel-") as scratch:
+    with tempfile.TemporaryDirectory(prefix="bricky-benchmark-wheel-") as scratch:
         wheel = await build_wheel(repository, Path(scratch))
 
         async def run_one(project: Project, repeat: int) -> Record:

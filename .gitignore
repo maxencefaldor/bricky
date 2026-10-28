@@ -16,7 +16,7 @@ models/*.png
 models/*.html
 
 # What benchmark runs write
-bench/runs/
+benchmark/runs/
 
 # Worktrees of parallel agents
 .claude/worktrees/

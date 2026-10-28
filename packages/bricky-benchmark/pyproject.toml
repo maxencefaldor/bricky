@@ -1,5 +1,5 @@
 [project]
-name = "bricky-bench"
+name = "bricky-benchmark"
 version = "0.2.0"
 description = "Benchmark projects for agents that build LEGO® models with bricky."
 readme = "README.md"
@@ -16,7 +16,7 @@ classifiers = [
 dependencies = ["bricky", "pydantic>=2.14", "pydantic-settings>=2.15"]
 
 [project.scripts]
-bricky-bench = "bricky_bench.cli:main"
+bricky-benchmark = "bricky_benchmark.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14"]

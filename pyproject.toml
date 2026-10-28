@@ -3,14 +3,14 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 bricky = { workspace = true }
-bricky-bench = { workspace = true }
+bricky-benchmark = { workspace = true }
 bricky-mcp = { workspace = true }
 
 # uv.lock pins every version; `uv lock --upgrade` moves them all to the newest releases.
 [dependency-groups]
 dev = [
   "bricky",
-  "bricky-bench",
+  "bricky-benchmark",
   "bricky-mcp",
   "hypothesis",
   "pytest",
@@ -24,7 +24,7 @@ docs = ["mkdocstrings-python", "zensical"]
 [tool.ruff]
 # The workspace root has no [project] table, so ruff cannot read requires-python here.
 target-version = "py315"
-src = ["packages/bricky/src", "packages/bricky-bench/src", "packages/bricky-mcp/src"]
+src = ["packages/bricky/src", "packages/bricky-benchmark/src", "packages/bricky-mcp/src"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -42,7 +42,7 @@ ignore = [
 # Build scripts are models written as code: their numbers are the model, they print to the build
 # report, and they run as scripts, outside any package.
 "examples/**" = ["INP001", "PLR2004", "T201"]
-"bench/**" = ["INP001", "PLR2004", "T201"]
+"benchmark/**" = ["INP001", "PLR2004", "T201"]
 # Scripts that draw the docs' pictures and pages, and say what they wrote.
 "docs/*.py" = ["INP001", "PLR2004", "T201"]
 "packages/*/src/*/cli.py" = ["T201"] # a command line prints

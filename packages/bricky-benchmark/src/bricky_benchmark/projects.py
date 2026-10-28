@@ -1,7 +1,7 @@
 # Copyright 2026 Maxence Faldor
 """Benchmark projects: a prompt, inputs and a budget, and sometimes a reference.
 
-Each project is a folder under ``bench/projects``, named ``NN-name``:
+Each project is a folder under ``benchmark/projects``, named ``NN-name``:
 
 - ``project.toml``: the title, difficulty (1 to 10), prompt and budget, and any inputs
   to generate from the reference (see :class:`ProjectFile`).
@@ -9,7 +9,7 @@ Each project is a folder under ``bench/projects``, named ``NN-name``:
   blueprints, scripts. The runner copies this folder into the agent's workspace.
 - ``reference.py``, optional: a build script for the model the project asks for. The
   agent never sees the reference. The runner scores a project with a reference by
-  comparing voxels (see :mod:`bricky_bench.score`).
+  comparing voxels (see :mod:`bricky_benchmark.score`).
 """
 
 import tomllib
@@ -77,7 +77,7 @@ class ProjectFile(_FileModel):
     minutes: int = Field(ge=1, description="Wall-clock time the agent may take.")
     generate: tuple[Generated, ...] = Field(
         default=(),
-        description="Inputs written from the reference by `bricky-bench prepare`.",
+        description="Inputs written from the reference by `bricky-benchmark prepare`.",
     )
 
 
@@ -154,7 +154,7 @@ def load_projects(root: Path, wanted: tuple[str, ...] = ()) -> list[Project]:
     if not root.is_dir():
         message = (
             f"no projects folder at {root}; "
-            "run bricky-bench from the bricky repository root"
+            "run bricky-benchmark from the bricky repository root"
         )
         raise BrickyError(message)
     projects = [load_project(path) for path in sorted(root.iterdir()) if path.is_dir()]

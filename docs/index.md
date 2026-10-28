@@ -114,7 +114,7 @@ Agents connect through the [command line](reference/cli.md), the [MCP server](ag
 ## Status
 
 bricky is pre-alpha.
-The model format, the catalog and the checks work end to end; the benchmark in [`bench/`](agents/benchmark.md) measures how well agents build with them.
+The model format, the catalog and the checks work end to end; the benchmark in [`benchmark/`](agents/benchmark.md) measures how well agents build with them.
 
 LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this project.
 Part shapes converted from the [LDraw.org Parts Library](https://library.ldraw.org) are licensed under CC BY 4.0.

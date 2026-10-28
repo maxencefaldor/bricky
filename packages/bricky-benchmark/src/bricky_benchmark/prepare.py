@@ -2,7 +2,7 @@
 """Write a project's generated inputs from its reference: pictures and voxel plans.
 
 Generated inputs are committed with the project, so every run of the benchmark gives the
-agent the same files. ``bricky-bench prepare`` writes them again after a reference
+agent the same files. ``bricky-benchmark prepare`` writes them again after a reference
 changes.
 """
 
@@ -20,7 +20,7 @@ from bricky.files import write_file
 from bricky.model import Model
 from bricky.render import build_scene
 from bricky.service import Session, run_script
-from bricky_bench.projects import REFERENCE_FILE, Layers, Project, Render
+from bricky_benchmark.projects import REFERENCE_FILE, Layers, Project, Render
 
 EMPTY: Final = "."
 """The character that marks an empty voxel in a plan."""

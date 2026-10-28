@@ -23,31 +23,31 @@ Projects with plans get pictures drawn from the reference, with rulers in studs 
 
 === "House plans"
 
-    ![The house's plans: perspective, front, right and top](../images/bench-house.png)
+    ![The house's plans: perspective, front, right and top](../images/benchmark-house.png)
 
 === "Castle plans"
 
-    ![The castle's plans](../images/bench-castle.png)
+    ![The castle's plans](../images/benchmark-castle.png)
 
 === "Toadstool"
 
-    ![The toadstool, which the agent rebuilds from a plan of every plate level](../images/bench-toadstool.png)
+    ![The toadstool, which the agent rebuilds from a plan of every plate level](../images/benchmark-toadstool.png)
 
 === "Lighthouse"
 
-    ![The one picture of the lighthouse](../images/bench-lighthouse.png)
+    ![The one picture of the lighthouse](../images/benchmark-lighthouse.png)
 
 === "Pixel heart"
 
-    ![The pixel heart](../images/bench-heart.png)
+    ![The pixel heart](../images/benchmark-heart.png)
 
 ## Running it
 
 ```sh
-uv run bricky-bench list              # the projects and their inputs
-uv run bricky-bench run --project 1   # run one project with Claude Code
-uv run bricky-bench run --repeats 3 --jobs 2 # every project three times, two at a time
-uv run bricky-bench run --model opus  # choose Claude Code's model
+uv run bricky-benchmark list              # the projects and their inputs
+uv run bricky-benchmark run --project 1   # run one project with Claude Code
+uv run bricky-benchmark run --repeats 3 --jobs 2 # every project three times, two at a time
+uv run bricky-benchmark run --model opus  # choose Claude Code's model
 ```
 
 Each run needs Claude Code (`claude`) signed in, and costs real model usage.
@@ -58,7 +58,7 @@ For every run, the runner:
 1. Starts Claude Code there in print mode with the project's prompt, turn budget and time budget.
 1. Builds the agent's final script in the same workspace and scores it.
 
-Everything lands in `bench/runs/<time>/`: per run, the transcript, the agent's log, its workspace and `record.json`; per invocation, `summary.json` and `summary.md`.
+Everything lands in `benchmark/runs/<time>/`: per run, the transcript, the agent's log, its workspace and `record.json`; per invocation, `summary.json` and `summary.md`.
 
 ## Scores
 
@@ -72,7 +72,7 @@ Judged projects have facts and effort but no fidelity: compare their pictures by
 
 ## First results
 
-On 28 October 2026, one Claude agent per project worked through all ten in a workspace like the runner's, with the command line and the skill, and `bricky-bench`'s scorer scored the final scripts.
+On 28 October 2026, one Claude agent per project worked through all ten in a workspace like the runner's, with the command line and the skill, and `bricky-benchmark`'s scorer scored the final scripts.
 Every model builds with no errors and no warnings.
 
 | # | Project | Elements | Shape | Color |
