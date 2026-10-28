@@ -120,7 +120,7 @@ def test_extra_spaces_do_not_matter():
 
 
 def test_names_give_the_sample_shapes():
-    """The sample was entered by hand; a name that has a shape gives the same one."""
+    """The sample's shapes are typed by hand; each name that gives a shape gives the same one."""
     parts = tomllib.loads(SAMPLE_CATALOG.read_text())["parts"]
     entries = [CatalogPart.model_validate(part) for part in parts]
     named = {entry.id: shape_from_name(entry.name) for entry in entries}

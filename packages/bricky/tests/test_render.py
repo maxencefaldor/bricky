@@ -145,7 +145,7 @@ def test_elements_that_are_not_boxes_become_meshes():
     assert set(meshes) == {"slope", "arch"}
     assert len(meshes["slope"].faces) == 7  # a five-sided profile, extruded
     arch = meshes["arch"]
-    # The arch is two legs and a dozen slices; the faces they share are inside, and left out.
+    # The arch is two legs and a dozen slices; its mesh leaves out the inner faces they share.
     assert len({frozenset(face) for face in arch.faces}) == len(arch.faces)
     corners = len(arch.vertices) // 3
     assert len(arch.edges) % 2 == 0
