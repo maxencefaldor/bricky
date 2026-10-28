@@ -279,7 +279,7 @@
 
   position: relative;
   border: 1px solid var(--bricky-line);
-  border-top: var(--bricky-band) solid var(--bricky-brick);
+  border-top: var(--bricky-band) solid transparent;
   border-radius: 0.2rem;
   transition:
     transform 0.15s ease,
@@ -299,20 +299,34 @@
   --bricky-brick: var(--bricky-green);
 }
 
-.md-typeset .grid.cards:is(.bricky-cards, .bricky-links) > ul > li::before {
+/*
+ * The studs and the band are layers over the card's outer edge, one pixel past each side border.
+ * A colored top border would meet the gray side borders at a slant and leave them showing.
+ */
+.md-typeset .grid.cards:is(.bricky-cards, .bricky-links) > ul > li::before,
+.md-typeset .grid.cards:is(.bricky-cards, .bricky-links) > ul > li::after {
   content: "";
   position: absolute;
-  top: calc(-1 * (var(--bricky-band) + var(--bricky-stud-height)));
-  right: 0;
-  left: 0;
-  height: var(--bricky-stud-height);
+  right: -1px;
+  left: -1px;
   background: var(--bricky-brick);
+}
+
+.md-typeset .grid.cards:is(.bricky-cards, .bricky-links) > ul > li::before {
+  top: calc(-1 * (var(--bricky-band) + var(--bricky-stud-height)));
+  height: var(--bricky-stud-height);
   mask: var(--bricky-studs) 0 0 / var(--bricky-stud-pitch) var(--bricky-stud-height) round no-repeat;
+}
+
+.md-typeset .grid.cards:is(.bricky-cards, .bricky-links) > ul > li::after {
+  top: calc(-1 * var(--bricky-band));
+  height: var(--bricky-band);
+  border-radius: 0.2rem 0.2rem 0 0;
 }
 
 .md-typeset .grid.cards:is(.bricky-cards, .bricky-links) > ul > li:is(:hover, :focus-within) {
   border-color: var(--bricky-line-strong);
-  border-top-color: var(--bricky-brick);
+  border-top-color: transparent;
   box-shadow: 0 10px 24px rgb(0 0 0 / 12%);
   transform: translateY(-3px);
 }
