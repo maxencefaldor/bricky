@@ -31,6 +31,7 @@ nav = [
   { "Reference" = [
     { "Command line" = "reference/cli.md" },
     { "Diagnostic codes" = "reference/codes.md" },
+    { "Configuration" = "reference/configuration.md" },
     { "Python API" = [
       { "Models" = "reference/models.md" },
       { "Catalog" = "reference/catalog.md" },

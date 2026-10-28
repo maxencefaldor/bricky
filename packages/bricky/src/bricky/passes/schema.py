@@ -24,15 +24,15 @@ class SchemaPass:
             rule=(
                 "The element's part id is not in the catalog, or the catalog lists the "
                 "part without a shape. The element then has no geometry, and no other "
-                "pass sees it. `bricky parts` searches the catalog."
+                "pass sees it. The command `bricky parts` searches the catalog."
             ),
         ),
         Code(
             code="E102",
             title="Unknown color",
             rule=(
-                "The element's color id is not in the catalog. `bricky colors` lists "
-                "the catalog's colors."
+                "The element's color id is not in the catalog. The command "
+                "`bricky colors` lists the catalog's colors."
             ),
         ),
         Code(

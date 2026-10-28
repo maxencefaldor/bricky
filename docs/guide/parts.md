@@ -1,7 +1,7 @@
 # Parts and colors
 
 Parts and colors carry their BrickLink ids, the ids LEGO® builders and sellers already use: `3001` is a Brick 2 x 4, and `5` is Red.
-Until a [catalog is imported](catalog.md), bricky uses a sample of 112 common parts and 40 colors.
+The [catalog](catalog.md) guide says where parts and colors come from, and how to import them all.
 
 ## Finding parts
 
@@ -29,6 +29,7 @@ id    name            family  x by y  height    studs
 
 Sizes read x by y with the part unrotated: a Brick 2 x 4 (`3001`) spans 2 studs along x and 4 along y.
 The rotation `R90` makes it span 4 studs along x.
+Slope names give depth first: Slope 45 2 x 1 (`3040`) spans 1 stud along x and 2 along y.
 In a script, `builder.catalog.find(family="plate", size=(1, 6))` returns every Plate 1 x 6, plain parts first.
 
 ## One part in full
@@ -79,7 +80,7 @@ Curved and round surfaces become flat facets whose corners stay on the grid, so 
 ## Converted parts
 
 Parts whose names follow no family pattern, such as windows, Technic bricks and logs, take their shape from the [LDraw.org Parts Library](https://library.ldraw.org).
-The import converts each LDraw file into boxes on a 0.8 mm grid, with studs where LDraw places them and anti-studs wherever the underside leaves room for a stud.
+The [catalog](catalog.md#two-sources) guide explains the conversion.
 
 ![Parts converted from LDraw: a Technic brick, a window, a log brick and more](../images/converted.png)
 
@@ -87,7 +88,7 @@ The import converts each LDraw file into boxes on a 0.8 mm grid, with studs wher
 
 A script names a color by its name or its id: `color="Red"` and `color=5` are the same color.
 Each color carries BrickLink's name and id, an RGB value and a type: solid, transparent, pearl, metallic and more.
-Images render transparent parts see-through and pearl parts with a sheen.
+Each image shows transparent colors see-through and pearl colors with a sheen.
 
 ```sh
 uv run bricky colors gray       # every color whose name contains "gray"

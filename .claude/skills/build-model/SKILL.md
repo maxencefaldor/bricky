@@ -47,7 +47,7 @@ def build() -> ModelBuilder:
   `examples/cottage.py` shows one, with an arch, a roof of slopes and a jumper.
 - Use loops and functions for anything that repeats.
   Use `builder.component(...)` with `builder.instance(...)` for identical groups.
-- For shapes easiest to describe as voxels (curves, domes, terrain, anything copied from a plan), build a dict `{(x, y, z): color}` and call `builder.fill(voxels, id="name")`: it lays bricks and plates in staggered courses, every part resting on the level below.
+- For shapes easiest to describe as voxels (curves, domes, terrain, anything copied from a plan), build a dict `{(x, y, z): color}` and call `builder.fill(voxels, id="name")`: it lays bricks and plates in staggered courses, every part resting on the layer below.
 - `uv run bricky catalog show 3001 --render` describes one part and renders it: its studs and anti-studs as maps, and, for slopes and other parts with an uneven top, its height over each square, so you see which way it falls.
   Parts the catalog lists without a shape cannot be placed; `bricky parts` lists only parts that can be.
 - Find parts with `uv run bricky parts "plate 2x4"` (20 at a time; `--limit 100` lists more), or from Python with `builder.catalog.find(family="plate", size=(1, 6))`.

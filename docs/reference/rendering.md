@@ -1,6 +1,6 @@
 # Rendering
 
-Rendering resolves a model into a scene of plain data, then renders the scene in headless Chromium or a standalone viewer.
+The renderer resolves a model into a scene of plain data, then renders that scene in headless Chromium or a standalone viewer.
 
 ::: bricky.render.scene
     options:

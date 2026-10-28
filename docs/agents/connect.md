@@ -1,16 +1,18 @@
 # Connect an agent
 
-An agent reaches bricky through one of three front ends, all derived from the same request models so their arguments never drift apart.
+An agent reaches bricky through one of three front ends.
+The command line and the MCP server derive from the same request models, so their arguments always match.
 
 | Front end | Suits |
 | --- | --- |
-| [Command line](#command-line) | Any agent that runs shell commands, such as Claude Code or Codex |
+| [Command line](#command-line) | Any harness that runs shell commands, such as Claude Code or Codex |
 | [MCP server](#mcp-server) | Any harness that speaks the Model Context Protocol |
 | [Skill](#skill) | Claude Code, and any harness that loads instructions from a file |
 
 ## Command line
 
-An agent that runs shell commands needs nothing more: `bricky build` runs a script and prints the report, and the agent opens the images it names.
+An agent whose harness runs shell commands needs nothing more.
+The command `bricky build` runs a script and prints the report, and the agent opens the images it names.
 Every command takes `--output-format json` to print its result as JSON for programs.
 The [command line reference](../reference/cli.md) lists every command and option.
 
@@ -28,7 +30,7 @@ A harness starts it from a project's `.mcp.json`, which Claude Code and other ha
   "mcpServers": {
     "bricky": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/bricky", "bricky-mcp"]
+      "args": ["run", "--project", "/path/to/bricky", "bricky-mcp"]
     }
   }
 }
@@ -37,7 +39,7 @@ A harness starts it from a project's `.mcp.json`, which Claude Code and other ha
 With Claude Code, one command does the same:
 
 ```sh
-claude mcp add bricky -- uv run --directory /path/to/bricky bricky-mcp
+claude mcp add bricky -- uv run --project /path/to/bricky bricky-mcp
 ```
 
 Each tool matches one command and takes the same arguments:
@@ -61,7 +63,8 @@ Three behaviors of the server matter to an agent:
 - **One warm browser.**
   The server starts Chromium on its first render and keeps it alive, so later images take a second or two.
 - **Scripts run apart.**
-  Each build script runs in a child process with a time limit, and whatever it prints comes back in the result, never on the protocol stream.
+  Each build script runs in a child process with a time limit.
+  Whatever the script prints comes back in the result, never on the protocol stream.
   A cancelled call stops its child.
 - **Self-contained instructions.**
   The server's instructions teach the workflow, the coordinates and the tools, so an agent can start without the skill.
@@ -70,7 +73,9 @@ Three behaviors of the server matter to an agent:
 
 The skill `.claude/skills/build-model/SKILL.md` teaches an agent the loop: plan, write the script, build, read the report and the images, fix, and repeat.
 The skill holds the advice, such as staggering joints like a brick wall, because bricky itself only states facts.
-Claude Code loads the skill from the repository on its own, and other harnesses can include the file in the agent's context.
+Claude Code loads the skill on its own inside the bricky repository.
+To use it from another project, copy `.claude/skills/build-model/` into that project or into `~/.claude/skills/`.
+Other harnesses can include the file in the agent's context.
 The [benchmark](benchmark.md) copies the skill into every workspace.
 
 ```markdown

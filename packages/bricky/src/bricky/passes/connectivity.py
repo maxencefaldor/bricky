@@ -20,12 +20,12 @@ class ConnectivityPass:
             code="E301",
             title="Floating group",
             rule=(
-                "Two parts are connected when a stud of one sits in an anti-stud of "
+                "Two elements are connected when a stud of one sits in an anti-stud of "
                 "the other at the same position, facing it. A connection works both "
-                "ways: a part held only from above is connected. A group of connected "
-                "parts is grounded when any part in it has its bottom at z = 0 or "
-                "below. The pass reports every ungrounded group once, with all its "
-                "elements and the box around them."
+                "ways: an element held only from above is connected. A group of "
+                "connected elements is grounded when any element in it has its bottom "
+                "at z = 0 or below. The pass reports every ungrounded group once, with "
+                "all its elements and the box around them."
             ),
         ),
     )

@@ -4,6 +4,6 @@ max_turns = 100
 minutes = 60
 prompt = """
 Build a K6 telephone kiosk, the classic red British telephone box, about 6 studs square.
-`inputs/notes.md` describes the real one. Make it recognisable from every side: the domed roof,
+`inputs/notes.md` describes the real one. Make it recognizable from every side: the domed roof,
 the TELEPHONE signs and crowns, the glazed sides and door, and the solid back.
 """

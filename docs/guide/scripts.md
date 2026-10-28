@@ -15,12 +15,12 @@ from bricky import ModelBuilder
 
 def build() -> ModelBuilder:
     builder = ModelBuilder("tower")
-    for level in range(8):
-        z = 3 * level
-        if level % 2 == 0:
+    for course in range(8):
+        z = 3 * course
+        if course % 2 == 0:
             builder.place("3001", at=(0, 0, z), color="Red")
             builder.place("3001", at=(2, 0, z), color="Red")
-        else:  # each level rotates 90 degrees, so every brick bridges the two below
+        else:  # each course rotates 90 degrees, so every brick bridges the two below
             builder.place("3001", at=(0, 0, z), rotation="R90", color="White")
             builder.place("3001", at=(0, 2, z), rotation="R90", color="White")
     return builder
@@ -38,19 +38,19 @@ A call to `builder.place(part, at=(x, y, z), color=..., rotation="R0", id=None)`
 | `at` | The minimum corner of the rotated part, in studs and plates (see [Coordinates](coordinates.md)) |
 | `color` | A color name or id |
 | `rotation` | `R0`, `R90`, `R180`, `R270`, or any of the 24 grid rotations |
-| `id` | The element's name; unnamed elements get `e1`, `e2` and so on, in the order they are placed |
+| `id` | The element's name; an unnamed element gets `e` and its position among everything placed in its model or component, such as `e2` |
 
 Elements that matter deserve an id: the report and the images label elements by id, and `--highlight` selects them by id.
 
 ## Components and instances
 
-A component stores a group of parts once, and each instance places a copy of it.
+A component stores a group of elements once, and each instance places a copy of it.
 One definition keeps every copy identical: a change to the component changes every instance.
 
 ```python
 column = builder.component("column")
-for level in range(5):
-    column.place("3003", at=(0, 0, 3 * level), color="Tan")
+for course in range(5):
+    column.place("3003", at=(0, 0, 3 * course), color="Tan")
 
 for index in range(4):
     builder.instance("column", at=(index * 4, 0, 0))
@@ -58,7 +58,7 @@ for index in range(4):
 
 The `at` of an instance is the minimum corner of the rotated component, exactly as for a part.
 Components may hold instances of other components.
-An element inside an instance has a uid that joins the ids of the instances that hold it: `i2/e3` is the third element of the second instance.
+An element inside an instance has a uid that joins the ids of the instances that hold it: `i2/e3` names the element `e3` inside the instance `i2`.
 The colonnade below highlights `i2/*`, its second column:
 
 ![The colonnade example, its second column highlighted](../images/colonnade.png)
@@ -103,7 +103,8 @@ builder.place("3070", at=(0, 0.6, 4.5), rotation="+x+z", color="Blue")  # Tile 1
 ```
 
 The upright tile is 0.4 studs deep, a plate's height, and one stud tall, 2.5 plates.
-Its minimum corner therefore sits 0.4 studs in front of the brick and half a plate above its base, so the tile ends flush with the top of the brick.
+Its minimum corner therefore sits 0.4 studs in front of the brick and half a plate above its base.
+The tile then ends flush with the top of the brick.
 
 ![A tile and a plate held sideways by studs on the sides of bricks](../images/sideways.png)
 
@@ -117,5 +118,5 @@ A build of `models/name.py` writes three files beside the script:
 | `name.bricky.map.json` | The source map: the script lines that placed each element |
 | `name.png` | The sheet: four views with rulers |
 
-The source map records the SHA-256 hash of its model file, so a map left over from an older model is ignored rather than trusted.
+The source map records the SHA-256 hash of its model file, so bricky ignores a map left over from an older model.
 The commands `bricky check` and `bricky render` read both files.

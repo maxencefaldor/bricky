@@ -1,6 +1,6 @@
 # Benchmark
 
-Ten projects, from a brick wall to Notre-Dame de Paris, that measure how well an agent builds LEGO® models with bricky.
+Ten projects, from a brick wall to Notre-Dame de Paris, measure how well an agent builds LEGO® models with bricky.
 The [benchmark page](https://maxencefaldor.github.io/bricky/agents/benchmark/) describes the projects, the scores and the results.
 
 ## Running it
@@ -12,6 +12,7 @@ uv run bricky-benchmark list                      # the projects and their input
 uv run bricky-benchmark prepare                   # write the inputs generated from references
 uv run bricky-benchmark run --project 1           # run one project, then score it
 uv run bricky-benchmark run --repeats 3 --jobs 2  # every project three times, two at a time
+uv run bricky-benchmark run --model opus          # choose Claude Code's model
 ```
 
 ## A project
@@ -26,4 +27,4 @@ projects/04-house-plans/
 ```
 
 The command `bricky-benchmark prepare` renders the inputs listed under `[[generate]]` in `project.toml`, images and plans of layers, from the reference.
-The inputs are committed, so every run gives the agent the same files.
+The repository commits the inputs, so every run gives the agent the same files.

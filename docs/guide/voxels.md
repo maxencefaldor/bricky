@@ -1,13 +1,14 @@
 # Voxels
 
-Voxels describe a model as a set of grid cells, so two models, or a model and a plan, compare exactly.
+Voxels describe a model on a grid of stud squares one plate tall, so two models, or a model and a plan, compare exactly.
 
 ## What a voxel is
 
-A voxel is one stud square and one plate tall, the grid that parts are placed on.
+A voxel is one stud square and one plate tall: the grid that models are compared on.
 An element fills a voxel when the voxel's center lies inside the element's body.
 Each voxel of a valid model therefore belongs to at most one element, and studs fill none.
-The function `voxels(model)` maps every voxel a model fills, keyed `(x, y, z)` in the units of `at`, to the element and color that fill it:
+The function `voxels(model)` maps every voxel a model fills to the element and color that fill it.
+The keys are `(x, y, z)`, in the units of `at`:
 
 ```pycon
 >>> from bricky import ModelBuilder, voxels

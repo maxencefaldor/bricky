@@ -1,6 +1,6 @@
 # Diagnostic codes
 
-Each code names one fact a pass can state about a model; `bricky explain` prints the exact rule behind each code.
+Each code names one fact a pass can state about a model, and `bricky explain` prints the same rule as this page.
 
 | Code | Title | Pass |
 | --- | --- | --- |
@@ -16,44 +16,49 @@ Codes that start with E are errors, and codes that start with W are warnings.
 
 ## E101 Unknown part
 
-The element's part id is missing from the catalog, or the catalog lists the part without a shape.
+The element's part id is not in the catalog, or the catalog lists the part without a shape.
 The element then has no geometry, and no other pass sees it.
+The command `bricky parts` searches the catalog.
 
 ## E102 Unknown color
 
-The element's color id is missing from the catalog.
+The element's color id is not in the catalog.
+The command `bricky colors` lists the catalog's colors.
 
 ## E103 Below the ground
 
 The element's body reaches below the ground plane, z = 0.
+The ground plane is the table the model stands on.
 
 ![A brick sunk two plates below the ground](../images/underground.png)
 
 ## W104 Color never made
 
-BrickLink lists the colors each part has come in, and the element's color is not among them: the part and the color both exist, but never together.
-The warning names the part and the color once, with every element that uses them.
-A call to `builder.fill` picks only parts made in each color.
+The catalog lists the colors a part has come in, and the element's color is not among them: the part and the color both exist, but never together.
+The pass reports each part and color once, with every element that uses them.
+Parts the catalog lists without colors are not checked.
 
 ## E201 Overlap
 
-The bodies of two parts share a positive volume.
-Faces that only touch do not count, and studs belong to no body.
-The region is the box the two parts share.
+The bodies of two elements share positive volume.
+Faces that only touch do not count, and studs belong to no body (see E202).
+The pass reports each overlapping pair once, with the box the two share.
 
 ![Two bricks placed into the same space](../images/overlap.png)
 
 ## E202 Blocked stud
 
-A stud stands inside another part's body where that part has no anti-stud to receive it, so the two parts cannot sit where they are.
-A plate half a stud off the grid is the classic case: the studs below push into its underside between its anti-studs.
+A stud stands inside another element's body where that element has no anti-stud facing it at the same position, so the two elements cannot sit where they are.
+A stud is 1.6 mm tall and 4.8 mm wide.
+The pass reports each pair of elements once, with the number of blocked studs and the box they span.
 
 ![A plate half a stud off the grid: the studs below push into it](../images/blocked.png)
 
 ## E301 Floating group
 
-Two parts are connected when a stud of one sits in an anti-stud of the other.
-A group of connected parts stands on the ground when any part in it reaches z = 0.
-The pass reports each group that does not stand on the ground once, with all its elements.
+Two elements are connected when a stud of one sits in an anti-stud of the other at the same position, facing it.
+A connection works both ways: an element held only from above is connected.
+A group of connected elements is grounded when any element in it has its bottom at z = 0 or below.
+The pass reports every ungrounded group once, with all its elements and the box around them.
 
 ![A brick held by nothing](../images/floating.png)

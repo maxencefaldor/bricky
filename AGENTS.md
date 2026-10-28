@@ -1,7 +1,7 @@
 # Working on bricky
 
-bricky is a compiler-style toolkit that lets AI agents design buildable LEGO® models.
-`README.md` and the docs say what it does; the rules below say how to change it.
+The repository holds bricky, a compiler-style toolkit that lets AI agents design buildable LEGO® models.
+The README and the docs say what bricky does; the rules below say how to change it.
 
 ## Commands
 
@@ -26,14 +26,14 @@ Each module imports only from the modules listed before it:
 1. `errors`, `settings`: the error front ends show as a message, and configuration.
 1. `units`, `geometry`: exact integer units (0.4 mm), the 24 grid rotations, boxes and convex solids with integer corners, and exact overlap tests between them.
 1. `catalog`: parts and colors keyed by BrickLink ids, imported from BrickLink's catalog downloads; each part's shape is read from its official name, or converted from LDraw, and its geometry generated per family, with curves built as exact facets.
-1. `model`, `provenance`, `builder`, `files`: the canonical model format, the script lines that placed each element, how to write models, and their files and source maps.
+1. `model`, `provenance`, `fill`, `builder`, `files`: the canonical model format, the script lines that placed each element, the bricks and plates that fill voxels, how to write models, and their files and source maps.
 1. `analysis`: derived data (world geometry, spatial index, connections, voxels), cached in `Context`, and the differences between two builds.
 1. `passes`, `diagnostics`, `check`: plugin passes and the reports they produce.
 1. `render`: scenes resolved from a model, rendered with three.js in headless Chromium.
 1. `runner`, `service`: build scripts in child processes, and every command defined once.
 1. `cli`, and `bricky_mcp` in its own package: front ends that only adapt `service`.
 
-`bricky_benchmark`, in `packages/bricky-benchmark`, runs the benchmark in `benchmark/` on top of bricky's public API.
+The module `bricky_benchmark`, in `packages/bricky-benchmark`, runs the benchmark in `benchmark/` on top of bricky's public API.
 Benchmark inputs are generated from each project's reference by `bricky-benchmark prepare` and committed; a reference never reaches the agent's workspace.
 
 ## Conventions
@@ -41,7 +41,7 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
 - **Tools:** use the standard, official, established tool in each category.
   That means uv, ruff, ty, rumdl, pytest with Hypothesis, pydantic and pydantic-settings, the official MCP SDK, and Playwright with three.js for renders.
 - **Format and lint:** bricky follows [toolchain](https://github.com/maxencefaldor/toolchain): ruff's default format at 88 columns, every ruff rule, every ty rule as an error, and Markdown one sentence per line.
-  `.editorconfig` is the toolchain's, verbatim; `.rumdl.toml` is too, followed by the settings bricky's docs need.
+  The file `.editorconfig` is the toolchain's, verbatim, and so is `.rumdl.toml`, followed by the settings bricky's docs need.
   A rule is switched off only in `pyproject.toml`, as narrowly as it can be, with its reason beside it.
 - **Python:** 3.15 only.
   Use modern syntax: PEP 695 generics and `type` aliases.
@@ -101,9 +101,11 @@ A word missing from this table is plain English, never a second name for a conce
 | base unit | 0.4 mm, the integer unit of the kernel; scripts write studs and plates |
 | voxel | One stud square and one plate tall: the grid that models are compared on |
 | layer, course | Every voxel at one height, and the three layers a brick spans |
-| fill | Cover voxels with bricks and plates in staggered courses |
+| fill | What an element does to the voxels its body covers; `builder.fill` places bricks and plates in staggered courses to fill given voxels |
 | plan | A description of a model to build: views with rulers, layers, or voxels |
-| pass, code, diagnostic, report | A check, a fact it can state, one statement of it, and all of them |
+| check, pass | One run of a profile's passes over a model, and one kind of fact a check tests |
+| code, diagnostic, report | A fact a pass can state, one statement of it, and all of them |
+| grounded | Said of a group of connected elements when one of them reaches z = 0 |
 | render | Make images or a viewer of a model, with three.js in headless Chromium |
 | image, view, sheet | A PNG of a model, one camera's look at it, and the four-view image every build writes |
 | viewer | A standalone HTML page that renders a model in 3D, to orbit in a browser |

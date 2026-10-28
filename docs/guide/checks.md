@@ -1,6 +1,6 @@
 # Checks
 
-Every build checks its model and reports facts, so the agent learns what is wrong without being told how to fix it.
+Every build checks its model and reports facts: what is wrong, never how to fix it.
 
 ## Reading a report
 
@@ -8,7 +8,7 @@ A report lists diagnostics, and each diagnostic states one fact about the model:
 The report adds what each element is and the script line that placed it, so every fact leads back to the code that caused it.
 Deciding what to change stays with the agent: bricky never fixes a model and never suggests a fix.
 
-The example `examples/broken.py` makes one mistake of each kind:
+The example `examples/broken.py` makes three mistakes: an overlap, a brick half a stud off and a floating plate.
 
 ```python
 builder.place("3001", at=(0, 0, 0), color="Red", id="base")  # Brick 2 x 4
@@ -56,8 +56,10 @@ Each diagnostic has three parts:
 1. **The region**, after `-->`: x and y in studs, z in plates, the units of `at`.
 1. **The elements**, after `=`: uid, part name and id, color, and the script line that placed the element.
 
-The summary `by source line` ranks script lines by the diagnostics that name their elements, so the first line to read is the one behind the most diagnostics.
-The sheet tints every element a diagnostic names red, labels each diagnostic's first element with its code, and outlines each region:
+The summary `by source line` ranks script lines by how many diagnostics name their elements.
+The first line listed is the one to read first.
+The sheet tints elements an error names red and those a warning names orange.
+Each diagnostic also labels its first element with its code and marks its region with a dashed box:
 
 ![The broken example: every element a diagnostic names is tinted red and labeled](../images/broken.png)
 
@@ -65,7 +67,7 @@ The [diagnostic codes](../reference/codes.md) page gives the exact rule behind e
 
 ## Passes and profiles
 
-A pass checks one kind of fact, and a profile names the passes a check runs.
+A check runs the passes of a profile, and each pass tests one kind of fact.
 Passes are pure functions of the model's shared analyses, registered under the `bricky.passes` entry-point group, so any package can add a pass without changing bricky.
 The command `bricky passes` lists the installed passes and profiles:
 
@@ -78,8 +80,8 @@ digital (default): schema, collision, connectivity
 physical: schema, collision, connectivity, stability (not installed), buildability (not installed), budget (not installed)
 ```
 
-The profile `physical` also names three passes that no package installs yet.
-The option `--passes collision` runs one pass alone.
+The profile `physical` also names three passes that no package installs yet, and the report lists them as skipped.
+The option `--profile physical` runs a profile, and `--passes collision` runs one pass alone.
 
 ## Changes between builds
 
@@ -99,8 +101,8 @@ since the last build: 4 added, 0 removed, 4 changed, 8 unchanged
     models/tower.py:16 in build(): 1 element
 ```
 
-Elements match by part, color and the space they occupy, not by id, so renumbered elements count as unchanged.
-An element that kept its id and part but moved, rotated or changed color counts as changed.
+Elements first match by part, color and the space they occupy, so renumbered elements count as unchanged.
+The remaining elements then pair by id: the same id and part with another pose or color counts as changed.
 The sheet outlines new and changed elements in purple:
 
 ![A tower whose top two courses were recolored and capped with tiles, outlined in purple](../images/changes.png)

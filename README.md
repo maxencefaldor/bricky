@@ -7,8 +7,8 @@ A compiler-style toolkit that lets AI agents design buildable LEGO® models.
 An AI agent can describe a castle, but it cannot tell whether the castle's bricks hold together.
 The fix is a compiler and a camera.
 The agent writes its model as a Python build script, and bricky places every part in exact geometry, checks the model and renders it.
-Each diagnostic names the script line behind it, and each image carries rulers in studs and plates.
-The agent therefore knows exactly what to change.
+Each diagnostic names the script line behind it, and the orthographic views carry rulers in studs and plates.
+The agent therefore knows what is wrong, where, and which line placed it.
 
 **[Documentation](https://maxencefaldor.github.io/bricky/)** · [Get started](https://maxencefaldor.github.io/bricky/get-started/) · [Gallery in 3D](https://maxencefaldor.github.io/bricky/gallery/) · [Connect an agent](https://maxencefaldor.github.io/bricky/agents/connect/) · [Benchmark](https://maxencefaldor.github.io/bricky/agents/benchmark/)
 
@@ -26,7 +26,7 @@ uv run bricky build examples/cottage.py  # build, check and render the cottage
 ## How it works
 
 A build script places parts by their BrickLink id, in studs and plates.
-The four lines below come from `examples/broken.py`, which makes one mistake of each kind:
+The four lines below come from `examples/broken.py`, which makes three mistakes: an overlap, a brick half a stud off and a floating plate.
 
 ```python
 builder.place("3001", at=(0, 0, 0), color="Red", id="base")  # Brick 2 x 4

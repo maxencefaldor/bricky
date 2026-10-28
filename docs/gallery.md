@@ -59,7 +59,7 @@ The examples in [`examples/`](https://github.com/maxencefaldor/bricky/tree/main/
 
 </div>
 
-To build an example and open its viewer locally:
+To build an example and write its viewer, `examples/stonehenge.html`:
 
 ```sh
 uv run bricky build examples/stonehenge.py

@@ -16,19 +16,20 @@ Studs and plates are the natural units: a brick is three plates tall, and every 
 | brick | 9.6 mm, three plates | 24 |
 | base unit | 0.4 mm | 1 |
 
+The ground is the plane z = 0.
+An element below it is an error (E103), and a group of connected elements that reaches it is grounded.
+
 ## Exact integers
 
-Every length in the kernel is a whole number of base units, so no check ever compares floating-point numbers.
-The base unit, 0.4 mm, divides every LEGO System dimension exactly: a stud is 20 base units and a plate 8.
-A script may still write fractions, such as `at=(0, 1.5, 2)` for half a stud off the grid, and a coordinate that falls between base units is an error.
-
-The ground is the plane z = 0.
-A part below it is an error (E103), and a group of parts that touches it stands on the ground.
+Every length in the kernel is a whole number of base units, so the kernel compares only integers.
+The base unit, 0.4 mm, divides every LEGO System dimension exactly, so the conversion from studs and plates loses nothing.
+The corner `at=(0, 1.5, 2)`, half a stud off the grid, becomes `(0, 30, 16)` in base units.
+A coordinate between base units makes `place` raise `ValueError`, and the build fails.
 
 ## The `at` corner
 
 The `at` of a part or a component is the minimum corner of its bounding box after rotation.
-A rotation never moves that corner, so a footprint always starts at `at` and a script never needs to correct for rotation.
+A rotation keeps that corner in place, so a footprint starts at `at` whatever the rotation.
 
 ```python
 builder.place("3001", at=(0, 0, 0), color="Red", id="R0")
@@ -60,7 +61,13 @@ The rotations below stand a part up, to [build sideways](scripts.md#building-sid
 
 ## Positions off the grid
 
-A jumper plate carries one stud centered between two, so the part on top of it sits half a stud off the grid.
-The coordinates follow the part: the lamp post below stands at y = 1.5.
+A jumper plate 1 x 2 carries one stud at its center, half a stud off the grid.
+A part on that stud sits off the grid too, so its `at` takes a half: the lamp post below stands at y = 1.5.
+
+```python
+builder.place("3020", at=(0, 0, 0), color="Dark Bluish Gray")  # Plate 2 x 4
+builder.place("15573", at=(0, 1, 1), color="Black")  # Jumper 1 x 2
+builder.place("3062", at=(0, 1.5, 2), color="Black")  # Brick, Round 1 x 1
+```
 
 ![A lamp post on a jumper, half a stud off the grid](../images/jumper.png)

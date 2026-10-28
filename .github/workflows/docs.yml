@@ -28,10 +28,10 @@ jobs:
           enable-cache: true
       - name: Install
         run: uv sync --group docs
-      - name: Check the command-line reference is current
+      - name: Check the generated reference pages are current
         run: |
-          uv run python docs/commands.py
-          git diff --exit-code docs/reference/cli.md
+          uv run python docs/reference.py
+          git diff --exit-code docs/reference/
       - name: Write the gallery's 3D viewers
         run: uv run python docs/gallery.py
       - name: Build

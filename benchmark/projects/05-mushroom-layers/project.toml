@@ -3,7 +3,7 @@ difficulty = 5
 max_turns = 80
 minutes = 40
 prompt = """
-Build the toadstool described voxel by voxel in `inputs/layers.txt`: every plate level of the
+Build the toadstool described voxel by voxel in `inputs/layers.txt`: every layer of the
 model, from the ground up, with the color of each voxel. `inputs/toadstool.png` shows the finished
 model. Fill exactly those voxels, in those colors, with parts that hold together: the cap overhangs
 the stem, and every part must connect to the ground through studs.

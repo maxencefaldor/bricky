@@ -8,7 +8,7 @@ from bricky import ModelBuilder
 
 
 def build() -> ModelBuilder:
-    """Make one mistake of each kind the digital profile catches."""
+    """Make three mistakes: an overlap, a brick half a stud off and a floating plate."""
     builder = ModelBuilder("broken")
     builder.place("3001", at=(0, 0, 0), color="Red", id="base")  # Brick 2 x 4
     builder.place("3001", at=(1, 0, 0), color="Blue", id="overlap")  # shares space

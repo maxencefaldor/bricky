@@ -5,7 +5,7 @@
 - The walls are one stud thick, in running bond. An Arch 1 x 4, rotated to run along the
   front wall, spans the doorway.
 - The roof is rows of Slope 45 2 x 4: unrotated they fall toward -y (the front), and
-  rotated R180 toward +y (the back). Tan bricks fill each level and show as the gables
+  rotated R180 toward +y (the back). Tan bricks fill each course and show as the gables
   at the ends. Cheese slopes finish the ridge.
 - A brick with a stud on its side holds a tile rotated upright: a house sign.
 - A jumper puts the lamp post half a stud off the grid, centered on its 1 x 2 base.
@@ -99,7 +99,7 @@ def walls(builder: ModelBuilder) -> None:
 
 
 def roof(builder: ModelBuilder) -> None:
-    """Plates over the walls, then three levels of slopes and a cheese-slope ridge."""
+    """Plates over the walls, then three courses of slopes and a cheese-slope ridge."""
     z = BASE + 3 * COURSES
     for y in range(
         SOUTH - 1, NORTH + 1, 2
@@ -114,7 +114,7 @@ def roof(builder: ModelBuilder) -> None:
     front, back = (
         SOUTH - 1,
         NORTH + 1,
-    )  # the y of the front and back edges of each level
+    )  # the y of the front and back edges of each course
     while True:
         for x in range(WEST - 1, EAST + 1, 4):
             # Slope 45 2 x 4: unrotated it falls toward -y, rotated R180 toward +y.
@@ -124,7 +124,7 @@ def roof(builder: ModelBuilder) -> None:
             break
         for x in range(
             WEST - 1, EAST + 1, 2
-        ):  # the gable: bricks the next level stands on
+        ):  # the gable: bricks the next course stands on
             for y in range(front + 2, back - 2, 2):
                 builder.place("3003", at=(x, y, z), color=WALL)
         front, back, z = front + 2, back - 2, z + 3
@@ -144,9 +144,9 @@ def garden(builder: ModelBuilder) -> None:
             )  # Tile 1 x 2
     # A lamp post on a jumper, so it stands half a stud off the grid.
     builder.place("15573", at=(4, 1, BASE), color="Black")  # Jumper 1 x 2, along y
-    for level in range(3):
+    for course in range(3):
         builder.place(
-            "3062", at=(4, 1.5, BASE + 1 + 3 * level), color="Black"
+            "3062", at=(4, 1.5, BASE + 1 + 3 * course), color="Black"
         )  # round brick
     builder.place("4073", at=(4, 1.5, BASE + 10), color="Trans-Yellow", id="lamp")
     # A round bush.

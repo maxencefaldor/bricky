@@ -5,7 +5,8 @@ Ten projects, from a brick wall to Notre-Dame de Paris, measure how well an agen
 ## The projects
 
 Each project is a prompt, sometimes with inputs: images, a plan of every layer, notes, or a broken script to repair.
-Seven projects have a reference model that the agent never sees and are scored against it; the other three are open briefs, judged by eye.
+Seven projects have a reference model that the agent never sees, and a scorer compares the agent's model with it.
+The other three are open briefs, and a person judges their images by eye.
 
 | # | Project | What the agent gets | Scored |
 | --- | --- | --- | --- |
@@ -17,12 +18,13 @@ Seven projects have a reference model that the agent never sees and are scored a
 | 6 | A lighthouse from one image | One image, no measurements | Against a reference |
 | 7 | A red telephone box | Notes on the K6 kiosk | Judged |
 | 8 | A five-story pagoda | Notes on Tō-ji's pagoda | Judged |
-| 9 | A castle from its plans | Plans with rulers, 493 elements | Against a reference |
+| 9 | A castle from its plans | Plans with rulers: seven views | Against a reference |
 | 10 | Notre-Dame de Paris | Notes on the cathedral | Judged |
 
 ## Inputs
 
-Projects with plans receive images rendered from their reference, with rulers in studs and plates:
+Five projects receive images rendered from their reference.
+The plans carry rulers in studs and plates; the lighthouse's one image carries no measurements.
 
 === "House plans"
 
@@ -50,7 +52,8 @@ The package `bricky-benchmark` runs the projects with Claude Code and scores the
 
 ```sh
 uv run bricky-benchmark list                      # the projects and their inputs
-uv run bricky-benchmark run --project 1           # run one project
+uv run bricky-benchmark prepare                   # write the inputs generated from references
+uv run bricky-benchmark run --project 1           # run one project, then score it
 uv run bricky-benchmark run --repeats 3 --jobs 2  # every project three times, two at a time
 uv run bricky-benchmark run --model opus          # choose Claude Code's model
 ```
@@ -58,12 +61,13 @@ uv run bricky-benchmark run --model opus          # choose Claude Code's model
 Each run needs Claude Code (`claude`) signed in, and consumes real model usage.
 For every run, the runner:
 
-1. Builds bricky's wheel and creates a fresh workspace outside the repository: a uv project that installs the wheel, with the skill, the examples and the project's inputs.
-   The agent never sees the reference.
+1. Builds bricky's wheel and creates a fresh workspace outside the repository: a uv project that installs the wheel.
+   The workspace holds the skill, the examples and the project's inputs, never the reference.
 1. Starts Claude Code in that workspace in print mode, with the project's prompt, turn budget and time budget.
 1. Builds the agent's final script in the same workspace and scores it.
 
-Every run writes to `benchmark/runs/<time>/`: the transcript, the agent's log, its workspace and `record.json`, then `summary.json` and `summary.md` for the whole invocation.
+Each run writes `transcript.jsonl`, `agent.log`, the agent's workspace and `record.json` to `benchmark/runs/<time>/<project>/<repeat>/`.
+Each invocation also writes `summary.json` and `summary.md` to `benchmark/runs/<time>/`.
 
 ## Scores
 
@@ -76,13 +80,13 @@ A score has three parts:
   A score of 1 means identical.
 - **Effort:** turns, minutes, Claude Code's cost estimate, and the number of builds the agent ran.
 
-Judged projects have facts and effort but no fidelity: their images are compared by eye.
+Judged projects have facts and effort but no fidelity; a person compares their images with the subject.
 
 ## Results
 
-On 28 October 2026, one Claude agent per project worked through all ten projects in a workspace like the runner's, with the command line and the skill.
-The benchmark's scorer then scored the final scripts.
-Every model builds with no errors and no warnings.
+On 28 October 2026, a separate Claude agent built each of the ten projects.
+Each agent worked in a workspace like the runner's, with the command line and the skill, and the benchmark's scorer scored its final script.
+On that date, every model built with no errors and no warnings.
 
 | # | Project | Elements | Shape | Color |
 | --- | --- | ---: | ---: | ---: |
@@ -97,11 +101,10 @@ Every model builds with no errors and no warnings.
 | 9 | A castle from its plans | 401 | 1.00 | 1.00 |
 | 10 | Notre-Dame de Paris | 1,872 | judged | judged |
 
-The projects with exact plans, 1 to 5 and 9, reach a perfect score in one to four builds.
+The projects with exact inputs, 1 to 5 and 9, reach a perfect score in one to four builds.
 Those projects measure whether an agent can use bricky at all.
-The open briefs set the difficulty.
-The agents rated the lighthouse, the telephone box and the pagoda 3 out of 5, and Notre-Dame 4.
+The agents rated the difficulty of the other projects out of 5: 3 for the lighthouse, the telephone box and the pagoda, and 4 for Notre-Dame.
 Notre-Dame earns its rating with roofs that meet at the crossing, rose windows on side studs, and walls that pack around openings without floating parts.
 
-Since these runs, side studs sit where the real parts have them: half a stud below the top of the brick, instead of half a brick up.
-With the current version, the telephone box reports 18 errors and Notre-Dame 9, all where a part hangs on a side stud a quarter plate off.
+Side studs have moved since these runs: they now sit where the real parts have them, half a stud below the top of the brick.
+The current version therefore reports 18 errors in the telephone box and 9 in Notre-Dame, all where a part hangs on a side stud a quarter plate off.

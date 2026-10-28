@@ -13,12 +13,12 @@ uv run playwright install chromium
 ```
 
 Playwright's Chromium renders the images.
-To render with a Chromium already on the machine, set `BRICKY_RENDER_BROWSER` to its executable instead.
+To render with a Chromium already on the machine, set `BRICKY_RENDER_BROWSER` to its executable instead (see [Configuration](reference/configuration.md)).
 
 ## Write a build script
 
 A build script is a Python file whose `build()` returns a `ModelBuilder`.
-Save this wall as `models/wall.py`:
+Create a folder `models/` and save this wall as `models/wall.py`:
 
 ```python title="models/wall.py"
 from bricky import ModelBuilder
@@ -41,7 +41,7 @@ def build() -> ModelBuilder:
 
 Each call to `place` names a part, the corner `at` where it goes, a rotation and a color.
 The corner reads `(x, y, z)`: east and north in studs, up in plates.
-The rotation `R90` rotates each brick 90 degrees about the vertical axis, so it runs east.
+Unrotated, a Brick 1 x 4 runs north, along y; the rotation `R90` rotates it 90 degrees so it runs east.
 The last call gives the blue brick an id, so the report and the images name it.
 
 ## Build it
@@ -71,9 +71,10 @@ rendered (open the images to see the model):
 
 The diagnostic states one fact: the blue brick floats.
 The top course ends at z = 9 and the brick starts at z = 10, one plate higher, so no stud holds it.
-The region after `-->` says where, in studs and plates, and the line after `=` names the element, its part, its color and the script line that placed it.
+The region after `-->` says where, in studs and plates.
+The line after `=` names the element, its part, its color and the script line that placed it.
 
-The sheet shows the same fact: the floating brick is tinted red and labeled with its code.
+The sheet shows the same fact: it tints the floating brick red and labels it with its code.
 
 ![The wall with its floating chimney tinted red](images/wall-floating.png)
 
@@ -111,4 +112,5 @@ The model has no errors, and the sheet outlines the changed brick in purple:
 - [Coordinates](guide/coordinates.md): studs, plates, the `at` corner and rotations.
 - [Build scripts](guide/scripts.md): components, instances, filling voxels and building sideways.
 - [Parts and colors](guide/parts.md): finding parts and the shape of each family.
+- [Connect an agent](agents/connect.md): the command line, the MCP server and the skill.
 - [Gallery](gallery.md): every example in 3D, from a tower to the Colosseum.

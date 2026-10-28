@@ -18,5 +18,6 @@ uv run bricky-mcp
 | `list_passes` | Lists the installed passes, their codes and the profiles that run them |
 | `explain_code` | Gives the exact rule behind a diagnostic code |
 
-Each tool takes the same arguments as its command on the command line, and answers with the text the command prints and with the result as structured content.
+Each tool takes the same arguments as its command on the command line.
+Each tool answers with the text the command prints and with the result as structured content.
 The tools `build_model` and `render_model` also return their images, so the agent sees the model without another call.

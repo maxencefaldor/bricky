@@ -1,33 +1,35 @@
 # Images
 
-Every build renders its model, because a model can pass every check and still look wrong.
-The checks say whether a model holds together; the images show whether it looks like what was meant.
+Every build renders its model, because a model with no errors can still look wrong.
+The checks say whether a model holds together; the images show whether it looks as intended.
 
 ## The sheet
 
 A build writes `name.png` beside the script: a sheet of four views.
 The perspective view looks from the south-east and carries a compass.
-The front, right and top views are orthographic and carry rulers in studs and plates, so a position read off an image is a position to write in the script.
+The front, right and top views are orthographic and carry rulers in studs and plates.
+A coordinate read off a ruler is a coordinate to write in `at`.
 The title line counts the elements, gives the model's size, and adds the errors and warnings of the check.
 
 ![The cottage example's sheet](../images/cottage.png)
 
 ## Single views
 
-The command `bricky render` renders a saved model again, with options, and writes `name.<view>.png` beside it, so the sheet of the last build stays as it was.
+The command `bricky render` renders a saved model again and writes `name.<view>.png` beside it.
+The sheet of the last build stays as it was.
 
 ```sh
 uv run bricky render models/cottage.bricky.json --views front --views top
 ```
 
-| View | Looks |
+| View | Seen from |
 | --- | --- |
-| `sheet` | Perspective, front, right and top on one image (the default) |
-| `perspective` | From the south-east, above |
-| `perspective-south-west`, `perspective-north-west`, `perspective-north-east` | From the other corners, above |
-| `front`, `back` | North, and south, with x and z rulers |
-| `left`, `right` | East, and west, with y and z rulers |
-| `top` | Down, north up, with x and y rulers |
+| `sheet` | The four views below on one image: perspective, front, right and top (the default) |
+| `perspective` | The south-east, above |
+| `perspective-south-west`, `perspective-north-west`, `perspective-north-east` | The other corners, above |
+| `front`, `back` | The south, and the north, with x and z rulers |
+| `left`, `right` | The west, and the east, with y and z rulers |
+| `top` | Above, north up, with x and y rulers |
 
 ![The cottage from the front](../images/front.png)
 
@@ -50,7 +52,7 @@ A selector is a uid pattern, or `@` followed by a function, file or line of the 
 | `--highlight "lintel*"` | Elements whose uids match the pattern |
 | `--highlight "tower/*"` | Every element inside the instance `tower` |
 | `--highlight @horseshoe` | Every element the function `horseshoe` placed |
-| `--highlight @stonehenge.py:142` | Every element line 142 placed |
+| `--highlight @stonehenge.py:249` | Every element line 249 placed |
 
 Script selectors read the source map the build wrote.
 Stonehenge with `--highlight @horseshoe`:
@@ -84,6 +86,6 @@ Marks show on every image what the report states in text:
 
 ## The 3D viewer
 
-The option `--html` also writes `name.html`, a standalone viewer to orbit, zoom and clip by height in a browser.
-The page embeds the scene and loads three.js from a CDN, so it opens anywhere without a server.
+The option `--html` of `bricky render` also writes `name.html`, a standalone viewer to orbit, zoom and clip by height in a browser.
+The page embeds the scene and loads three.js from jsDelivr, so it needs no server but does need a network connection.
 The [gallery](../gallery.md) shows a viewer for every example.

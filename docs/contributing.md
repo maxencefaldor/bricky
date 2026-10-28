@@ -12,6 +12,7 @@ uv run ruff format && uv run ruff check && uv run ty check && uv run rumdl check
 The docs build with [Zensical](https://zensical.org), and bricky renders their images itself:
 
 ```sh
+uv run python docs/reference.py   # write the reference pages generated from the code
 uv run python docs/illustrate.py  # render every image into docs/images
 uv run python docs/gallery.py     # write a 3D viewer for every example
 uv run zensical serve             # preview the site at http://localhost:8000

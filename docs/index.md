@@ -28,7 +28,8 @@ In return, bricky places every part in exact geometry, checks that the model hol
 
 ## The loop
 
-An agent builds like a programmer with a compiler and a camera: it writes, builds, reads, and fixes until the report says `0 errors` and the images show the intended model.
+An agent builds like a programmer with a compiler and a camera: it writes, builds, reads and fixes.
+The loop ends when the report says `0 errors` and the images show the intended model.
 
 ```mermaid
 flowchart LR
@@ -48,13 +49,13 @@ flowchart LR
 
     **[Exact geometry](guide/coordinates.md)**
 
-    Every length is a whole number of 0.4 mm units, so every overlap test is exact.
+    Every length is a whole number of base units, 0.4 mm each, so every overlap test is exact.
 
 -   ![One part of each family on a baseplate](images/families.png)
 
     **[Real parts](guide/parts.md)**
 
-    Every BrickLink part and color, with exact shapes for the common families.
+    Parts and colors by BrickLink id: 112 parts in the sample, about 48,000 after an import.
 
 -   ![The broken example, every element a diagnostic names tinted red](images/card-checks.png)
 
@@ -66,7 +67,7 @@ flowchart LR
 
     **[Images that measure](guide/images.md)**
 
-    Every build renders four views with rulers in studs and plates.
+    Every build renders four views, three of them with rulers in studs and plates.
 
 -   ![A tower whose top two courses changed, outlined in purple](images/changes.png)
 

@@ -241,9 +241,9 @@ class _Placer:
     ) -> list[str]:
         """Fill voxels with bricks and plates, and return the elements' ids.
 
-        Bricks go where three plate levels of a course share a color, plates everywhere
+        Bricks go where the three layers of a course share a color, plates everywhere
         else, each part as large as fits and made in its color, with joints staggered
-        from level to level; see :func:`bricky.fill.plan_fill`.
+        from layer to layer; see :func:`bricky.fill.plan_fill`.
 
         Args:
             voxels: The color of every voxel to fill, keyed ``(x, y, z)`` in studs,

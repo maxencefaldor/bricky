@@ -152,13 +152,13 @@ def sarsen_circle(builder: ModelBuilder) -> None:
         cells = sarsen_cells(stone, along_y=along_y[stone])
         x, y = cells[0]
         bricks = 2 if stone in SHORT else UPRIGHT_BRICKS
-        for level in range(bricks):
+        for course in range(bricks):
             builder.place(
                 "3004",
-                at=(x, y, GROUND + BRICK * level),
+                at=(x, y, GROUND + BRICK * course),
                 rotation="R0" if along_y[stone] else "R90",
                 color=SARSEN,
-                id=f"sarsen{stone}.{level}",
+                id=f"sarsen{stone}.{course}",
             )
         tops[stone] = cells
     for first, second in LINTELS:
@@ -209,13 +209,13 @@ def trilithon(builder: ModelBuilder) -> None:
     """Two 5-brick uprights with a 1 x 6 brick lintel, laid along local x."""
     component = builder.component("trilithon")
     for side, x in (("a", 0), ("b", 4)):
-        for level in range(5):
+        for course in range(5):
             component.place(
                 "3004",
-                at=(x, 0, BRICK * level),
+                at=(x, 0, BRICK * course),
                 rotation="R90",
                 color=SARSEN,
-                id=f"upright{side}.{level}",
+                id=f"upright{side}.{course}",
             )
     component.place(
         "3009", at=(0, 0, BRICK * 5), rotation="R90", color=SARSEN, id="lintel"
@@ -226,13 +226,13 @@ def upright(
     builder: ModelBuilder, name: str, corner: Cell, *, along_y: bool, bricks: int
 ) -> None:
     """A standing stone of 1 x 2 bricks, ``bricks`` tall."""
-    for level in range(bricks):
+    for course in range(bricks):
         builder.place(
             "3004",
-            at=(*corner, GROUND + BRICK * level),
+            at=(*corner, GROUND + BRICK * course),
             rotation="R0" if along_y else "R90",
             color=SARSEN,
-            id=f"{name}.{level}",
+            id=f"{name}.{course}",
         )
 
 
@@ -269,35 +269,35 @@ def bluestones(builder: ModelBuilder) -> None:
         direction = math.radians(5 + 10 * k)
         x = snap(CENTER_X + 11.5 * math.cos(direction) - 0.5)
         y = snap(CENTER_Y + 11.5 * math.sin(direction) - 0.5)
-        for level in range(1 + (k % 3 == 0)):
+        for course in range(1 + (k % 3 == 0)):
             builder.place(
                 "3005",
-                at=(x, y, GROUND + BRICK * level),
+                at=(x, y, GROUND + BRICK * course),
                 color=BLUESTONE,
-                id=f"blue{k}.{level}",
+                id=f"blue{k}.{course}",
             )
     # Inner horseshoe: taller dressed pillars at radius 6, opening north.
     for k, degrees in enumerate((150, 170, 195, 345, 10, 30)):
         direction = math.radians(degrees)
         x = snap(CENTER_X + 6 * math.cos(direction) - 0.5)
         y = snap(CENTER_Y + 6 * math.sin(direction) - 0.5)
-        for level in range(2):
+        for course in range(2):
             builder.place(
                 "3005",
-                at=(x, y, GROUND + BRICK * level),
+                at=(x, y, GROUND + BRICK * course),
                 color=BLUESTONE,
-                id=f"pillar{k}.{level}",
+                id=f"pillar{k}.{course}",
             )
 
 
 def outliers(builder: ModelBuilder) -> None:
     """The Heel Stone and the Slaughter Stone, outside the circle."""
-    for level in range(4):  # the Heel Stone, just east of the axis
+    for course in range(4):  # the Heel Stone, just east of the axis
         builder.place(
             "3003",
-            at=(22, 43, GROUND + BRICK * level),
+            at=(22, 43, GROUND + BRICK * course),
             color=SARSEN,
-            id=f"heel.{level}",
+            id=f"heel.{course}",
         )
     builder.place(
         "3020", at=(17, 38, GROUND), rotation="R90", color=SARSEN, id="slaughter"

@@ -45,8 +45,8 @@ class CollisionPass:
             code="E201",
             title="Overlap",
             rule=(
-                "The bodies of two parts share positive volume. Faces that only touch "
-                "do not count, and studs belong to no body (see E202). The pass "
+                "The bodies of two elements share positive volume. Faces that only "
+                "touch do not count, and studs belong to no body (see E202). The pass "
                 "reports each overlapping pair once, with the box the two share."
             ),
         ),
@@ -54,11 +54,11 @@ class CollisionPass:
             code="E202",
             title="Blocked stud",
             rule=(
-                "A stud stands inside another part's body where that part has no "
-                "anti-stud facing it at the same position, so the two parts cannot sit "
-                "where they are. A stud is 1.6 mm tall and 4.8 mm wide. The pass "
-                "reports each pair of parts once, with the number of blocked studs and "
-                "the box they span."
+                "A stud stands inside another element's body where that element has "
+                "no anti-stud facing it at the same position, so the two elements "
+                "cannot sit where they are. A stud is 1.6 mm tall and 4.8 mm wide. The "
+                "pass reports each pair of elements once, with the number of blocked "
+                "studs and the box they span."
             ),
         ),
     )

@@ -18,8 +18,8 @@ def build() -> ModelBuilder:
     builder = ModelBuilder("colonnade")
 
     column = builder.component("column")
-    for level in range(HEIGHT):
-        column.place("3003", at=(0, 0, 3 * level), color="Tan")
+    for course in range(HEIGHT):
+        column.place("3003", at=(0, 0, 3 * course), color="Tan")
 
     for index in range(4):
         builder.instance("column", at=(index * SPACING, 0, 0))
