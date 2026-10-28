@@ -209,3 +209,15 @@ def test_other_numbers_find_a_part_and_models_store_its_own():
     builder = ModelBuilder(catalog=catalog)
     builder.place("3068b", at=(0, 0, 0), color="Red")
     assert builder.build().elements[0].part == "3068"
+
+
+def test_search_puts_printed_parts_and_other_systems_last_unless_the_query_names_a_system():
+    brick = {"id": "3001", "name": "Brick 2 x 4", "category": "Brick"}
+    shaped = {"shape": {"family": "brick", "size": [2, 4]}}
+    catalog = catalog_of(
+        {"id": "3011", "name": "Duplo, Brick 2 x 4", "category": "Duplo, Brick", **shaped},
+        {"id": "3001pb01", "name": "Brick 2 x 4 with Pattern", "base": "3001"},
+        brick | shaped,
+    )
+    assert [p.id for p in catalog.search_parts("brick 2x4")] == ["3001", "3001pb01", "3011"]
+    assert [p.id for p in catalog.search_parts("duplo brick")] == ["3011"]
