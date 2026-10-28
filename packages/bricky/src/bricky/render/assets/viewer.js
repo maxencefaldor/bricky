@@ -13,6 +13,9 @@ import * as THREE from "three";
 const BASE_UNIT = 0.4; // millimeters
 const STUD = 20;
 const PLATE = 8;
+// How far a clip plane sits beyond its height, in millimeters. A plane exactly at a face's height
+// keeps that face in some pixels and cuts it in others; a hair beyond keeps the face whole.
+const CLIP_SLACK = 0.01;
 const FLAG = { HIGHLIGHT: 1, GHOST: 2, ERROR: 4, WARNING: 8, CHANGED: 16 };
 const AXES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
 const INK = { error: "#cf222e", warning: "#b35900", highlight: "#0969da", changed: "#8250df", text: "#1f2328", quiet: "#59636e" };
@@ -90,11 +93,17 @@ export function buildModel(scene) {
   }
   for (const [kind, buffer] of Object.entries(faces)) {
     if (!buffer.count) continue;
-    const mesh = new THREE.Mesh(buffer.geometry(), bodies[kind]);
+    const geometry = buffer.geometry();
+    const mesh = new THREE.Mesh(geometry, bodies[kind]);
     mesh.castShadow = kind === "solid" || kind === "pearl";
     mesh.receiveShadow = kind !== "ghost";
     mesh.renderOrder = kind === "clear" || kind === "ghost" ? 2 : 0;
     root.add(mesh);
+    if (kind === "solid" || kind === "pearl") {
+      const inside = new THREE.Mesh(geometry, bodies[`${kind}Inside`]);
+      inside.receiveShadow = true;
+      root.add(inside);
+    }
   }
 
   // Studs: cylinders standing on their element's face, along the stud's axis. The scene leaves out
@@ -243,18 +252,28 @@ function studGeometry(segments = 12) {
 
 function materials(planes, vertexColors) {
   const set = {
-    solid: new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0, side: THREE.DoubleSide, vertexColors }),
-    pearl: new THREE.MeshStandardMaterial({ roughness: 0.32, metalness: 0.3, side: THREE.DoubleSide, vertexColors }),
+    solid: new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0, vertexColors }),
+    pearl: new THREE.MeshStandardMaterial({ roughness: 0.32, metalness: 0.3, vertexColors }),
     clear: new THREE.MeshStandardMaterial({ roughness: 0.08, metalness: 0, transparent: true, opacity: 0.42, depthWrite: false, side: THREE.DoubleSide, vertexColors }),
     ghost: new THREE.MeshStandardMaterial({ color: 0xc9ced6, roughness: 0.7, transparent: true, opacity: 0.16, depthWrite: false }),
   };
-  for (const material of Object.values(set)) {
+  // The inner sides of opaque bodies, which only a clip reveals.
+  set.solidInside = set.solid.clone();
+  set.pearlInside = set.pearl.clone();
+  for (const [kind, material] of Object.entries(set)) {
     material.clippingPlanes = planes;
-    // Push faces back a little so outlines drawn on their edges stay in front.
+    // What a clip removes casts no shadow on what remains.
+    material.clipShadows = true;
+    // Push faces back a little so outlines drawn on their edges stay in front. Faces pressed
+    // against a neighbor share its plane: inner sides and see-through faces go further back, so the
+    // neighbor's outer face wins the tie everywhere instead of flickering against them.
+    const back = kind.endsWith("Inside") ? 4 : kind === "clear" ? 2 : 1;
     material.polygonOffset = true;
-    material.polygonOffsetFactor = 1;
-    material.polygonOffsetUnits = 1;
+    material.polygonOffsetFactor = back;
+    material.polygonOffsetUnits = back;
   }
+  set.solidInside.side = THREE.BackSide;
+  set.pearlInside.side = THREE.BackSide;
   return set;
 }
 
@@ -373,10 +392,10 @@ function clipPlane(clip) {
   // A three.js plane keeps the points where normal . p + constant >= 0.
   const value = clip.value * BASE_UNIT;
   const below = clip.keep === "below";
-  if (clip.axis === "z") return new THREE.Plane(new THREE.Vector3(0, below ? -1 : 1, 0), below ? value : -value);
-  if (clip.axis === "x") return new THREE.Plane(new THREE.Vector3(below ? -1 : 1, 0, 0), below ? value : -value);
+  if (clip.axis === "z") return new THREE.Plane(new THREE.Vector3(0, below ? -1 : 1, 0), (below ? value : -value) + CLIP_SLACK);
+  if (clip.axis === "x") return new THREE.Plane(new THREE.Vector3(below ? -1 : 1, 0, 0), (below ? value : -value) + CLIP_SLACK);
   // Model y is three.js -z: keeping y < v keeps three.js z > -v.
-  return new THREE.Plane(new THREE.Vector3(0, 0, below ? 1 : -1), value * (below ? 1 : -1));
+  return new THREE.Plane(new THREE.Vector3(0, 0, below ? 1 : -1), value * (below ? 1 : -1) + CLIP_SLACK);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -843,15 +862,17 @@ export async function mount(element, scene) {
   };
   loop();
 
-  // Clip the model at a height, plate by plate, to look inside.
+  // Clip the model at a height, plate by plate, to look inside; at the top, clip nothing.
+  const topPlates = Math.ceil(scene.bounds[5] / PLATE);
   const clip = (plates) => {
-    const plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), plates * PLATE * BASE_UNIT);
+    const planes = [...model.planes];
+    if (plates < topPlates) planes.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), plates * PLATE * BASE_UNIT + CLIP_SLACK));
     model.root.traverse((object) => {
-      if (object.material) object.material.clippingPlanes = [...model.planes, plane];
+      if (object.material) object.material.clippingPlanes = planes;
     });
     render();
   };
-  return { look, clip, topPlates: Math.ceil(scene.bounds[5] / PLATE) };
+  return { look, clip, topPlates };
 }
 
 // Headless pages call these through window.bricky.
