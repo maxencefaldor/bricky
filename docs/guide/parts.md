@@ -76,8 +76,8 @@ uv run bricky colors trans
 
 `bricky colors "#F2CD37"` lists the five colors nearest to an RGB value, to match a color seen
 in a picture. Colors carry BrickLink's names and ids, such as `Dark Bluish Gray` (`85`), an RGB
-value, and a type: solid, transparent, pearl, metallic and more. Renders draw transparent parts see-through and
-pearl parts with a sheen.
+value, and a type: solid, transparent, pearl, metallic and more. Renders draw transparent parts
+see-through and pearl parts with a sheen.
 
 ![Round bricks in 28 colors: solid, pearl, metallic and transparent](../images/colors.png)
 
