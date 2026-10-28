@@ -15,6 +15,7 @@ from typing import Final
 from pydantic import TypeAdapter, ValidationError
 
 from bricky.catalog import Catalog, default_catalog
+from bricky.fill import plan_fill
 from bricky.geometry import ORIGIN, Box, Pose, Rotation, Vector
 from bricky.model import Component, Element, Identifier, Instance, Model
 from bricky.provenance import Provenance, ScopeSources, Source, capture
@@ -213,6 +214,41 @@ class _Placer:
                 reports unknown and empty components.
         """
         return self._scope.instance(component, at, rotation, id)
+
+    def fill(
+        self, voxels: Mapping[tuple[int, int, int], int | str], *, id: str | None = None
+    ) -> list[str]:
+        """Fill voxels with bricks and plates, and return the elements' ids.
+
+        Bricks go where three plate levels of a course share a color, plates everywhere else,
+        each part as large as fits, with joints staggered from level to level; see
+        :func:`bricky.fill.plan_fill`.
+
+        Args:
+            voxels: The color of every voxel to fill, keyed ``(x, y, z)`` in studs, studs and
+                plates.
+            id: A prefix for the elements' ids, which end with their minimum corners, such as
+                ``"wall.4.0.3"``; the builder generates ids when omitted.
+
+        Raises:
+            ValueError: If a color or the id prefix is invalid.
+
+        Examples:
+            >>> builder = ModelBuilder("block")
+            >>> cube = {(x, y, z): "Red" for x in range(4) for y in range(4) for z in range(6)}
+            >>> len(builder.fill(cube, id="block"))
+            4
+        """
+        return [
+            self.place(
+                placement.part,
+                placement.at,
+                color=placement.color,
+                rotation=placement.rotation,
+                id=None if id is None else ".".join(map(str, (id, *placement.at))),
+            )
+            for placement in plan_fill(voxels)
+        ]
 
 
 class ComponentBuilder(_Placer):

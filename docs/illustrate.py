@@ -13,6 +13,7 @@ import shutil
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass
+from math import hypot
 from pathlib import Path
 from typing import Final
 
@@ -239,7 +240,7 @@ def tower_after(catalog: Catalog) -> ModelBuilder:
     builder = ModelBuilder("tower", catalog=catalog)
     for level in range(6):
         z = 3 * level
-        top = level >= 4  # noqa: PLR2004 - the levels the edit recolored
+        top = level >= 4
         if level % 2 == 0:
             color = "Blue" if top else "Red"
             builder.place("3001", at=(0, 0, z), color=color)
@@ -251,6 +252,20 @@ def tower_after(catalog: Catalog) -> ModelBuilder:
     for x in (0, 2):
         for y in (0, 2):
             builder.place("3068", at=(x, y, 18), color="Dark Bluish Gray")
+    return builder
+
+
+def filled(catalog: Catalog) -> ModelBuilder:
+    """A round tower drawn as voxels and filled with bricks and plates by ``fill``."""
+    builder = ModelBuilder("fill", catalog=catalog)
+    tower = {
+        (x, y, z): "White" if z // 3 % 4 == 3 else "Red"
+        for x in range(-6, 7)
+        for y in range(-6, 7)
+        for z in range(24)
+        if 4 <= hypot(x, y) < 6.5
+    }
+    builder.fill(tower, id="tower")
     return builder
 
 
@@ -338,6 +353,7 @@ FIGURES: Final = (
     Figure("tower", EXAMPLES / "tower.py"),
     Figure("colonnade", EXAMPLES / "colonnade.py", highlight=("i2/*",)),
     Figure("cottage", EXAMPLES / "cottage.py"),
+    Figure("fill", filled, view=View.PERSPECTIVE, size=(1000, 1000)),
     Figure("stonehenge", EXAMPLES / "stonehenge.py"),
     # Checks and changes
     Figure("broken", EXAMPLES / "broken.py", check=True),
