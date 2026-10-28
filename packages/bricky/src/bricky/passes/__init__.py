@@ -1,4 +1,4 @@
-"""Check passes and the machinery that discovers and runs them."""
+"""Passes, and the registry that discovers and runs them."""
 
 from bricky.passes.registry import (
     ENTRY_POINT_GROUP,

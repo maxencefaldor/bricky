@@ -16,7 +16,7 @@ from bricky.model import Model
 
 
 class Context:
-    """One model under check, with lazily computed analyses that every pass can share."""
+    """One model under check, with analyses that every pass shares, each computed on first use."""
 
     def __init__(self, model: Model, catalog: Catalog) -> None:
         self.model = model
@@ -34,7 +34,7 @@ class Context:
 
     @cached_property
     def solid_index(self) -> SpatialHash[int]:
-        """Spatial index of every solid, keyed by element index."""
+        """Spatial index of every solid, keyed by the index of its element."""
         index: SpatialHash[int] = SpatialHash()
         for i, element in enumerate(self.world.elements):
             for solid in element.solids:
@@ -43,7 +43,7 @@ class Context:
 
     @cached_property
     def anti_studs(self) -> AntiStudIndex:
-        """Anti-studs by world position and normal."""
+        """The elements with an anti-stud at each world position and normal."""
         return anti_stud_index(self.world)
 
     @cached_property

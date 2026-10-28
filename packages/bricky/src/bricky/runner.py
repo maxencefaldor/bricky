@@ -3,8 +3,8 @@
 The service starts ``python -P -m bricky.runner SCRIPT RESULT`` for every build. The script's
 prints, crashes, exits and endless loops therefore stay out of the command line and the MCP server,
 whose standard output may be a protocol channel. The runner writes a :class:`RunResult` as JSON to
-``RESULT``; whatever the script prints goes to the runner's own standard streams, which the service
-captures and returns.
+``RESULT``. The script prints to the runner's own standard streams, which the service captures and
+returns.
 """
 
 import runpy
@@ -51,8 +51,8 @@ class RunResult(BaseModel):
 def run(script: Path) -> RunResult:
     """Run a build script in this process and return its model, provenance or failure.
 
-    The script's directory comes first on the import path while it runs, so it can import helper
-    modules that sit next to it, as it would when run with ``python script.py``.
+    The script's directory comes first on the import path while the script runs, so the script
+    can import helper modules beside it, as under ``python script.py``.
     """
     root = Path.cwd()
     try:
@@ -99,13 +99,15 @@ def _failure(error: BaseException, root: Path, message: str) -> Failure:
         if is_script_file(frame.f_code.co_filename)
     ]
     frames.reverse()
-    relative = tuple(f.model_copy(update={"file": relative_path(f.file, root)}) for f in frames)
+    relative = tuple(
+        frame.model_copy(update={"file": relative_path(frame.file, root)}) for frame in frames
+    )
     return Failure(error=type(error).__name__, message=message, frames=relative)
 
 
 def main(argv: list[str] | None = None) -> None:
     """Run the script named by the first argument and write the result to the second."""
-    script, result = (Path(arg) for arg in (argv if argv is not None else sys.argv[1:]))
+    script, result = (Path(argument) for argument in (argv if argv is not None else sys.argv[1:]))
     outcome = run(script)
     result.write_text(outcome.model_dump_json(), encoding="utf-8")
 

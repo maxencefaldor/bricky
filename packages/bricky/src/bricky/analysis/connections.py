@@ -1,8 +1,7 @@
-"""Find which elements connect.
+"""Connections: which elements join, stud in anti-stud.
 
-A stud connects with an anti-stud when the two sit at the same world position, facing each other.
-Positions are exact integers, so finding them is a dictionary lookup, whatever the parts'
-orientations.
+A stud fits an anti-stud when the two sit at the same world position, facing each other.
+Positions are exact integers, so a dictionary lookup finds every match, whatever the rotations.
 """
 
 from collections import Counter, defaultdict
@@ -13,12 +12,12 @@ from bricky.catalog import ConnectorKind
 from bricky.geometry import Vector
 
 type AntiStudIndex = dict[tuple[Vector, Vector], list[int]]
-"""Indices of the elements with an anti-stud, keyed by its world position and normal."""
+"""Indices of the elements that have an anti-stud, keyed by its world position and normal."""
 
 
 @dataclass(frozen=True, slots=True)
 class Connection:
-    """Two elements joined by one or more studs, each in an anti-stud of the other."""
+    """Two elements joined by studs of one in anti-studs of the other."""
 
     a: int
     """Index into :attr:`World.elements`; always smaller than :attr:`b`."""
@@ -27,7 +26,7 @@ class Connection:
     """Index into :attr:`World.elements`."""
 
     studs: int
-    """Studs joining them."""
+    """The number of studs that join the two."""
 
 
 def anti_stud_index(world: World) -> AntiStudIndex:
@@ -41,7 +40,7 @@ def anti_stud_index(world: World) -> AntiStudIndex:
 
 
 def find_connections(world: World, anti_studs: AntiStudIndex) -> tuple[Connection, ...]:
-    """Return every pair of elements joined by studs, with how many studs join them."""
+    """Return every pair of elements joined by studs, with the number of studs that join them."""
     counts: Counter[tuple[int, int]] = Counter()
     for i, element in enumerate(world.elements):
         for connector in element.connectors:

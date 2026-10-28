@@ -1,4 +1,4 @@
-"""Errors that front-ends show to users as messages rather than tracebacks."""
+"""The error that front-ends show to users as a message instead of a traceback."""
 
 
 class BrickyError(Exception):

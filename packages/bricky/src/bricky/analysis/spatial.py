@@ -9,19 +9,19 @@ from bricky.units import STUD
 
 
 class SpatialHash[K: Hashable]:
-    """Sorts boxes into the cubic buckets of a grid, to find the boxes near one quickly."""
+    """A grid of cubic buckets that holds boxes, to find the boxes near a given one quickly."""
 
     def __init__(self, bucket: int = 2 * STUD) -> None:
         self._bucket = bucket
         self._buckets: defaultdict[tuple[int, int, int], list[K]] = defaultdict(list)
 
     def insert(self, key: K, box: Box) -> None:
-        """Register a box under a key; a key may own several boxes."""
+        """Add a box under a key; one key may hold several boxes."""
         for bucket in self._buckets_of(box):
             self._buckets[bucket].append(key)
 
     def query(self, box: Box) -> set[K]:
-        """Return the keys of every box that shares a bucket with this one."""
+        """Return the keys of every box that shares a bucket with the given box."""
         found: set[K] = set()
         for bucket in self._buckets_of(box):
             found.update(self._buckets.get(bucket, ()))

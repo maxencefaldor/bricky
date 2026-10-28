@@ -25,13 +25,17 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
 
     Args:
         model: The model to check.
-        profile: Profile to run; defaults to the configured profile, normally ``digital``.
-        passes: Pass names to run instead of a profile. Names not installed are reported, not run.
-        max_diagnostics: Cap on the diagnostics returned; counts still cover everything found.
-        provenance: Where the build script placed each element, to name script lines in the
-            report; see :meth:`bricky.ModelBuilder.provenance`.
-        catalog: Catalog to resolve parts against; the shipped catalog by default.
-        settings: Settings to read profiles from; loaded from the environment by default.
+        profile: Profile to run; the configured profile, normally ``digital``, by default.
+        passes: Pass names to run instead of a profile. The report lists the names that are not
+            installed.
+        max_diagnostics: Maximum number of diagnostics in the report; the error and warning
+            counts cover every diagnostic found.
+        provenance: Where the build script placed each element, so the report names script
+            lines; see :meth:`bricky.ModelBuilder.provenance`.
+        catalog: Catalog to resolve parts and colors against; :func:`bricky.default_catalog` by
+            default.
+        settings: Settings to read profiles from; read from the environment and
+            ``pyproject.toml`` by default.
 
     Raises:
         BrickyError: If the profile is unknown.
@@ -48,8 +52,8 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
         passes=tuple(name for name in names if name not in missing),
         missing=tuple(missing),
         element_count=len(context.world.elements) + len(context.world.unknown),
-        errors=sum(d.severity is Severity.ERROR for d in diagnostics),
-        warnings=sum(d.severity is Severity.WARNING for d in diagnostics),
+        errors=sum(diagnostic.severity is Severity.ERROR for diagnostic in diagnostics),
+        warnings=sum(diagnostic.severity is Severity.WARNING for diagnostic in diagnostics),
         diagnostics=tuple(shown),
         omitted=len(diagnostics) - len(shown),
         elements=_describe(context, named, provenance),
@@ -59,7 +63,7 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
 def _describe(
     context: Context, uids: set[str], provenance: Provenance | None
 ) -> dict[str, ElementInfo]:
-    """Describe the named elements: part, color, and the script lines that placed them."""
+    """Describe the named elements: part, color and the script lines that placed each."""
     catalog = context.catalog
     found: dict[str, ElementInfo] = {}
     for element in context.world.elements:

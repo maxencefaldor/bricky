@@ -1,7 +1,7 @@
 """The ``bricky`` command line.
 
-Each subcommand extends a request model from :mod:`bricky.service` with an output format, so the
-CLI accepts exactly what the MCP tools accept, and prints the same text the MCP tools return.
+Each subcommand extends a request model from :mod:`bricky.service` with an output format. The
+command line therefore accepts exactly what the MCP tools accept and prints the text they return.
 """
 
 import json
@@ -26,7 +26,7 @@ from bricky.files import model_schema
 
 class _Output(BaseModel):
     output_format: Literal["text", "json"] = Field(
-        default="text", description="text for people and agents, json for programs."
+        default="text", description="'text' for people and agents, 'json' for programs."
     )
 
     def emit(self, result: BaseModel, text: str) -> None:
@@ -92,7 +92,7 @@ class ColorsCommand(service.ColorsRequest, _Output):
 
 
 class PassesCommand(service.PassesRequest, _Output):
-    """List the installed check passes and the profiles that run them."""
+    """List the installed passes and the profiles that run them."""
 
     async def cli_cmd(self) -> None:
         """Run the command."""
@@ -115,7 +115,7 @@ class CatalogImportCommand(service.CatalogImportRequest, _Output):
     """Import the catalog: parts and colors from BrickLink, shapes from names and LDraw."""
 
     async def cli_cmd(self) -> None:
-        """Run the command, telling how far it got on standard error."""
+        """Run the command and print its progress to standard error."""
         async with service.Session() as session:
             result = await service.catalog_import(self, session, _progress)
         self.emit(result, result.describe())
@@ -151,7 +151,7 @@ class CatalogVerifyCommand(service.CatalogVerifyRequest, _Output):
     """Generate every shaped part's geometry and check it."""
 
     async def cli_cmd(self) -> None:
-        """Run the command; exit 1 when a part has a problem."""
+        """Run the command; exit with status 1 when a part has a problem."""
         async with service.Session() as session:
             result = await service.catalog_verify(self, session)
         self.emit(result, result.describe())
@@ -160,7 +160,7 @@ class CatalogVerifyCommand(service.CatalogVerifyRequest, _Output):
 
 
 class CatalogCommand(BaseModel):
-    """Import the catalog of parts and colors, and look into it."""
+    """Import the catalog of parts and colors, and inspect it."""
 
     import_: CliSubCommand[CatalogImportCommand] = Field(
         alias="import", description="Import parts and colors from BrickLink, shapes from LDraw."
@@ -199,14 +199,14 @@ class Bricky(BaseSettings):
     )
 
     build: CliSubCommand[BuildCommand] = Field(
-        description="Run a build script, save, check and render it."
+        description="Run a build script, then save, check and render its model."
     )
     check: CliSubCommand[CheckCommand] = Field(description="Check a model file.")
     render: CliSubCommand[RenderCommand] = Field(description="Render pictures of a model file.")
     parts: CliSubCommand[PartsCommand] = Field(description="Search the parts catalog.")
     colors: CliSubCommand[ColorsCommand] = Field(description="Search the catalog's colors.")
     catalog: CliSubCommand[CatalogCommand] = Field(
-        description="Import the catalog of parts and colors, and look into it."
+        description="Import the catalog of parts and colors, and inspect it."
     )
     passes: CliSubCommand[PassesCommand] = Field(description="List installed passes and profiles.")
     explain: CliSubCommand[ExplainCommand] = Field(description="Explain diagnostic codes.")
@@ -222,7 +222,7 @@ class Bricky(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        """Take arguments from the command line only; configuration lives in Settings."""
+        """Read the command line only; configuration lives in :class:`bricky.Settings`."""
         return (init_settings,)
 
     def cli_cmd(self) -> None:
@@ -231,7 +231,11 @@ class Bricky(BaseSettings):
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    """Run the command line; exit 1 when a model has errors and 2 on usage errors."""
+    """Run the command line.
+
+    The exit status is 1 when a model has errors or a part fails verification, and 2 when the
+    arguments are invalid or a command fails with a :class:`~bricky.BrickyError`.
+    """
     try:
         CliApp.run(Bricky, cli_args=None if argv is None else list(argv))
     except BrickyError as error:

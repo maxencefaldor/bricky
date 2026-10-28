@@ -25,7 +25,7 @@ class PlacedElement:
 
 @dataclass(frozen=True, slots=True)
 class UnknownElement:
-    """An element whose part the catalog cannot place: unknown, or without a shape."""
+    """An element whose part the catalog cannot place: the part is unknown or has no shape."""
 
     uid: str
     part: str
@@ -75,7 +75,7 @@ def build_world(model: Model, catalog: Catalog) -> World:
                     color=element.color,
                     pose=pose,
                     solids=solids,
-                    connectors=tuple(c.transformed(pose) for c in part.connectors),
+                    connectors=tuple(connector.transformed(pose) for connector in part.connectors),
                     bounds=Box.bounding(solid.bounds for solid in solids),
                 )
             )
