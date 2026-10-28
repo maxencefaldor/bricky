@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="bricky">
+  <path d="M32 18 54 29 32 40 10 29Z" fill="#e3000b"/>
+  <path d="M10 29 32 40v16L10 45Z" fill="#a8000a"/>
+  <path d="M54 29 32 40v16l22-11Z" fill="#c4000a"/>
+  <g fill="#ff3b3b" stroke="#a8000a" stroke-width="1">
+    <ellipse cx="32" cy="22.5" rx="5" ry="2.6"/>
+    <ellipse cx="42" cy="27.5" rx="5" ry="2.6"/>
+    <ellipse cx="22" cy="27.5" rx="5" ry="2.6"/>
+    <ellipse cx="32" cy="32.5" rx="5" ry="2.6"/>
+  </g>
+  <g fill="#e3000b">
+    <rect x="27" y="18.5" width="10" height="4"/>
+    <rect x="37" y="23.5" width="10" height="4"/>
+    <rect x="17" y="23.5" width="10" height="4"/>
+    <rect x="27" y="28.5" width="10" height="4"/>
+  </g>
+  <g fill="#ff5a5a">
+    <ellipse cx="32" cy="18.5" rx="5" ry="2.6"/>
+    <ellipse cx="42" cy="23.5" rx="5" ry="2.6"/>
+    <ellipse cx="22" cy="23.5" rx="5" ry="2.6"/>
+    <ellipse cx="32" cy="28.5" rx="5" ry="2.6"/>
+  </g>
+</svg>
