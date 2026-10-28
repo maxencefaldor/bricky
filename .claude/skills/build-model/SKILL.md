@@ -34,7 +34,7 @@ def build() -> ModelBuilder:
     return builder
 ```
 
-- `at=(x, y, z)`: x east and y north in studs, z up in plates. It is the minimum corner of the
+- `at=(x, y, z)`: x east and y north in studs, z up in plates. `at` is the minimum corner of the
   rotated bounding box of what you place, a part or a whole component.
 - Sizes read x by y when a part is unrotated: Brick 2 x 4 (`3001`) is 2 studs along x and 4 along
   y, and `R90` makes it 4 along x. `bricky parts` and `bricky catalog show` print sizes that way.
@@ -90,7 +90,7 @@ def build() -> ModelBuilder:
 
 ## Building well
 
-This advice is yours to weigh; bricky only reports facts.
+The advice below is yours to weigh; bricky only reports facts.
 
 - Stagger joints between layers, like a brick wall, so every brick bridges the ones below it.
 - Overhanging parts must reach back over something that holds them: E301 reports anything that is

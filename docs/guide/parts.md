@@ -31,7 +31,26 @@ Sizes read x by y with the part unrotated: a Brick 2 x 4 (`3001`) is 2 studs alo
 y, and `R90` makes it 4 along x.
 
 `bricky catalog show 3039` describes one part in full: its category, its other numbers, its
-shape, and the colors it comes in.
+shape, maps of its studs and anti-studs, and the colors it comes in. A part with an uneven top also
+gets a map of its height over each stud square, so a slope shows which way it falls:
+
+```text
+3039: Slope 45 2 x 2
+category: Slope
+shape: slope, 2 x 2 studs (x by y, unrotated), 3 plates tall, 2 studs, 4 anti-studs
+  falls toward -y (the front) when unrotated
+top studs, north up:
+    o o
+    . .
+underside anti-studs, north up:
+    o o
+    o o
+height over each square in plates, north up:
+       3    3
+    1.88 1.88
+```
+
+`--render` also draws the part, into bricky's cache folder, outside the workspace.
 
 From a script, `builder.catalog.find(family="plate", size=(1, 6))` returns every 1 x 6 plate,
 plain parts before printed ones.
