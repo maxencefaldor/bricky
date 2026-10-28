@@ -1,12 +1,12 @@
-"""The parts and colors bricky knows about.
+"""The parts and colors bricky knows.
 
-Parts and colors are keyed by their BrickLink ids: BrickLink is the LEGO Group's own marketplace,
-and its catalog lists every part. ``bricky import-catalog`` imports that catalog into a catalog
-file (see :mod:`bricky.catalog.bricklink`); until then, bricky uses a small sample shipped with it.
+The catalog keys parts and colors by their BrickLink ids. BrickLink, the LEGO Group's marketplace,
+lists every part. ``bricky catalog import`` imports BrickLink's catalog into a catalog file (see
+:mod:`bricky.catalog.importing`), and bricky uses the small sample shipped with it until then.
 
 Each catalog part carries BrickLink's facts and, when bricky has one, a shape: the family that
-generates its geometry and the numbers the family needs. Geometry is generated on first use, so a
-catalog of every part loads quickly.
+generates the part's geometry and the numbers the family needs. The catalog generates a part's
+geometry on first use, so a catalog of every part loads quickly.
 """
 
 import json
@@ -56,22 +56,22 @@ __all__ = [
 ]
 
 CATALOG_FORMAT: Final = "bricky.catalog/1"
-"""Format tag written into every catalog file."""
+"""The format tag of every catalog file."""
 
 SAMPLE_CATALOG: Final = Path(str(files("bricky.catalog").joinpath("data", "sample.toml")))
-"""The sample catalog shipped with bricky: common parts and colors, entered by hand."""
+"""The sample catalog shipped with bricky: common parts and colors, with shapes written by hand."""
 
 IMPORTED_CATALOG: Final = user_data_path("bricky", appauthor=False) / "catalog.json"
-"""Where ``bricky import-catalog`` writes the catalog by default, and where bricky looks for it."""
+"""The file ``bricky catalog import`` writes by default, and where bricky looks for a catalog."""
 
 
 class CatalogFile(BaseModel):
-    """A catalog file: colors and parts, as ``bricky import-catalog`` writes them."""
+    """A catalog file: colors and parts, as ``bricky catalog import`` writes them."""
 
     model_config = ConfigDict(extra="forbid")
 
     format: Literal["bricky.catalog/1"] = CATALOG_FORMAT
-    source: str = Field(default="", description="Where the data comes from, and when.")
+    source: str = Field(default="", description="The sources of the data, and their dates.")
     colors: tuple[Color, ...] = ()
     parts: tuple[CatalogPart, ...] = ()
 
@@ -102,8 +102,8 @@ _COLORS: Final = TypeAdapter(tuple[Color, ...])
 class Catalog:
     """An immutable index of parts and colors.
 
-    Entries can be given as :class:`CatalogPart` or as raw data, which is validated the first time
-    the entry is needed, so a catalog of every BrickLink part loads in a fraction of a second.
+    A part entry is a :class:`CatalogPart` or raw data. The catalog validates raw data the first
+    time the entry is needed, so a catalog of every BrickLink part loads in a fraction of a second.
     """
 
     def __init__(
@@ -128,9 +128,9 @@ class Catalog:
 
     @classmethod
     def from_data(cls, data: Mapping[str, Any], *, origin: str = "catalog data") -> Catalog:
-        """Build a catalog from data as a catalog file holds it.
+        """Build a catalog from the data of a catalog file.
 
-        Colors are validated at once and parts when first used.
+        The catalog validates colors at once and each part when first used.
 
         Raises:
             BrickyError: If the data is not a catalog, or an id or name repeats.
@@ -142,12 +142,14 @@ class Catalog:
         try:
             colors = _COLORS.validate_python(data.get("colors", []))
             if not isinstance(parts, list) or not all(
-                isinstance(p, dict) and isinstance(p.get("id"), str) for p in parts
+                isinstance(part, dict) and isinstance(part.get("id"), str) for part in parts
             ):
                 message = "every part needs a string id"
-                raise ValueError(message)  # noqa: TRY301 - reported with the validation errors below
+                raise ValueError(message)  # noqa: TRY301 - reported like the validation errors
             _check_unique(
-                [p["id"] for p in parts], [c.id for c in colors], [c.name for c in colors]
+                [part["id"] for part in parts],
+                [color.id for color in colors],
+                [color.name for color in colors],
             )
         except (ValidationError, ValueError) as error:
             message = f"{origin} is not a valid catalog: {error}"
@@ -164,24 +166,24 @@ class Catalog:
 
     @property
     def parts(self) -> tuple[Part, ...]:
-        """Every part with a shape, in catalog order. This generates every part's geometry."""
+        """Every part with a shape, in catalog order. Reading it generates every part's geometry."""
         return tuple(part for key in self._entries if (part := self.part(key)) is not None)
 
     @property
     def colors(self) -> tuple[Color, ...]:
-        """All colors, in catalog order."""
+        """Every color, in catalog order."""
         return tuple(self._colors.values())
 
     def entry(self, part_id: str) -> CatalogPart | None:
-        """Return what the catalog lists for a BrickLink item number, with or without a shape.
+        """Return the catalog part with a BrickLink id, with or without a shape.
 
-        A part's other numbers find it too: ``3068b`` finds the part BrickLink lists as ``3068``.
+        A part's alternate ids find it too: ``3068b`` finds the part BrickLink lists as ``3068``.
         """
         key = part_id if part_id in self._entries else self._aliases.get(part_id)
         return None if key is None else self._entry(key)
 
     def shape(self, part_id: str) -> Shape | None:
-        """Return a part's shape: its own, or for a printed part, its base's; ``None`` if none."""
+        """Return a part's shape, or a printed part's base's shape; ``None`` when it has none."""
         entry = self.entry(part_id)
         if entry is None:
             return None
@@ -191,7 +193,7 @@ class Catalog:
         return entry.shape
 
     def part(self, part_id: str) -> Part | None:
-        """Return the part with this BrickLink item number, if the catalog has a shape for it."""
+        """Return the part with a BrickLink id, or ``None`` when the catalog has no shape for it."""
         if part_id not in self._parts:
             entry, shape = self.entry(part_id), self.shape(part_id)
             self._parts[part_id] = (
@@ -200,11 +202,11 @@ class Catalog:
         return self._parts[part_id]
 
     def color(self, color_id: int) -> Color | None:
-        """Return the color with this BrickLink color id, if known."""
+        """Return the color with a BrickLink color id, or ``None`` when the catalog lacks it."""
         return self._colors.get(color_id)
 
     def resolve_color(self, value: int | str) -> Color:
-        """Find a color by BrickLink id or by name, ignoring case.
+        """Return the color with a BrickLink color id or a name, ignoring case.
 
         Raises:
             ValueError: If no color matches.
@@ -214,7 +216,7 @@ class Catalog:
         else:
             color = self._color_names.get(value.casefold())
         if color is None:
-            message = f"unknown color {value!r}; search the catalog with `bricky colors <words>`"
+            message = f"unknown color {value!r}: `bricky colors <words>` searches the catalog"
             raise ValueError(message)
         return color
 
@@ -224,12 +226,12 @@ class Catalog:
         """Return the parts of a family and footprint: plain parts first, then printed ones.
 
         Args:
-            family: Part family, such as ``"plate"``; any family when omitted.
-            size: Footprint in studs, in either order: ``(1, 6)`` and ``(6, 1)`` both find a
-                1 x 6 part. Any footprint when omitted.
+            family: A family, such as ``"plate"``; any family when omitted.
+            size: A footprint in studs, in either order: ``(1, 6)`` and ``(6, 1)`` both find a
+                1 x 6 part; any footprint when omitted.
 
         Example:
-            >>> [p.id for p in default_catalog().find(family="plate", size=(6, 1))]
+            >>> [part.id for part in default_catalog().find(family="plate", size=(6, 1))]
             ['3666']
         """
         wanted = None if family is None else Family(family).value
@@ -247,22 +249,22 @@ class Catalog:
         return plain + printed
 
     def search_colors(self, query: str = "") -> list[Color]:
-        """Return colors whose id, name or type contain every word of the query."""
+        """Return the colors whose id, name and type together contain every word of a query."""
         words = query.casefold().split()
         return [
             color
             for color in self._colors.values()
-            if all(w in f"{color.id} {color.name.casefold()} {color.type}" for w in words)
+            if all(word in f"{color.id} {color.name.casefold()} {color.type}" for word in words)
         ]
 
     def search_parts(self, query: str, *, shapeless: bool = False) -> list[CatalogPart]:
-        """Return the catalog parts whose id, name, category or family match every word of a query.
+        """Return the catalog parts whose text matches every word of a query.
 
-        A word matches when the part's text contains it, except a size, which must match a whole
-        size of the part's name, in either order and either spelling: ``"1x2"``, ``"2x1"`` and
-        ``"1 x 2"`` all find ``Plate 1 x 2`` and not ``Plate 1 x 12``. Parts with a shape come
-        first, plainer names before longer ones; parts without a shape are left out unless
-        ``shapeless`` is set.
+        A part's text is its id, alternate ids, name, category and family. A word matches when the
+        text contains it. A size matches a whole size of the text only, in either order and either
+        spelling: ``"1x2"``, ``"2x1"`` and ``"1 x 2"`` all find ``Plate 1 x 2`` and not
+        ``Plate 1 x 12``. Parts with a shape come first, shorter names before longer ones. Parts
+        without a shape appear only when ``shapeless`` is set.
         """
         words = _SIZE.sub(r"\1x\2", query.casefold()).split()
         hits: list[tuple[bool, int, int, str]] = []
@@ -300,7 +302,7 @@ class Catalog:
 
 
 def load_catalog(path: Path) -> Catalog:
-    """Read a catalog file, JSON as ``bricky import-catalog`` writes it or TOML as the sample is.
+    """Read a catalog file: JSON, as ``bricky catalog import`` writes it, or TOML, as the sample is.
 
     Raises:
         BrickyError: If the file cannot be read or is not a valid catalog.
@@ -321,10 +323,10 @@ def load_catalog(path: Path) -> Catalog:
 
 
 def catalog_path(settings: Settings | None = None) -> Path:
-    """The catalog file bricky uses.
+    """Return the catalog file bricky uses.
 
-    That is the configured catalog when there is one, else the catalog imported into bricky's data
-    folder, else the sample shipped with bricky.
+    The configured catalog comes first, then the catalog imported into bricky's data folder, then
+    the sample shipped with bricky.
     """
     configured = (settings or Settings()).catalog
     if configured is not None:
