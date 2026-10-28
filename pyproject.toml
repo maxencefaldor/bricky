@@ -16,6 +16,7 @@ dev = [
   "rumdl>=0.3",
   "ruff>=0.17",
   "ty>=0.0.92",
+  "pytest-github-actions-annotate-failures>=0.4.2",
 ]
 docs = ["mkdocstrings-python>=2", "zensical>=0.0.73"]
 
