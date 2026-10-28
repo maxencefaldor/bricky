@@ -1,7 +1,7 @@
 """Reference for project 05: a toadstool on a lawn, from plate-by-plate layers.
 
 The stem is four courses of interlocking White 2 x 4 bricks. The cap is seven layers of plates whose
-rows rotate a quarter turn from one layer to the next, so every row crosses the rows above and below
+rows rotate by 90 degrees from one layer to the next, so every row crosses the rows above and below
 it and the overhang holds together.
 """
 
@@ -31,7 +31,7 @@ def row(
             j += 1
         start = i
         while start < j:
-            length = next(n for n in PLATES if n <= j - start)
+            length = next(size for size in PLATES if size <= j - start)
             x, y = cells[start]
             builder.place(
                 PLATES[length], at=(x, y, z), rotation="R90" if along_x else "R0", color=colors[i]
@@ -41,6 +41,7 @@ def row(
 
 
 def build() -> ModelBuilder:
+    """Build the toadstool on its lawn."""
     builder = ModelBuilder("toadstool")
     # Lawn: Green 2 x 8 and 2 x 2 plates, 10 x 10 studs.
     for y in range(0, SIZE, 2):
@@ -49,18 +50,22 @@ def build() -> ModelBuilder:
     # Stem: crossed pairs of White 2 x 4 bricks.
     for course in range(4):
         z = 1 + 3 * course
-        for k in (0, 2):
+        for offset in (0, 2):
             if course % 2 == 0:
-                builder.place("3001", at=(STEM[0] + k, STEM[0], z), color="White")
+                builder.place("3001", at=(STEM[0] + offset, STEM[0], z), color="White")
             else:
-                builder.place("3001", at=(STEM[0], STEM[0] + k, z), rotation="R90", color="White")
+                builder.place(
+                    "3001", at=(STEM[0], STEM[0] + offset, z), rotation="R90", color="White"
+                )
     # Cap: Red plate layers, rows alternating between x and y.
-    for layer, (lo, hi) in enumerate(CAP):
+    for layer, (start, stop) in enumerate(CAP):
         z = CAP_Z + layer
         spots = SPOTS.get(layer, set())
         along_x = layer % 2 == 0
-        for a in range(lo, hi):
-            cells = [(b, a) if along_x else (a, b) for b in range(lo, hi)]
+        for across in range(start, stop):
+            cells = [
+                (along, across) if along_x else (across, along) for along in range(start, stop)
+            ]
             colors = ["White" if cell in spots else "Red" for cell in cells]
             row(builder, cells, colors, z, along_x)
     return builder

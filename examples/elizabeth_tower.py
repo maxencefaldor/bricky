@@ -4,8 +4,9 @@ Prompt: "Build the Elizabeth Tower (Big Ben) in London."
 References: Wikipedia, "Big Ben": 96 m tall, 12 m square base, four 6.9 m dials centered 54.9 m up,
 gilded dial surrounds, a cast-iron spire, the Ayrton Light above the belfry.
 
-The tower is drawn as voxels (one stud by one stud by one plate), then packed into bricks and
-plates course by course. x runs along the south face, y along the east face, z is up in plates.
+The script draws the tower as voxels, one stud square and one plate tall, then packs them into
+bricks and plates course by course. x runs along the south face, y along the east face, and z
+points up, in plates.
 """
 
 from collections.abc import Callable
@@ -16,7 +17,7 @@ STONE, BAND, GOLD = "Tan", "Dark Tan", "Yellow"
 DARK, GLASS, DIAL, IRON = "Black", "Trans-Clear", "White", "Dark Bluish Gray"
 
 BODY = range(1, 14)  # the shaft is 13 studs square
-OUTER = range(15)  # projecting bands and the plinth add a stud all round
+OUTER = range(15)  # projecting bands and the plinth add a stud all around
 TOP = 241  # plates
 ROOF = 188
 
@@ -51,19 +52,20 @@ type Cell = tuple[int, int]
 type Color = str | None
 
 
-def ring(x: int, y: int, lo: int, hi: int, thickness: int = 1) -> bool:
-    """Whether (x, y) lies in a square ring spanning lo..max-1 on both axes."""
-    if not (lo <= x < hi and lo <= y < hi):
+def ring(x: int, y: int, start: int, stop: int, thickness: int = 1) -> bool:
+    """Whether (x, y) lies in a square ring from ``start`` to ``stop - 1`` on both axes."""
+    if not (start <= x < stop and start <= y < stop):
         return False
-    return min(x - lo, y - lo, hi - 1 - x, hi - 1 - y) < thickness
+    return min(x - start, y - start, stop - 1 - x, stop - 1 - y) < thickness
 
 
-def square(x: int, y: int, lo: int, hi: int) -> bool:
-    return lo <= x < hi and lo <= y < hi
+def square(x: int, y: int, start: int, stop: int) -> bool:
+    """Whether (x, y) lies in the square from ``start`` to ``stop - 1`` on both axes."""
+    return start <= x < stop and start <= y < stop
 
 
-def face_u(x: int, y: int) -> int:
-    """Position along whichever face of the body (x, y) sits on, 0..12 from that face's left."""
+def along_face(x: int, y: int) -> int:
+    """Position along whichever face of the body (x, y) sits on, 0 to 12 from that face's left."""
     if y == BODY.start:
         return x - BODY.start
     if y == BODY.stop - 1:
@@ -74,59 +76,69 @@ def face_u(x: int, y: int) -> int:
 
 
 def shaft(x: int, y: int, z: int) -> Color:
+    """The shaft: stone floors with darker courses, windows and panels."""
     if not ring(x, y, BODY.start, BODY.stop):
         return None
-    u, floor = face_u(x, y), (z - 6) % 12
+    along, floor = along_face(x, y), (z - 6) % 12
     if (z - 6) // 3 % 8 == 7:
         return BAND  # a darker course every eight
     if 3 <= floor < 9:
-        if u == 6:
+        if along == 6:
             return DARK  # a narrow window, two bricks tall, on every floor
-        if u in {3, 9}:
-            return BAND  # blind Gothic panels either side
+        if along in {3, 9}:
+            return BAND  # blind Gothic panels on either side
     return STONE
 
 
 def clock(x: int, y: int, z: int) -> Color:
+    """The clock stage: a dial on each face, framed in gold."""
     if not ring(x, y, BODY.start, BODY.stop):
         return None
-    u = face_u(x, y)
-    dx, dz = (u + 0.5 - 6.5) / 3.5, (z + 0.5 - 138.5) / 8.75
-    d2 = dx * dx + dz * dz
-    if d2 <= 1:
-        if d2 > (2.5 / 3.5) ** 2:
+    along = along_face(x, y)
+    horizontal, vertical = (along + 0.5 - 6.5) / 3.5, (z + 0.5 - 138.5) / 8.75
+    radius_squared = horizontal * horizontal + vertical * vertical
+    if radius_squared <= 1:
+        if radius_squared > (2.5 / 3.5) ** 2:
             return DARK  # the dial's iron frame
-        if (u == 6 and 138 <= z <= 144) or (z == 138 and 6 <= u <= 8):
+        if (along == 6 and 138 <= z <= 144) or (z == 138 and 6 <= along <= 8):
             return DARK  # hands at three o'clock
         return DIAL
-    if abs(u - 6) <= 3 and 129 <= z <= 147:
-        return GOLD  # gilded spandrels round the dial
-    if 2 <= u <= 10 and 125 <= z <= 126:
+    if abs(along - 6) <= 3 and 129 <= z <= 147:
+        return GOLD  # gilded spandrels around the dial
+    if 2 <= along <= 10 and 125 <= z <= 126:
         return GOLD  # the gilded inscription under the dial
     return STONE
 
 
 def belfry(x: int, y: int, z: int) -> Color:
+    """The belfry: louvered openings under a frieze of gilded shields."""
     if not ring(x, y, BODY.start, BODY.stop):
         return None
-    u = face_u(x, y)
-    if u in {3, 4, 8, 9} and 162 <= z < 183:
-        return DARK  # louvred openings onto the bells
+    along = along_face(x, y)
+    if along in {3, 4, 8, 9} and 162 <= z < 183:
+        return DARK  # louvered openings onto the bells
     if z == 185:
         return GOLD  # the frieze of gilded shields
     return STONE
 
 
 def spire(x: int, y: int, z: int) -> Color:
-    if z < 195:  # the Ayrton Light: iron posts and glass round a solid core
+    """The Ayrton Light, the iron spire in steps, and the finial."""
+    if z < 195:  # the Ayrton Light: iron posts and glass around a solid core
         if square(x, y, 4, 11):
             return IRON
         if not ring(x, y, 3, 12):
             return None
         return IRON if (x + y) % 2 == 0 else GLASS
-    for lo, z0, z1 in ((3, 195, 205), (4, 205, 214), (5, 214, 223), (6, 223, 232), (7, 232, 238)):
-        if z0 <= z < z1:
-            return IRON if square(x, y, lo, 15 - lo) else None
+    for inset, bottom, top in (
+        (3, 195, 205),
+        (4, 205, 214),
+        (5, 214, 223),
+        (6, 223, 232),
+        (7, 232, 238),
+    ):
+        if bottom <= z < top:
+            return IRON if square(x, y, inset, 15 - inset) else None
     return GOLD if (x, y) == (7, 7) else None  # the finial
 
 
@@ -146,7 +158,7 @@ def tower(x: int, y: int, z: int) -> Color:
         return BAND if square(x, y, OUTER.start, OUTER.stop) else None  # cornice and roof
     corner = x in {1, 13} and y in {1, 13}  # pinnacles over the corner buttresses
     if corner and z < 201:
-        return STONE  # corner pinnacles
+        return STONE
     if corner and z == 201:
         return GOLD
     return spire(x, y, z)
@@ -164,54 +176,65 @@ def pack(
     """Greedily cover same-colored cells with the biggest parts that fit, scanning along one axis.
 
     Alternating the axis from course to course staggers the joints and interlocks the corners.
-    Every part must rest on at least one cell of the layer below (``below=None`` means the ground),
-    so overhanging bands are made of wide parts that reach back over the wall.
+    Every part rests on at least one cell of the layer below (``below=None`` means the ground), so
+    overhanging bands take wide parts that reach back over the wall.
     """
-    sizes = sorted(parts, key=lambda s: (s[1] * s[0], s[0], s[1]), reverse=True)
+    sizes = sorted(parts, key=lambda size: (size[1] * size[0], size[0], size[1]), reverse=True)
     free = dict(cells)
 
-    def overhang(c: Cell) -> bool:
-        return below is not None and c not in below
+    def overhang(cell: Cell) -> bool:
+        return below is not None and cell not in below
 
     def fits(span: list[Cell], color: str) -> bool:
-        return all(free.get(c) == color for c in span) and (
-            below is None or any(c in below for c in span)
+        return all(free.get(cell) == color for cell in span) and (
+            below is None or any(cell in below for cell in span)
         )
 
-    def options(c: Cell) -> int:
-        """How many placements could cover c: hard cells (overhang corners) go first."""
+    def options(cell: Cell) -> int:
+        """How many placements could cover ``cell``; the cells with fewest go first."""
         return sum(
-            fits([(c[0] - ox + i, c[1] - oy + j) for i in range(w) for j in range(n)], free[c])
-            for short, long_ in parts
-            for w, n in {(short, long_), (long_, short)}
-            for ox in range(w)
-            for oy in range(n)
+            fits(
+                [
+                    (cell[0] - offset_x + i, cell[1] - offset_y + j)
+                    for i in range(width)
+                    for j in range(depth)
+                ],
+                free[cell],
+            )
+            for short, long in parts
+            for width, depth in {(short, long), (long, short)}
+            for offset_x in range(width)
+            for offset_y in range(depth)
         )
 
-    scan = sorted(free, key=lambda c: (c[1], c[0]) if along_x else c)
-    hard = sorted((c for c in scan if overhang(c)), key=options)
-    order = hard + [c for c in scan if not overhang(c)]
+    scan = sorted(free, key=lambda cell: (cell[1], cell[0]) if along_x else cell)
+    hard = sorted((cell for cell in scan if overhang(cell)), key=options)
+    order = hard + [cell for cell in scan if not overhang(cell)]
 
     def place(start: Cell) -> None:
         color = free[start]
-        for short, long_ in sizes:
-            dims = ((long_, short), (short, long_)) if along_x else ((short, long_), (long_, short))
-            for w, n in dims:
-                for ox in range(w):  # any cell of the part may be the start cell
-                    for oy in range(n):
-                        x0, y0 = start[0] - ox, start[1] - oy
-                        span = [(x0 + i, y0 + j) for i in range(w) for j in range(n)]
+        for short, long in sizes:
+            footprints = (
+                ((long, short), (short, long)) if along_x else ((short, long), (long, short))
+            )
+            for width, depth in footprints:
+                for offset_x in range(width):  # any cell of the part may be the start cell
+                    for offset_y in range(depth):
+                        corner_x, corner_y = start[0] - offset_x, start[1] - offset_y
+                        span = [
+                            (corner_x + i, corner_y + j) for i in range(width) for j in range(depth)
+                        ]
                         if fits(span, color):
-                            rotation = "R0" if (w, n) == (short, long_) else "R90"
+                            rotation = "R0" if (width, depth) == (short, long) else "R90"
                             builder.place(
-                                parts[short, long_],
-                                at=(x0, y0, z),
+                                parts[short, long],
+                                at=(corner_x, corner_y, z),
                                 rotation=rotation,
                                 color=color,
-                                id=f"{label}.{x0}.{y0}",
+                                id=f"{label}.{corner_x}.{corner_y}",
                             )
-                            for c in span:
-                                del free[c]
+                            for cell in span:
+                                del free[cell]
                             return
 
     for start in order:
@@ -222,30 +245,33 @@ def pack(
 
 
 def voxelize(color_at: Callable[[int, int, int], Color], top: int) -> list[dict[Cell, str]]:
+    """The colored cells of every plate level from the ground up to ``top``."""
     return [
-        {(x, y): c for x in OUTER for y in OUTER if (c := color_at(x, y, z)) is not None}
+        {(x, y): color for x in OUTER for y in OUTER if (color := color_at(x, y, z)) is not None}
         for z in range(top)
     ]
 
 
 def build() -> ModelBuilder:
+    """Pack the tower's voxels into bricks where three levels agree, and plates elsewhere."""
     builder = ModelBuilder("elizabeth_tower")
     layers = voxelize(tower, TOP)
     for course, z in enumerate(range(0, TOP, 3)):
-        group = layers[z : z + 3]
+        course_layers = layers[z : z + 3]
         along_x = course % 2 == 0
         bricks = {}
-        if len(group) == 3:
+        if len(course_layers) == 3:
             bricks = {
-                c: col
-                for c, col in group[0].items()
-                if group[1].get(c) == col and group[2].get(c) == col
+                cell: color
+                for cell, color in course_layers[0].items()
+                if course_layers[1].get(cell) == color and course_layers[2].get(cell) == color
             }
         pack(builder, bricks, z, BRICKS, along_x, f"b{z}", set(layers[z - 1]) if z else None)
-        for k, layer in enumerate(group):
-            plates = {c: col for c, col in layer.items() if c not in bricks}
-            below = set(layers[z + k - 1]) if z + k else None
-            if below is not None and z + k == ROOF:  # inner roof plates hang from the spire
+        for offset, layer in enumerate(course_layers):
+            level = z + offset
+            plates = {cell: color for cell, color in layer.items() if cell not in bricks}
+            below = set(layers[level - 1]) if level else None
+            if below is not None and level == ROOF:  # inner roof plates hang from the spire
                 below |= {(x, y) for x in range(2, 13) for y in range(2, 13)}
-            pack(builder, plates, z + k, PLATES, (course + k) % 2 == 0, f"p{z + k}", below)
+            pack(builder, plates, level, PLATES, (course + offset) % 2 == 0, f"p{level}", below)
     return builder

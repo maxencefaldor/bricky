@@ -25,7 +25,7 @@ EMPTY: Final = "."
 
 
 async def prepare(project: Project, session: Session) -> list[Path]:
-    """Build a project's reference and write every input its project file generates.
+    """Build a project's reference and write every input its project file lists to generate.
 
     Raises:
         BrickyError: If the project generates inputs but has no reference, the reference does not
@@ -49,7 +49,7 @@ async def reference_model(project: Project, session: Session) -> Model:
     """Build a project's reference model.
 
     Raises:
-        BrickyError: If the project has no reference, or it does not build.
+        BrickyError: If the project has no reference, or the reference does not build.
     """
     if project.reference is None:
         message = f"{project.id} has no {REFERENCE_FILE}"
@@ -63,8 +63,8 @@ async def _render(model: Model, item: Render, session: Session) -> bytes:
     if item.caption is not None:
         scene = scene.model_copy(update={"title": item.caption})
     renderer = await session.renderer()
-    (png,) = await renderer.render(scene, [item.view], width=item.width, height=item.height)
-    return png
+    (picture,) = await renderer.render(scene, [item.view], width=item.width, height=item.height)
+    return picture
 
 
 def layers_text(model: Model, catalog: Catalog, levels: Sequence[int] | None = None) -> str:
@@ -114,29 +114,34 @@ def _plan(
     xs: Sequence[int],
     ys: Sequence[int],
 ) -> list[str]:
-    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
-    width = max(len(str(y0)), len(str(y1)), 3)
-    columns = range(x0, x1 + 1)
+    """Draw one plate level as rows of symbols, north first, under a ruler of x values."""
+    west, east, south, north = min(xs), max(xs), min(ys), max(ys)
+    label_width = max(len(str(south)), len(str(north)), 3)
+    columns = range(west, east + 1)
     tens = "".join(str(abs(x) // 10 % 10) if x % 10 == 0 else " " for x in columns)
     units = "".join(str(abs(x) % 10) for x in columns)
-    rows = [f"{'y\\x':>{width}}  {tens}".rstrip(), f"{'':>{width}}  {units}"]
-    for y in range(y1, y0 - 1, -1):
+    rows = [f"{'y\\x':>{label_width}}  {tens}".rstrip(), f"{'':>{label_width}}  {units}"]
+    for y in range(north, south - 1, -1):
         row = "".join(
             symbols[voxel.color] if (voxel := filled.get((x, y, z))) is not None else EMPTY
             for x in columns
         )
-        rows.append(f"{y:>{width}}  {row}")
+        rows.append(f"{y:>{label_width}}  {row}")
     return rows
 
 
 def _first_seen(
-    filled: dict[VoxelKey, Voxel], xs: tuple[int, int], ys: tuple[int, int], zs: Iterable[int]
+    filled: dict[VoxelKey, Voxel],
+    x_range: tuple[int, int],
+    y_range: tuple[int, int],
+    levels: Iterable[int],
 ) -> list[int]:
     """Color ids in reading order: level by level, rows north to south, columns west to east."""
+    (west, east), (south, north) = x_range, y_range
     seen: dict[int, None] = {}
-    for z in zs:
-        for y in range(ys[1], ys[0] - 1, -1):
-            for x in range(xs[0], xs[1] + 1):
+    for z in levels:
+        for y in range(north, south - 1, -1):
+            for x in range(west, east + 1):
                 if (voxel := filled.get((x, y, z))) is not None:
                     seen.setdefault(voxel.color)
     return list(seen)
@@ -157,7 +162,11 @@ def _symbols(names: Sequence[str]) -> list[str]:
         preferred = [word[0].upper() for word in words] + [
             letter.upper() for word in words for letter in word[1:] if letter.isalpha()
         ]
-        symbol = next(c for c in (*preferred, *pool) if c not in used and c != EMPTY)
+        symbol = next(
+            character
+            for character in (*preferred, *pool)
+            if character not in used and character != EMPTY
+        )
         used.add(symbol)
         symbols.append(symbol)
     return symbols

@@ -2,7 +2,7 @@
 
 Prompt: "Build Stonehenge as it stands today."
 
-Model north (+y) is the solstice axis, which runs north-east in reality. The horseshoe opens toward
+Model north (+y) is the solstice axis, which runs northeast in reality. The horseshoe opens toward
 +y and the Heel Stone sits near the north edge of the base. Stone numbers follow the usual scheme:
 sarsen uprights 1-30 clockwise from the entrance, trilithon uprights 51-60.
 """
@@ -13,7 +13,7 @@ import math
 from bricky import ModelBuilder
 
 WIDTH, DEPTH = 40, 48  # base, in studs
-CX, CY = 20, 20  # center of the circle
+CENTER_X, CENTER_Y = 20, 20  # center of the circle
 GROUND = 1  # top of the base plates, in plates
 BRICK = 3  # plates per brick
 
@@ -44,6 +44,8 @@ PLATES = {
 }
 
 type Cell = tuple[int, int]
+type PlateBox = tuple[Cell, int, int]
+"""A plate's minimum corner, its width along x and its depth along y, in studs."""
 
 
 def snap(value: float) -> int:
@@ -52,59 +54,69 @@ def snap(value: float) -> int:
 
 
 def angle(stone: int) -> float:
-    """Angle of a sarsen stone, in radians anticlockwise from +x; stone 1 is just east of +y."""
+    """Angle of a sarsen stone, in radians counterclockwise from +x; stone 1 is just east of +y."""
     return math.radians(90 - 12 * (stone - 0.5))
 
 
 def base(builder: ModelBuilder) -> None:
+    """Cover the ground with Green 2 x 8 plates."""
     for x in range(0, WIDTH, 2):
         for y in range(0, DEPTH, 8):
             builder.place("3034", at=(x, y, 0), color="Green", id=f"grass.{x}.{y}")
 
 
 def sarsen_cells(stone: int, along_y: bool) -> list[Cell]:
-    a = angle(stone)
-    cx, cy = CX + SARSEN_RADIUS * math.cos(a), CY + SARSEN_RADIUS * math.sin(a)
+    """The two cells of a standing sarsen, a 1 x 2 brick on the circle."""
+    direction = angle(stone)
+    center_x = CENTER_X + SARSEN_RADIUS * math.cos(direction)
+    center_y = CENTER_Y + SARSEN_RADIUS * math.sin(direction)
     if along_y:
-        x0, y0 = math.floor(cx), snap(cy - 1)
-        return [(x0, y0), (x0, y0 + 1)]
-    x0, y0 = snap(cx - 1), math.floor(cy)
-    return [(x0, y0), (x0 + 1, y0)]
+        x, y = math.floor(center_x), snap(center_y - 1)
+        return [(x, y), (x, y + 1)]
+    x, y = snap(center_x - 1), math.floor(center_y)
+    return [(x, y), (x + 1, y)]
 
 
-def lintel_box(a: list[Cell], b: list[Cell]) -> tuple[Cell, int, int] | None:
+def lintel_box(first: list[Cell], second: list[Cell]) -> PlateBox | None:
     """The smallest plate box joining the nearest top studs of two uprights, if a plate fits."""
-    ca, cb = min(
-        ((p, q) for p in a for q in b),
-        key=lambda pq: (pq[0][0] - pq[1][0]) ** 2 + (pq[0][1] - pq[1][1]) ** 2,
+    near_first, near_second = min(
+        ((one, other) for one in first for other in second),
+        key=lambda pair: (pair[0][0] - pair[1][0]) ** 2 + (pair[0][1] - pair[1][1]) ** 2,
     )
-    x0, y0 = min(ca[0], cb[0]), min(ca[1], cb[1])
-    w, n = abs(ca[0] - cb[0]) + 1, abs(ca[1] - cb[1]) + 1
-    if (min(w, n), max(w, n)) not in PLATES:
+    corner = min(near_first[0], near_second[0]), min(near_first[1], near_second[1])
+    width = abs(near_first[0] - near_second[0]) + 1
+    depth = abs(near_first[1] - near_second[1]) + 1
+    if (min(width, depth), max(width, depth)) not in PLATES:
         return None
-    return (x0, y0), w, n
+    return corner, width, depth
 
 
-def box_cells(box: tuple[Cell, int, int]) -> set[Cell]:
-    (x0, y0), w, n = box
-    return {(x, y) for x in range(x0, x0 + w) for y in range(y0, y0 + n)}
+def box_cells(box: PlateBox) -> set[Cell]:
+    """The cells a plate box covers."""
+    (corner_x, corner_y), width, depth = box
+    return {
+        (x, y) for x in range(corner_x, corner_x + width) for y in range(corner_y, corner_y + depth)
+    }
 
 
 def orientations() -> dict[int, bool]:
-    """Choose each standing stone's orientation.
+    """Choose each standing stone's orientation: whether its long side runs along y.
 
     Stones face along the circle's tangent, except for the fewest flips that let every lintel fit
     without two lintels sharing a stud.
     """
-    tangent = {s: abs(math.cos(angle(s))) > abs(math.sin(angle(s))) for s in STANDING}
-    involved = sorted({s for pair in LINTELS for s in pair})
+    tangent = {
+        stone: abs(math.cos(angle(stone))) > abs(math.sin(angle(stone))) for stone in STANDING
+    }
+    involved = sorted({stone for pair in LINTELS for stone in pair})
     best: tuple[int, dict[int, bool]] | None = None
     for flips in itertools.product((False, True), repeat=len(involved)):
         trial = dict(tangent)
         for stone, flip in zip(involved, flips, strict=True):
             trial[stone] ^= flip
         boxes = [
-            lintel_box(sarsen_cells(a, trial[a]), sarsen_cells(b, trial[b])) for a, b in LINTELS
+            lintel_box(sarsen_cells(first, trial[first]), sarsen_cells(second, trial[second]))
+            for first, second in LINTELS
         ]
         if any(box is None for box in boxes):
             continue
@@ -120,52 +132,53 @@ def orientations() -> dict[int, bool]:
 
 
 def sarsen_circle(builder: ModelBuilder) -> None:
+    """The standing sarsens, the lintels that remain on them, and the fallen stones."""
     along_y = orientations()
     tops = {}
     for stone in sorted(STANDING):
         cells = sarsen_cells(stone, along_y[stone])
-        x0, y0 = cells[0]
+        x, y = cells[0]
         bricks = 2 if stone in SHORT else UPRIGHT_BRICKS
         for level in range(bricks):
             builder.place(
                 "3004",
-                at=(x0, y0, GROUND + BRICK * level),
+                at=(x, y, GROUND + BRICK * level),
                 rotation="R0" if along_y[stone] else "R90",
                 color=SARSEN,
                 id=f"sarsen{stone}.{level}",
             )
         tops[stone] = cells
-    for a, b in LINTELS:
-        box = lintel_box(tops[a], tops[b])
+    for first, second in LINTELS:
+        box = lintel_box(tops[first], tops[second])
         if box is None:
-            print(f"no plate fits lintel {a}-{b}; leaving it out")
+            print(f"no plate fits lintel {first}-{second}; leaving it out")
             continue
-        (x0, y0), w, n = box
-        part = PLATES[min(w, n), max(w, n)]
+        (x, y), width, depth = box
+        part = PLATES[min(width, depth), max(width, depth)]
         builder.place(
             part,
-            at=(x0, y0, GROUND + BRICK * UPRIGHT_BRICKS),
-            rotation="R0" if n >= w else "R90",
+            at=(x, y, GROUND + BRICK * UPRIGHT_BRICKS),
+            rotation="R0" if depth >= width else "R90",
             color=SARSEN,
-            id=f"lintel{a}-{b}",
+            id=f"lintel{first}-{second}",
         )
     for stone in FALLEN:
-        a = angle(stone)
-        dx, dy = math.cos(a), math.sin(a)
-        if abs(dx) > abs(dy):  # lies along x, outward
-            x = CX + SARSEN_RADIUS + 1 if dx > 0 else CX - SARSEN_RADIUS - 5
+        direction = angle(stone)
+        outward_x, outward_y = math.cos(direction), math.sin(direction)
+        if abs(outward_x) > abs(outward_y):  # lies along x, outward
+            x = CENTER_X + SARSEN_RADIUS + 1 if outward_x > 0 else CENTER_X - SARSEN_RADIUS - 5
             builder.place(
                 "3001",
-                at=(x, snap(CY + SARSEN_RADIUS * dy - 1), GROUND),
+                at=(x, snap(CENTER_Y + SARSEN_RADIUS * outward_y - 1), GROUND),
                 rotation="R90",
                 color=SARSEN,
                 id=f"fallen{stone}",
             )
         else:  # lies along y, outward
-            y = CY + SARSEN_RADIUS + 1 if dy > 0 else CY - SARSEN_RADIUS - 5
+            y = CENTER_Y + SARSEN_RADIUS + 1 if outward_y > 0 else CENTER_Y - SARSEN_RADIUS - 5
             builder.place(
                 "3001",
-                at=(snap(CX + SARSEN_RADIUS * dx - 1), y, GROUND),
+                at=(snap(CENTER_X + SARSEN_RADIUS * outward_x - 1), y, GROUND),
                 color=SARSEN,
                 id=f"fallen{stone}",
             )
@@ -187,6 +200,7 @@ def trilithon(builder: ModelBuilder) -> None:
 
 
 def upright(builder: ModelBuilder, name: str, corner: Cell, along_y: bool, bricks: int) -> None:
+    """A standing stone of 1 x 2 bricks, ``bricks`` tall."""
     for level in range(bricks):
         builder.place(
             "3004",
@@ -198,8 +212,9 @@ def upright(builder: ModelBuilder, name: str, corner: Cell, along_y: bool, brick
 
 
 def horseshoe(builder: ModelBuilder) -> None:
+    """The trilithon horseshoe, with its fallen stones and the Altar Stone."""
     trilithon(builder)
-    # Trilithons stand along y on the sides of the horseshoe: rotate the component a quarter turn.
+    # Trilithons stand along y on the sides of the horseshoe, so their instances rotate by R90.
     builder.instance("trilithon", at=(27, 21, GROUND), rotation="R90", id="tri51-52")
     builder.instance("trilithon", at=(26, 13, GROUND), rotation="R90", id="tri53-54")
     builder.instance("trilithon", at=(13, 13, GROUND), rotation="R90", id="tri57-58")
@@ -215,20 +230,23 @@ def horseshoe(builder: ModelBuilder) -> None:
 
 
 def bluestones(builder: ModelBuilder) -> None:
+    """The bluestone circle and the bluestone horseshoe inside it."""
     # Outer circle: 1 x 1 stones at radius 11.5, with gaps where stones are lost.
     for k in range(36):
         if k % 4 == 3 or k in {8, 9, 26}:
             continue
-        a = math.radians(5 + 10 * k)
-        x, y = snap(CX + 11.5 * math.cos(a) - 0.5), snap(CY + 11.5 * math.sin(a) - 0.5)
+        direction = math.radians(5 + 10 * k)
+        x = snap(CENTER_X + 11.5 * math.cos(direction) - 0.5)
+        y = snap(CENTER_Y + 11.5 * math.sin(direction) - 0.5)
         for level in range(1 + (k % 3 == 0)):
             builder.place(
                 "3005", at=(x, y, GROUND + BRICK * level), color=BLUESTONE, id=f"blue{k}.{level}"
             )
     # Inner horseshoe: taller dressed pillars at radius 6, opening north.
     for k, degrees in enumerate((150, 170, 195, 345, 10, 30)):
-        a = math.radians(degrees)
-        x, y = snap(CX + 6 * math.cos(a) - 0.5), snap(CY + 6 * math.sin(a) - 0.5)
+        direction = math.radians(degrees)
+        x = snap(CENTER_X + 6 * math.cos(direction) - 0.5)
+        y = snap(CENTER_Y + 6 * math.sin(direction) - 0.5)
         for level in range(2):
             builder.place(
                 "3005",
@@ -239,12 +257,14 @@ def bluestones(builder: ModelBuilder) -> None:
 
 
 def outliers(builder: ModelBuilder) -> None:
+    """The Heel Stone and the Slaughter Stone, outside the circle."""
     for level in range(4):  # the Heel Stone, just east of the axis
         builder.place("3003", at=(22, 43, GROUND + BRICK * level), color=SARSEN, id=f"heel.{level}")
     builder.place("3020", at=(17, 38, GROUND), rotation="R90", color=SARSEN, id="slaughter")
 
 
 def build() -> ModelBuilder:
+    """Build Stonehenge on its base."""
     builder = ModelBuilder("stonehenge")
     base(builder)
     sarsen_circle(builder)

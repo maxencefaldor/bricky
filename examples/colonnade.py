@@ -1,6 +1,7 @@
 """A colonnade: one column component, placed four times, under a two-layer beam.
 
-The column is stored once and instanced, so changing it changes every copy.
+The model stores the column once and places four instances of it, so a change to the column
+changes every copy.
 
 Run: ``uv run bricky build examples/colonnade.py``
 """
