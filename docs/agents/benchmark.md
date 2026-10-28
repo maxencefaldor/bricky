@@ -94,6 +94,7 @@ scripts. Every model builds with no errors and no warnings.
 | 10 | Notre-Dame de Paris | 1,872 | judged | judged |
 
 The projects with exact plans, 1 to 5 and 9, reach a perfect score in one to four builds, so they
-measure whether an agent can use bricky at all. The open briefs set the difficulty: the agents rated the lighthouse, the telephone box and the pagoda 3 out of 5, and
-Notre-Dame 4, for its roofs meeting at the crossing, its rose windows on side studs, and walls that
-pack around openings without floating parts.
+measure whether an agent can use bricky at all. The open briefs set the difficulty: the agents
+rated the lighthouse, the telephone box and the pagoda 3 out of 5, and Notre-Dame 4, for its roofs
+meeting at the crossing, its rose windows on side studs, and walls that pack around openings
+without floating parts.
