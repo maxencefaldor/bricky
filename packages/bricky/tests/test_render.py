@@ -134,6 +134,23 @@ def test_the_renderer_draws_every_view_at_the_requested_size():
     assert all(len(image) > 5000 for image in images)
 
 
+def test_the_perspectives_from_each_corner_draw_different_pictures():
+    builder = ModelBuilder("corner")
+    builder.place("3001", at=(0, 0, 0), color="Red")
+    builder.place("3003", at=(0, 0, 3), color="Blue")  # off center, so every corner differs
+    scene = build_scene(builder.build(), default_catalog())
+    corners = [view for view in View if view.value.startswith("perspective")]
+
+    async def draw() -> list[bytes]:
+        async with Renderer(Settings().render_browser) as renderer:
+            return await renderer.render(scene, corners, width=320, height=240)
+
+    images = asyncio.run(draw())
+    assert len(corners) == 4
+    assert all(png_size(image) == (320, 240) for image in images)
+    assert len(set(images)) == len(corners)
+
+
 def test_elements_that_are_not_boxes_become_meshes():
     builder = ModelBuilder("mixed")
     builder.place("3001", at=(0, 0, 0), color="Red", id="brick")

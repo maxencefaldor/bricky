@@ -42,6 +42,25 @@ by layer with the biggest parts that fit, every part resting on the layer below.
 
 ![The Elizabeth Tower](images/elizabeth-tower.png)
 
+## Colosseum
+
+`examples/colosseum.py`: the Colosseum in Rome at 1:150, 45,496 elements on a plaza of 25
+baseplates. Functions draw the monument as voxels on elliptical rings, and `builder.fill` lays
+them in bricks and plates:
+
+- the outer ring's three arcades, the attic with its pilasters, windows and corbels, and the crown;
+- the ruined south side, where the second ring's arcades show behind broken piers;
+- brick buttresses at both ends of the surviving outer ring;
+- the radial and ring walls of the seating, with one sector rebuilt in marble;
+- the podium, the hypogeum's walls, and a wooden stage over the east end.
+
+Round bricks stand for the half-columns at every pier. A build takes about a minute: the script
+15 seconds, the check 6 and the pictures 35.
+
+![The Colosseum from the north-west](images/colosseum-north-west.png)
+
+![The Colosseum's sheet](images/colosseum.png)
+
 ## Broken
 
 `examples/broken.py`: one mistake of each kind the checks catch, to show what bricky reports.

@@ -355,6 +355,13 @@ FIGURES: Final = (
     Figure("cottage", EXAMPLES / "cottage.py"),
     Figure("fill", filled, view=View.PERSPECTIVE, size=(1000, 1000)),
     Figure("stonehenge", EXAMPLES / "stonehenge.py"),
+    Figure("colosseum", EXAMPLES / "colosseum.py"),
+    Figure(
+        "colosseum-north-west",
+        EXAMPLES / "colosseum.py",
+        view=View.PERSPECTIVE_NORTH_WEST,
+        size=(1600, 1100),
+    ),
     # Checks and changes
     Figure("broken", EXAMPLES / "broken.py", check=True),
     Figure("overlap", overlap, view=View.PERSPECTIVE, size=(1000, 800), check=True),

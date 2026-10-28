@@ -28,6 +28,7 @@ uv run bricky render models/cottage.bricky.json --views front --views top
 | --- | --- |
 | `sheet` | Perspective, front, right and top on one image (the default) |
 | `perspective` | From the south-east, above |
+| `perspective-south-west`, `perspective-north-west`, `perspective-north-east` | From the other corners, above |
 | `front`, `back` | Looking north, and looking south, with x and z rulers |
 | `left`, `right` | Looking east, and looking west, with y and z rulers |
 | `top` | North up, with x and y rulers |
@@ -35,6 +36,15 @@ uv run bricky render models/cottage.bricky.json --views front --views top
 ![The cottage from the front](../images/front.png)
 
 ![The cottage from above](../images/top.png)
+
+The perspectives from the other corners show the sides the sheet hides. The Colosseum keeps its
+outer ring on the north side, so its façade shows from the north-west:
+
+```sh
+uv run bricky render examples/colosseum.bricky.json --views perspective-north-west
+```
+
+![The Colosseum example from the north-west](../images/colosseum-north-west.png)
 
 ## Highlights
 
