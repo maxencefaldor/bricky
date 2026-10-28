@@ -97,5 +97,5 @@ class Settings(BaseSettings):
         try:
             return name, self.profiles[name]
         except KeyError:
-            msg = f"unknown profile {name!r}; known profiles: {', '.join(self.profiles)}"
-            raise BrickyError(msg) from None
+            message = f"unknown profile {name!r}; known profiles: {', '.join(self.profiles)}"
+            raise BrickyError(message) from None

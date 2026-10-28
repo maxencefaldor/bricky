@@ -1,7 +1,7 @@
 """Reference for project 05: a toadstool on a lawn, from plate-by-plate layers.
 
 The stem is four courses of interlocking White 2 x 4 bricks. The cap is seven layers of plates whose
-rows turn a quarter turn from one layer to the next, so every row crosses the rows above and below
+rows rotate a quarter turn from one layer to the next, so every row crosses the rows above and below
 it and the overhang holds together.
 """
 
@@ -23,7 +23,7 @@ PLATES = {8: "3460", 6: "3666", 4: "3710", 3: "3623", 2: "3023", 1: "3024"}  # P
 def row(
     builder: ModelBuilder, cells: list[tuple[int, int]], colors: list[str], z: int, along_x: bool
 ) -> None:
-    """Fill a straight row of cells with 1 x N plates, one colour at a time, longest first."""
+    """Fill a straight row of cells with 1 x N plates, one color at a time, longest first."""
     i = 0
     while i < len(cells):
         j = i

@@ -28,25 +28,25 @@ from bricky.diagnostics import Report, render_report
 from bricky.errors import BrickyError
 
 INSTRUCTIONS: Final = """\
-bricky builds, checks and renders LEGO® models that you write as Python build scripts.
+bricky builds, checks and renders LEGO® models written as Python build scripts.
 
 Workflow: write a script that defines build() and returns a bricky.ModelBuilder, then call
-build_model on it. It answers with diagnostics (each names the script line that placed the part)
-and a picture of the model: iso, front, right and top views, with rulers in studs and plates. From
-the second build on, it also says what changed since the last one, by script line, and outlines
-new and changed parts. Read it all, fix the script, and repeat until the report has no errors and
-the pictures show what you meant. Use render_model to look closer: highlight parts by id or by
-script function, cut the model open, or choose other views.
+build_model on it. build_model returns diagnostics, each naming the script line that placed its
+elements, and a picture of the model: perspective, front, right and top views, with rulers in
+studs and plates. From the second build on, the result also counts what changed since the last
+build, by script line, and the picture outlines new and changed elements. Read everything, fix the
+script, and build again until the report has no errors and the pictures show the intended model.
+render_model looks closer: it highlights elements by id or by script function, clips the model
+open, or draws other views.
 
 Coordinates: x points east and y north, both in studs; z points up, in plates (a brick is 3
-plates). `at` is the minimum corner of the rotated bounding box of whatever you place, a part or a
-component. Rotations are 'R0', 'R90', 'R180' and 'R270' about the vertical axis; any of the 24 grid
-rotations can be named by where the part's x and y axes go, such as '+x+z' to stand a part up
-facing -y. Use search_parts and list_colors to find ids: search_parts also says which way a part
-faces when unrotated, such as a slope falling toward -y, and show_part describes one part and can
-draw it. Only parts with a shape can be placed. explain_code gives the exact rule behind a
-diagnostic, and bricky.cells(model) in a script gives the cells a model fills, to compare with a
-target.
+plates). `at` is the minimum corner of the rotated bounding box of what is placed, a part or a
+component. Rotations 'R0', 'R90', 'R180' and 'R270' rotate about the vertical axis; any of the 24
+grid rotations can be named by where the part's x and y axes go, such as '+x+z' to stand a part up
+facing -y. search_parts and search_colors find ids. search_parts also says which way a part faces
+unrotated, such as a slope falling toward -y, and show_part describes one part and can draw it.
+Only parts with a shape can be placed. explain_code gives the exact rule behind a diagnostic. In a
+script, bricky.voxels(model) maps every voxel a model fills, to compare with a target.
 """
 
 READ_ONLY: Final = ToolAnnotations(read_only_hint=True, open_world_hint=False)
@@ -170,7 +170,9 @@ def create_server(session: service.Session | None = None) -> MCPServer:
         service.CatalogShowResult,
         WRITES_FILES,
     )
-    register("list_colors", service.ColorsRequest, service.colors, service.ColorsResult, READ_ONLY)
+    register(
+        "search_colors", service.ColorsRequest, service.colors, service.ColorsResult, READ_ONLY
+    )
     register("list_passes", service.PassesRequest, service.passes, service.PassesResult, READ_ONLY)
     register(
         "explain_code", service.ExplainRequest, service.explain, service.ExplainResult, READ_ONLY

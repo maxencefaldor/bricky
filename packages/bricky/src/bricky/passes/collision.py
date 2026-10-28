@@ -1,4 +1,4 @@
-"""Collision: parts that share space, and studs that push into parts with no receptor."""
+"""Collision: parts that share space, and studs that push into parts with no anti-stud."""
 
 from collections import Counter
 from collections.abc import Iterable, Iterator
@@ -32,10 +32,10 @@ def _shared(a: Iterable[Solid], b: Iterable[Solid]) -> Box | None:
 
 
 class CollisionPass:
-    """Report parts that overlap and studs that push into parts without a receptor there."""
+    """Report parts that overlap and studs that push into parts without an anti-stud there."""
 
     name: ClassVar[str] = "collision"
-    summary: ClassVar[str] = "Parts sharing space, and studs blocked by parts with no receptor."
+    summary: ClassVar[str] = "Parts sharing space, and studs blocked by parts with no anti-stud."
     codes: ClassVar[tuple[Code, ...]] = (
         Code(
             code="E201",
@@ -47,7 +47,7 @@ class CollisionPass:
         Code(
             code="E202",
             title="Blocked stud",
-            rule="A stud stands inside another part's body where that part has no receptor "
+            rule="A stud stands inside another part's body where that part has no anti-stud "
             "facing it at the same position, so the two parts cannot sit where they are. Studs "
             "are 1.6 mm tall and 4.8 mm wide. Each pair of parts is reported once, with how "
             "many studs are blocked and the box they span.",
@@ -60,49 +60,49 @@ class CollisionPass:
         yield from self._blocked_studs(context)
 
     def _overlaps(self, context: Context) -> Iterator[Diagnostic]:
-        placed = context.world.placed
-        for i, a in enumerate(placed):
+        elements = context.world.elements
+        for i, a in enumerate(elements):
             for j in sorted(context.solid_index.query(a.bounds)):
                 if j <= i:
                     continue
-                b = placed[j]
+                b = elements[j]
                 shared = _shared(a.solids, b.solids)
                 if shared is not None:
                     yield Diagnostic(
                         code="E201",
-                        check=self.name,
+                        pass_name=self.name,
                         message=f"{a.uid} and {b.uid} occupy the same space",
                         elements=(a.uid, b.uid),
                         region=Region.of(shared),
                     )
 
     def _blocked_studs(self, context: Context) -> Iterator[Diagnostic]:
-        placed = context.world.placed
+        elements = context.world.elements
         counts: Counter[tuple[int, int]] = Counter()
         regions: dict[tuple[int, int], Box] = {}
-        for i, a in enumerate(placed):
+        for i, a in enumerate(elements):
             for stud in a.connectors:
                 if stud.kind is not ConnectorKind.STUD:
                     continue
                 volume = stud_volume(stud)
-                receivers = context.receptors.get((stud.position, -stud.normal), ())
+                anti_studs = context.anti_studs.get((stud.position, -stud.normal), ())
                 for j in context.solid_index.query(volume):
-                    if j == i or j in receivers:
+                    if j == i or j in anti_studs:
                         continue
-                    if any(overlaps(volume, solid) for solid in placed[j].solids):
+                    if any(overlaps(volume, solid) for solid in elements[j].solids):
                         counts[i, j] += 1
                         previous = regions.get((i, j))
                         regions[i, j] = (
                             volume if previous is None else Box.bounding((previous, volume))
                         )
         for (i, j), count in sorted(counts.items()):
-            a, b = placed[i], placed[j]
+            a, b = elements[i], elements[j]
             studs = "1 stud" if count == 1 else f"{count} studs"
             push = "pushes" if count == 1 else "push"
             yield Diagnostic(
                 code="E202",
-                check=self.name,
-                message=f"{studs} of {a.uid} {push} into {b.uid}, which has no receptor there",
+                pass_name=self.name,
+                message=f"{studs} of {a.uid} {push} into {b.uid}, which has no anti-stud there",
                 elements=(a.uid, b.uid),
                 region=Region.of(regions[i, j]),
             )

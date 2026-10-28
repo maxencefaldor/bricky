@@ -44,8 +44,8 @@ def write_file(path: Path, data: bytes) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
     except OSError as error:
-        msg = f"cannot write {path}: {error.strerror or error}"
-        raise BrickyError(msg) from None
+        message = f"cannot write {path}: {error.strerror or error}"
+        raise BrickyError(message) from None
     return path
 
 
@@ -58,16 +58,16 @@ def load_model(path: Path) -> Model:
     try:
         data = path.read_bytes()
     except FileNotFoundError:
-        msg = f"no such model file: {path}"
-        raise BrickyError(msg) from None
+        message = f"no such model file: {path}"
+        raise BrickyError(message) from None
     except OSError as error:
-        msg = f"cannot read {path}: {error.strerror or error}"
-        raise BrickyError(msg) from None
+        message = f"cannot read {path}: {error.strerror or error}"
+        raise BrickyError(message) from None
     try:
         return Model.model_validate_json(data)
     except ValidationError as error:
-        msg = f"{path} is not a valid bricky model:\n{error}"
-        raise BrickyError(msg) from None
+        message = f"{path} is not a valid bricky model:\n{error}"
+        raise BrickyError(message) from None
 
 
 def save_model(model: Model, path: Path) -> None:
@@ -88,8 +88,8 @@ def save_source_map(provenance: Provenance, *, script: Path, model_path: Path) -
     try:
         digest = model_digest(model_path.read_bytes())
     except OSError as error:
-        msg = f"cannot read {model_path}: {error.strerror or error}"
-        raise BrickyError(msg) from None
+        message = f"cannot read {model_path}: {error.strerror or error}"
+        raise BrickyError(message) from None
     source_map = SourceMap(script=script.as_posix(), model_sha256=digest, provenance=provenance)
     return write_file(source_map_path(model_path), _json(source_map.model_dump_json(indent=2)))
 

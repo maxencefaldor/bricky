@@ -47,7 +47,7 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
         profile=profile_name,
         passes=tuple(name for name in names if name not in missing),
         missing=tuple(missing),
-        element_count=len(context.world.placed) + len(context.world.unresolved),
+        element_count=len(context.world.elements) + len(context.world.unknown),
         errors=sum(d.severity is Severity.ERROR for d in diagnostics),
         warnings=sum(d.severity is Severity.WARNING for d in diagnostics),
         diagnostics=tuple(shown),
@@ -59,25 +59,25 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
 def _describe(
     context: Context, uids: set[str], provenance: Provenance | None
 ) -> dict[str, ElementInfo]:
-    """Describe the named elements: part, colour, and the script lines that placed them."""
+    """Describe the named elements: part, color, and the script lines that placed them."""
     catalog = context.catalog
     found: dict[str, ElementInfo] = {}
-    for placed in context.world.placed:
-        if placed.uid in uids:
-            color = catalog.color(placed.color)
-            found[placed.uid] = ElementInfo(
-                part=placed.part.id,
-                part_name=placed.part.name,
-                color=placed.color,
+    for element in context.world.elements:
+        if element.uid in uids:
+            color = catalog.color(element.color)
+            found[element.uid] = ElementInfo(
+                part=element.part.id,
+                part_name=element.part.name,
+                color=element.color,
                 color_name=color.name if color else None,
             )
-    for item in context.world.unresolved:
-        if item.uid in uids:
-            color = catalog.color(item.color)
-            found[item.uid] = ElementInfo(
-                part=item.part,
+    for unknown in context.world.unknown:
+        if unknown.uid in uids:
+            color = catalog.color(unknown.color)
+            found[unknown.uid] = ElementInfo(
+                part=unknown.part,
                 part_name=None,
-                color=item.color,
+                color=unknown.color,
                 color_name=color.name if color else None,
             )
     if provenance is not None:

@@ -66,7 +66,13 @@ def test_a_run_builds_the_answer_in_its_workspace_and_scores_it(tmp_path, monkey
     async def go():
         async with Session() as session:
             return await run_projects(
-                [project], repo=ROOT, out=tmp_path, agent=agent, repeats=1, jobs=1, session=session
+                [project],
+                repository=ROOT,
+                output=tmp_path,
+                agent=agent,
+                repeats=1,
+                jobs=1,
+                session=session,
             )
 
     (record,) = asyncio.run(go())

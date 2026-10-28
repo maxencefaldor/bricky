@@ -7,7 +7,7 @@ Each project is a folder under ``bench/projects``, named ``NN-name``:
 - ``inputs/``: everything the agent is given besides the prompt: pictures, descriptions,
   blueprints, scripts. The runner copies this folder into the agent's workspace.
 - ``reference.py``: optional. A build script for the model the project asks for. The agent never
-  sees it; a project with a reference is scored by comparing cells (see :mod:`bricky_bench.score`).
+  sees it; a project with a reference is scored by comparing voxels (see :mod:`bricky_bench.score`).
 """
 
 import tomllib
@@ -45,7 +45,7 @@ class Render(_Spec):
 
 
 class Layers(_Spec):
-    """The reference's cells as text: one plan per plate level, with a colour legend."""
+    """The reference's voxels as text: one plan per plate level, with a color legend."""
 
     kind: Literal["layers"]
     file: str = Field(description="Path of the text file to write, relative to the project folder.")
@@ -118,11 +118,11 @@ def load_project(path: Path) -> Project:
     try:
         spec = ProjectFile.model_validate(tomllib.loads(file.read_text(encoding="utf-8")))
     except FileNotFoundError:
-        msg = f"{path} has no {PROJECT_FILE}"
-        raise BrickyError(msg) from None
+        message = f"{path} has no {PROJECT_FILE}"
+        raise BrickyError(message) from None
     except (tomllib.TOMLDecodeError, ValidationError) as error:
-        msg = f"{file} is not a valid project file:\n{error}"
-        raise BrickyError(msg) from None
+        message = f"{file} is not a valid project file:\n{error}"
+        raise BrickyError(message) from None
     return Project(id=path.name, path=path, spec=spec)
 
 
@@ -136,12 +136,12 @@ def load_projects(root: Path, wanted: tuple[str, ...] = ()) -> list[Project]:
         BrickyError: If the folder holds no projects, or a wanted project is missing.
     """
     if not root.is_dir():
-        msg = f"no projects folder at {root}; run bricky-bench from the bricky repository root"
-        raise BrickyError(msg)
+        message = f"no projects folder at {root}; run bricky-bench from the bricky repository root"
+        raise BrickyError(message)
     projects = [load_project(path) for path in sorted(root.iterdir()) if path.is_dir()]
     if not projects:
-        msg = f"{root} holds no projects"
-        raise BrickyError(msg)
+        message = f"{root} holds no projects"
+        raise BrickyError(message)
     if not wanted:
         return projects
     chosen: list[Project] = []
@@ -149,8 +149,8 @@ def load_projects(root: Path, wanted: tuple[str, ...] = ()) -> list[Project]:
         matches = [p for p in projects if _named(p, name)]
         if not matches:
             known = ", ".join(p.id for p in projects)
-            msg = f"no project {name!r}; projects: {known}"
-            raise BrickyError(msg)
+            message = f"no project {name!r}; projects: {known}"
+            raise BrickyError(message)
         chosen.extend(m for m in matches if m not in chosen)
     return chosen
 

@@ -9,7 +9,7 @@ bricky's base unit, so coordinates carry over one to one. Its y axis points down
 1. **Flatten.** Follow every reference, composing transforms, into triangles in the part's frame.
    A reference to a stud primitive, such as ``stud.dat``, becomes a stud: where its base sits and
    which way it points. Stud geometry is not body: bricky's studs are connectors.
-2. **Turn.** LDraw (x, y, z) becomes bricky (x, z, -y), so LDraw's down becomes bricky's -z.
+2. **Rotate.** LDraw (x, y, z) becomes bricky (x, z, -y), so LDraw's down becomes bricky's -z.
 3. **Voxelize.** Sample the body every 2 units (0.8 mm). A sample is inside when rays along x, y
    and z, at least two of the three, cross the surface an odd number of times.
 4. **Anti-studs.** On the bottom face, at every stud position, where the part leaves an opening a
@@ -112,8 +112,8 @@ class Library:
 
     def __init__(self, root: Path) -> None:
         if not root.is_dir():
-            msg = f"no such LDraw library folder: {root}"
-            raise BrickyError(msg)
+            message = f"no such LDraw library folder: {root}"
+            raise BrickyError(message)
         self.root = root
         self._files: dict[str, Path] = {}
         self._parts: dict[str, Path] = {}
@@ -127,8 +127,8 @@ class Library:
                 if folder.endswith("parts") and "/" not in key:
                     self._parts.setdefault(key.removesuffix(".dat"), path)
         if not self._parts:
-            msg = f"{root} holds no LDraw parts: expected a parts folder of .dat files"
-            raise BrickyError(msg)
+            message = f"{root} holds no LDraw parts: expected a parts folder of .dat files"
+            raise BrickyError(message)
         self._flat: dict[str, Flat] = {}
         self._headers: dict[str, PartFile] = {}
 
@@ -185,13 +185,13 @@ class Library:
         if key in self._flat:
             return self._flat[key]
         if key in chain:
-            msg = f"LDraw files reference each other in a cycle: {' -> '.join((*chain, key))}"
-            raise BrickyError(msg)
+            message = f"LDraw files reference each other in a cycle: {' -> '.join((*chain, key))}"
+            raise BrickyError(message)
         path = self._files.get(key)
         if path is None:
             user = chain[-1] if chain else "the part"
-            msg = f"the LDraw library has no file {key}, which {user} uses"
-            raise BrickyError(msg)
+            message = f"the LDraw library has no file {key}, which {user} uses"
+            raise BrickyError(message)
         triangles: list[Floats] = []
         studs: list[Floats] = []
         for line in _lines(path):
@@ -204,7 +204,8 @@ class Library:
             triangles=np.concatenate(triangles) if triangles else np.zeros((0, 3, 3)),
             studs=np.concatenate(studs) if studs else np.zeros((0, 2, 3)),
         )
-        self._flat[key] = flat
+        if chain:  # files other parts use are kept; a part converted once is not
+            self._flat[key] = flat
         return flat
 
     def _reference(
@@ -258,8 +259,8 @@ def ldraw_shape(library: Library, number: str) -> BoxesShape:
     flat = library.flatten(number)
     triangles = _snap(flat.triangles @ _TO_BRICKY.T)
     if not len(triangles):
-        msg = f"LDraw part {number} has no body"
-        raise BrickyError(msg)
+        message = f"LDraw part {number} has no body"
+        raise BrickyError(message)
     corners = triangles.reshape(-1, 3)
     low = np.floor(corners.min(axis=0) / VOXEL) * VOXEL
     high = np.ceil(corners.max(axis=0) / VOXEL) * VOXEL
@@ -268,8 +269,8 @@ def ldraw_shape(library: Library, number: str) -> BoxesShape:
     votes = np.sum([ray.beyond % 2 for ray in rays], axis=0)
     material: Mask = votes >= 2  # noqa: PLR2004 - a majority of three
     if not material.any():
-        msg = f"LDraw part {number} encloses no volume"
-        raise BrickyError(msg)
+        message = f"LDraw part {number} encloses no volume"
+        raise BrickyError(message)
     walled = _walled(rays[0], rays[1]) & ~material[:, :, 0]
     cavity = _cavity(material, walled)
     return BoxesShape(

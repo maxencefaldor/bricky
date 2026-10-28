@@ -1,7 +1,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from bricky import ModelBuilder, cells, default_catalog
+from bricky import ModelBuilder, default_catalog, voxels
 from bricky.analysis import Context
 from bricky.geometry import Box, Vector
 
@@ -11,39 +11,39 @@ PARTS = ["3001", "3004", "3024", "3022", "3020", "3070b", "3068b"]  # bricks, pl
 def test_a_brick_fills_its_footprint_three_plates_high():
     builder = ModelBuilder("one")
     builder.place("3001", at=(2, 3, 6), color="Red")  # Brick 2 x 4
-    filled = cells(builder.build())
+    filled = voxels(builder.build())
     assert set(filled) == {(x, y, z) for x in (2, 3) for y in range(3, 7) for z in (6, 7, 8)}
-    assert {cell.uid for cell in filled.values()} == {"e1"}
-    assert {cell.color for cell in filled.values()} == {5}
+    assert {voxel.uid for voxel in filled.values()} == {"e1"}
+    assert {voxel.color for voxel in filled.values()} == {5}
 
 
-def test_turned_parts_fill_their_turned_footprint():
-    builder = ModelBuilder("turned")
+def test_rotated_parts_fill_their_rotated_footprint():
+    builder = ModelBuilder("rotated")
     builder.place("3020", at=(0, 0, 0), rotation="R90", color="Blue")  # Plate 2 x 4, along x
-    assert set(cells(builder.build())) == {(x, y, 0) for x in range(4) for y in range(2)}
+    assert set(voxels(builder.build())) == {(x, y, 0) for x in range(4) for y in range(2)}
 
 
-def test_a_cell_belongs_to_the_part_holding_its_centre():
+def test_a_voxel_belongs_to_the_part_holding_its_center():
     builder = ModelBuilder("offset")
     builder.place("3024", at=(0.5, 0, 0), color="Red")  # Plate 1 x 1, half a stud east
-    assert set(cells(builder.build())) == {(0, 0, 0)}
+    assert set(voxels(builder.build())) == {(0, 0, 0)}
 
 
-def test_overlapping_parts_leave_a_cell_to_the_first():
+def test_overlapping_parts_leave_a_voxel_to_the_first():
     builder = ModelBuilder("clash")
     builder.place("3005", at=(0, 0, 0), color="Red", id="first")
     builder.place("3005", at=(0, 0, 1), color="Blue", id="second")
-    filled = cells(builder.build())
+    filled = voxels(builder.build())
     assert [filled[0, 0, z].uid for z in range(4)] == ["first", "first", "first", "second"]
 
 
-def test_studs_fill_no_cell_and_the_context_agrees():
+def test_studs_fill_no_voxel_and_the_context_agrees():
     builder = ModelBuilder("stack")
     builder.place("3022", at=(0, 0, 0), color="Red")
     builder.place("3022", at=(0, 0, 1), color="Red")
     model = builder.build()
-    assert len(cells(model)) == 2 * 2 * 2
-    assert Context(model, default_catalog()).cells == cells(model)
+    assert len(voxels(model)) == 2 * 2 * 2
+    assert Context(model, default_catalog()).voxels == voxels(model)
 
 
 placements = st.tuples(
@@ -56,15 +56,15 @@ placements = st.tuples(
 
 
 @given(st.lists(placements, min_size=1, max_size=6), st.integers(-5, 5), st.integers(-5, 5))
-def test_moving_a_model_moves_its_cells(parts, dx, dy):
+def test_moving_a_model_moves_its_voxels(parts, dx, dy):
     def model(shift_x: int, shift_y: int):
         builder = ModelBuilder("moved")
         for part, x, y, z, rotation in parts:
             builder.place(part, at=(x + shift_x, y + shift_y, z), rotation=rotation, color="Red")
         return builder.build()
 
-    before = cells(model(0, 0))
-    after = cells(model(dx, dy))
+    before = voxels(model(0, 0))
+    after = voxels(model(dx, dy))
     assert set(after) == {(x + dx, y + dy, z) for x, y, z in before}
 
 
@@ -76,4 +76,4 @@ def test_a_grid_aligned_part_fills_its_volume(placement):
     part = default_catalog().part(part_id)
     assert part is not None
     body = Box(Vector(0, 0, 0), part.size)
-    assert len(cells(builder.build())) == body.volume // (20 * 20 * 8)
+    assert len(voxels(builder.build())) == body.volume // (20 * 20 * 8)

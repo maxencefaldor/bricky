@@ -1,12 +1,12 @@
 """Diagnostics: the facts passes report, and how a report reads for agents and humans.
 
 A diagnostic states a fact about the model: a stable code whose letter gives its severity (``E``
-error, ``W`` warning, ``I`` info), what is wrong, the elements involved and the region they occupy
-in agent units. It never prescribes a fix; deciding what to change is the agent's job. Each code's
-exact rule is documented by the pass that reports it (see ``bricky explain``).
+error, ``W`` warning, ``I`` info), what is wrong, the elements involved and the region they occupy,
+in studs and plates. A diagnostic never prescribes a fix: deciding what to change is the agent's
+job. The pass that reports a code documents its exact rule (see ``bricky explain``).
 
 A report adds what the model and its source map know about each element a diagnostic names: the
-part, the colour and the build-script line that placed it.
+part, the color and the build-script line that placed it.
 """
 
 from collections import Counter
@@ -52,7 +52,7 @@ class Code(BaseModel):
 
 
 class Region(BaseModel):
-    """An axis-aligned region in agent units: x and y in studs, z in plates."""
+    """An axis-aligned region: x and y in studs, z in plates."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -62,7 +62,7 @@ class Region(BaseModel):
 
     @classmethod
     def of(cls, box: Box) -> Region:
-        """Convert a box in base units to a region in agent units."""
+        """Convert a box in base units to a region in studs and plates."""
         return cls(
             x=(to_studs(box.min.x), to_studs(box.max.x)),
             y=(to_studs(box.min.y), to_studs(box.max.y)),
@@ -71,8 +71,8 @@ class Region(BaseModel):
 
     def __str__(self) -> str:
         return "  ".join(
-            f"{axis} {lo:g}..{hi:g}"
-            for axis, (lo, hi) in zip("xyz", (self.x, self.y, self.z), strict=True)
+            f"{axis} {low:g}..{high:g}"
+            for axis, (low, high) in zip("xyz", (self.x, self.y, self.z), strict=True)
         )
 
 
@@ -82,7 +82,7 @@ class Diagnostic(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     code: str = Field(pattern=_CODE_PATTERN, description="Stable code; its letter is the severity.")
-    check: str = Field(description="Name of the pass that found it.")
+    pass_name: str = Field(description="Name of the pass that found it.")
     message: str = Field(description="What is wrong, as a statement of fact.")
     elements: tuple[str, ...] = Field(default=(), description="Uids of the elements involved.")
     region: Region | None = Field(default=None, description="Where, in studs, studs and plates.")
@@ -105,8 +105,8 @@ class ElementInfo(BaseModel):
 
     part: str = Field(description="BrickLink item number.")
     part_name: str | None = Field(description="BrickLink item name; null for unknown parts.")
-    color: int = Field(description="BrickLink colour id.")
-    color_name: str | None = Field(description="BrickLink colour name; null for unknown colors.")
+    color: int = Field(description="BrickLink color id.")
+    color_name: str | None = Field(description="BrickLink color name; null for unknown colors.")
     component: str | None = Field(default=None, description="Component defining the element.")
     source: Source | None = Field(
         default=None, description="Script stack that placed it, innermost first; null if unknown."

@@ -1,4 +1,4 @@
-"""Schema: unknown parts and colours, and parts below the ground plane."""
+"""Schema: unknown parts and colors, and parts below the ground plane."""
 
 from collections.abc import Iterator
 from typing import ClassVar
@@ -11,7 +11,7 @@ class SchemaPass:
     """Report references the catalog cannot resolve and parts that dip below the ground."""
 
     name: ClassVar[str] = "schema"
-    summary: ClassVar[str] = "Unknown parts and colours, and parts below the ground plane."
+    summary: ClassVar[str] = "Unknown parts and colors, and parts below the ground plane."
     codes: ClassVar[tuple[Code, ...]] = (
         Code(
             code="E101",
@@ -22,9 +22,9 @@ class SchemaPass:
         ),
         Code(
             code="E102",
-            title="Unknown colour",
-            rule="The element's colour id is not in the catalog. `bricky colors` lists the "
-            "catalog's colours.",
+            title="Unknown color",
+            rule="The element's color id is not in the catalog. `bricky colors` lists the "
+            "catalog's colors.",
         ),
         Code(
             code="E103",
@@ -36,8 +36,8 @@ class SchemaPass:
 
     def run(self, context: Context) -> Iterator[Diagnostic]:
         """Return the diagnostics found in the model."""
-        for item in context.world.unresolved:
-            entry = context.catalog.entry(item.part)
+        for unknown in context.world.unknown:
+            entry = context.catalog.entry(unknown.part)
             what = (
                 "which is not in the catalog"
                 if entry is None
@@ -45,23 +45,25 @@ class SchemaPass:
             )
             yield Diagnostic(
                 code="E101",
-                check=self.name,
-                message=f"{item.uid} uses part {item.part!r} {what}",
-                elements=(item.uid,),
+                pass_name=self.name,
+                message=f"{unknown.uid} uses part {unknown.part!r} {what}",
+                elements=(unknown.uid,),
             )
-        for placed in context.world.placed:
-            if context.catalog.color(placed.color) is None:
+        for element in context.world.elements:
+            if context.catalog.color(element.color) is None:
                 yield Diagnostic(
                     code="E102",
-                    check=self.name,
-                    message=f"{placed.uid} uses colour {placed.color}, which is not in the catalog",
-                    elements=(placed.uid,),
+                    pass_name=self.name,
+                    message=(
+                        f"{element.uid} uses color {element.color}, which is not in the catalog"
+                    ),
+                    elements=(element.uid,),
                 )
-            if placed.bounds.min.z < 0:
+            if element.bounds.min.z < 0:
                 yield Diagnostic(
                     code="E103",
-                    check=self.name,
-                    message=f"{placed.uid} reaches below the ground plane",
-                    elements=(placed.uid,),
-                    region=Region.of(placed.bounds),
+                    pass_name=self.name,
+                    message=f"{element.uid} reaches below the ground plane",
+                    elements=(element.uid,),
+                    region=Region.of(element.bounds),
                 )

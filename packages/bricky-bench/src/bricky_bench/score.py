@@ -2,8 +2,8 @@
 
 A score has two parts. The facts come from building the agent's final script with bricky: whether
 it builds, how many elements it has, and its errors and warnings. Fidelity, for projects with a
-reference, compares the cells the two models fill (see :func:`bricky.cells`). Position is free:
-the agent's model is turned about the vertical axis and shifted to line up with the reference,
+reference, compares the voxels the two models fill (see :func:`bricky.voxels`). Position is free:
+the agent's model is rotated about the vertical axis and shifted to line up with the reference,
 and the best match counts.
 """
 
@@ -13,35 +13,35 @@ from typing import Final
 
 from pydantic import BaseModel, Field
 
-from bricky.analysis import Cell, CellKey
+from bricky.analysis import Voxel, VoxelKey
 from bricky.diagnostics import Report
 
-type Turn = Callable[[int, int], tuple[int, int]]
+type Rotate = Callable[[int, int], tuple[int, int]]
 
-TURNS: Final[dict[str, Turn]] = {
+ROTATIONS: Final[dict[str, Rotate]] = {
     "R0": lambda x, y: (x, y),
     "R90": lambda x, y: (-y, x),
     "R180": lambda x, y: (-x, -y),
     "R270": lambda x, y: (y, -x),
 }
-"""The four turns about the vertical axis, counter-clockwise seen from above."""
+"""The four rotations about the vertical axis, counter-clockwise seen from above."""
 
 
 class Fidelity(BaseModel):
-    """How closely a model's cells match a reference's."""
+    """How closely a model's voxels match a reference's."""
 
     shape: float = Field(
-        description="Cells filled in both models over cells filled in either: 1 is identical."
+        description="Voxels filled in both models over voxels filled in either: 1 is identical."
     )
     color: float = Field(
-        description="Like shape, but a cell filled in both counts only when the colours match."
+        description="Like shape, but a voxel filled in both counts only when the colors match."
     )
-    turn: str = Field(description="The turn of the agent's model that matched best.")
+    rotation: str = Field(description="The rotation of the agent's model that matched best.")
     shift: tuple[int, int, int] = Field(
-        description="The shift, in studs and plates, that lined the turned model up."
+        description="The shift, in studs and plates, that lined the rotated model up."
     )
-    cells: int = Field(description="Cells the agent's model fills.")
-    reference_cells: int = Field(description="Cells the reference fills.")
+    voxels: int = Field(description="Voxels the agent's model fills.")
+    reference_voxels: int = Field(description="Voxels the reference fills.")
 
 
 class Score(BaseModel):
@@ -72,29 +72,29 @@ def facts(report: Report, elements: int) -> Score:
     )
 
 
-def compare(model: Mapping[CellKey, Cell], reference: Mapping[CellKey, Cell]) -> Fidelity:
-    """Match a model's cells against a reference's, over every turn and three ways to line up.
+def compare(model: Mapping[VoxelKey, Voxel], reference: Mapping[VoxelKey, Voxel]) -> Fidelity:
+    """Match a model's voxels against a reference's, over each rotation and three ways to line up.
 
-    For each turn, the turned model is shifted so its bounding box's low corner, high corner or
-    centre meets the reference's, and the shift that matches most cells wins. Colour breaks ties.
+    For each rotation, the rotated model is shifted so its bounding box's low corner, high corner or
+    center meets the reference's, and the shift that matches most voxels wins. Color breaks ties.
     """
-    ours = {key: cell.color for key, cell in model.items()}
-    theirs = {key: cell.color for key, cell in reference.items()}
+    ours = {key: voxel.color for key, voxel in model.items()}
+    theirs = {key: voxel.color for key, voxel in reference.items()}
     if not ours or not theirs:
         return Fidelity(
             shape=0.0,
             color=0.0,
-            turn="R0",
+            rotation="R0",
             shift=(0, 0, 0),
-            cells=len(ours),
-            reference_cells=len(theirs),
+            voxels=len(ours),
+            reference_voxels=len(theirs),
         )
 
     def candidates() -> Iterator[tuple[int, int, str, tuple[int, int, int]]]:
-        for name, turn in TURNS.items():
-            turned = {(*turn(x, y), z): color for (x, y, z), color in ours.items()}
-            for shift in sorted(_shifts(turned, theirs)):
-                shared, matched = _overlap(turned, theirs, shift)
+        for name, rotate in ROTATIONS.items():
+            rotated = {(*rotate(x, y), z): color for (x, y, z), color in ours.items()}
+            for shift in sorted(_shifts(rotated, theirs)):
+                shared, matched = _overlap(rotated, theirs, shift)
                 yield matched, shared, name, shift
 
     matched, shared, name, shift = max(candidates(), key=lambda c: (c[0], c[1]))
@@ -102,39 +102,41 @@ def compare(model: Mapping[CellKey, Cell], reference: Mapping[CellKey, Cell]) ->
     return Fidelity(
         shape=shared / union,
         color=matched / union,
-        turn=name,
+        rotation=name,
         shift=shift,
-        cells=len(ours),
-        reference_cells=len(theirs),
+        voxels=len(ours),
+        reference_voxels=len(theirs),
     )
 
 
-def _bounds(cells: Mapping[CellKey, int]) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
-    xs, ys, zs = zip(*cells, strict=True)
+def _bounds(voxels: Mapping[VoxelKey, int]) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+    xs, ys, zs = zip(*voxels, strict=True)
     return (min(xs), min(ys), min(zs)), (max(xs), max(ys), max(zs))
 
 
 def _shifts(
-    turned: Mapping[CellKey, int], reference: Mapping[CellKey, int]
+    rotated: Mapping[VoxelKey, int], reference: Mapping[VoxelKey, int]
 ) -> set[tuple[int, int, int]]:
-    (lo, hi), (rlo, rhi) = _bounds(turned), _bounds(reference)
-    low = tuple(r - o for r, o in zip(rlo, lo, strict=True))
-    high = tuple(r - o for r, o in zip(rhi, hi, strict=True))
-    centre = tuple(
-        (r0 + r1) // 2 - (o0 + o1) // 2 for r0, r1, o0, o1 in zip(rlo, rhi, lo, hi, strict=True)
+    """The shifts that line up the two models' low corners, high corners or centers."""
+    (low, high), (reference_low, reference_high) = _bounds(rotated), _bounds(reference)
+    by_low = tuple(r - o for r, o in zip(reference_low, low, strict=True))
+    by_high = tuple(r - o for r, o in zip(reference_high, high, strict=True))
+    by_center = tuple(
+        (r0 + r1) // 2 - (o0 + o1) // 2
+        for r0, r1, o0, o1 in zip(reference_low, reference_high, low, high, strict=True)
     )
-    # The ground stays the ground: line levels up by the low corner.
-    return {(s[0], s[1], low[2]) for s in (low, high, centre)}
+    # The ground stays the ground: levels line up by the low corner.
+    return {(shift[0], shift[1], by_low[2]) for shift in (by_low, by_high, by_center)}
 
 
 def _overlap(
-    turned: Mapping[CellKey, int],
-    reference: Mapping[CellKey, int],
+    rotated: Mapping[VoxelKey, int],
+    reference: Mapping[VoxelKey, int],
     shift: tuple[int, int, int],
 ) -> tuple[int, int]:
     dx, dy, dz = shift
     shared = matched = 0
-    for (x, y, z), color in turned.items():
+    for (x, y, z), color in rotated.items():
         other = reference.get((x + dx, y + dy, z + dz))
         if other is not None:
             shared += 1

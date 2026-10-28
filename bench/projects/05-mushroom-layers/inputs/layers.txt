@@ -1,8 +1,8 @@
-toadstool: the cells it fills, one plate level at a time from the ground up.
+toadstool: the voxels it fills, one plate level at a time from the ground up.
 
-A cell is 1 x 1 stud and 1 plate tall; z counts plates, so a brick fills three levels.
+A voxel is 1 x 1 stud and 1 plate tall; z counts plates, so a brick fills three levels.
 Each level is a plan seen from above, north up: x grows to the right (east) and y grows
-upward (north), both in studs. '.' is an empty cell; every other character is a colour:
+upward (north), both in studs. '.' is an empty voxel; every other character is a color:
 
   G  Green (6)
   W  White (1)

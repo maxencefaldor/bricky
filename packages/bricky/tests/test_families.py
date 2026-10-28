@@ -1,6 +1,6 @@
 import pytest
 
-from bricky import ModelBuilder, cells, check_model, default_catalog
+from bricky import ModelBuilder, check_model, default_catalog, voxels
 from bricky.catalog import Catalog, ConnectorKind, Part
 from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Vector
 from bricky.units import PLATE, STUD
@@ -18,14 +18,14 @@ def studs(p: Part) -> list:
     return [c for c in p.connectors if c.kind is ConnectorKind.STUD]
 
 
-def receptors(p: Part) -> list:
+def anti_studs(p: Part) -> list:
     return [c for c in p.connectors if c.kind is ConnectorKind.ANTI_STUD]
 
 
 @pytest.mark.parametrize("p", CATALOG.parts, ids=lambda p: p.id)
 def test_every_part_sits_in_its_box_with_connectors_on_its_faces(p):
     assert Box.bounding(s.bounds for s in p.solids) == Box(ORIGIN, p.size)
-    for c in receptors(p):
+    for c in anti_studs(p):
         assert (c.position.z, c.normal) == (0, DOWN)
         assert 0 < c.position.x < p.size.x
         assert 0 < c.position.y < p.size.y
@@ -44,7 +44,7 @@ def test_a_slope_carries_studs_only_on_its_flat_top():
     slope = part("3039")  # Slope 45 2 x 2
     assert slope.size == Vector(2 * STUD, 2 * STUD, 3 * PLATE)
     assert sorted(c.position.as_tuple() for c in studs(slope)) == [(10, 30, 24), (30, 30, 24)]
-    assert len(receptors(slope)) == 4
+    assert len(anti_studs(slope)) == 4
     (body,) = slope.solids
     assert isinstance(body, Convex)
     assert body.contains(Vector(10, 5, 4))
@@ -54,7 +54,7 @@ def test_a_slope_carries_studs_only_on_its_flat_top():
 def test_an_inverted_slope_grips_only_under_its_flat_back():
     slope = part("3660")  # Slope, Inverted 45 2 x 2
     assert len(studs(slope)) == 4
-    assert sorted(c.position.as_tuple() for c in receptors(slope)) == [(10, 30, 0), (30, 30, 0)]
+    assert sorted(c.position.as_tuple() for c in anti_studs(slope)) == [(10, 30, 0), (30, 30, 0)]
 
 
 def test_cheese_slopes_and_curved_slopes_have_no_studs():
@@ -81,7 +81,7 @@ def test_side_studs_face_the_sides_they_name():
 def test_a_jumper_has_one_stud_half_a_stud_off_the_grid():
     jumper = part("15573")
     assert [c.position.as_tuple() for c in studs(jumper)] == [(10, 20, 8)]
-    assert len(receptors(jumper)) == 3  # two on the grid, one in the middle
+    assert len(anti_studs(jumper)) == 3  # two on the grid, one in the middle
 
 
 def test_an_arch_leaves_room_under_its_middle_but_not_its_edges():
@@ -113,7 +113,7 @@ def test_new_parts_build_together_without_errors():
 def test_cells_of_a_slope_follow_its_face():
     builder = ModelBuilder("slope")
     builder.place("3040", at=(0, 0, 0), color="Red")  # Slope 45 2 x 1
-    filled = cells(builder.build())
+    filled = voxels(builder.build())
     # The back stud's column is full; the front column only below the face z = y + 4.
     assert {(0, 1, z) for z in range(3)} <= set(filled)
     assert (0, 0, 0) in filled
@@ -125,5 +125,5 @@ def test_short_and_tall_arches_build_and_stand_on_their_legs():
         shape = {"family": "arch", "size": size, "height": height, "span": span}
         arch = Catalog([{"id": key, "name": "Arch", "shape": shape}]).part(key)
         assert arch is not None
-        assert len(receptors(arch)) == 2  # one under each leg
+        assert len(anti_studs(arch)) == 2  # one under each leg
         assert arch.size.z == height * PLATE

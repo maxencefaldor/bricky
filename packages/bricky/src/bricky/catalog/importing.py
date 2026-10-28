@@ -12,7 +12,9 @@ Each source does what it is best at:
 
 Without BrickLink's downloads, the parts come from LDraw alone, named as LDraw names them, and the
 colors from the sample catalog. Where a part has both a shape from its name and an LDraw file, the
-two are compared, and every disagreement is reported: a check on both.
+two are compared. They agree for almost every part, which checks both; where they disagree, the
+name has hidden a detail that changes the part, so the part takes LDraw's shape, and the
+disagreement is reported.
 """
 
 import re
@@ -60,7 +62,8 @@ class Coverage(BaseModel):
         default=0, description="Parts shaped from their name that LDraw also has, compared."
     )
     disagreements: tuple[str, ...] = Field(
-        default=(), description="Parts whose name and LDraw file disagree, and how."
+        default=(),
+        description="Parts whose name and LDraw file disagree, and how; they take LDraw's shape.",
     )
 
 
@@ -83,8 +86,8 @@ def import_catalog(
         colors, skipped, entries = list(_sample_colors()), (), ldraw_parts(ldraw)
         sources = ["colors from bricky's sample"]
     else:
-        msg = "an import needs BrickLink's downloads, an LDraw library, or both"
-        raise BrickyError(msg)
+        message = "an import needs BrickLink's downloads, an LDraw library, or both"
+        raise BrickyError(message)
     if ldraw is not None:
         sources.append(f"LDraw.org Parts Library, CC BY, {ldraw.release}, at {ldraw.root}")
     _name_printed_parts(entries, ldraw)
@@ -109,7 +112,7 @@ class _Shaping:
     disagreements: list[str] = field(default_factory=list)
 
     def shape(self, entries: dict[str, CatalogPart], key: str, ldraw: Library | None) -> None:
-        """Note where a part's shape comes from, converting it from LDraw if it has none yet."""
+        """Note where a part's shape comes from, converting it from LDraw to shape or check it."""
         entry = entries[key]
         if entry.base is not None:
             self.origin[key] = "printed"
@@ -132,6 +135,8 @@ class _Shaping:
         difference = _difference(entry, entry.shape, converted)
         if difference:
             self.disagreements.append(f"{key} {entry.name}: {difference}")
+            entries[key] = entry.model_copy(update={"shape": converted})
+            self.origin[key] = "LDraw"
 
     def coverage(
         self, catalog: CatalogFile, sources: list[str], skipped: tuple[str, ...]

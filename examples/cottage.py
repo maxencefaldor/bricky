@@ -1,13 +1,13 @@
 """A cottage on a baseplate: a tour of slopes, arches, round parts, side studs and jumpers.
 
 - The baseplate is half a plate thick, so everything on it starts at z = 0.5.
-- The walls are one stud thick, in running bond. An Arch 1 x 4, turned to run along the front
+- The walls are one stud thick, in running bond. An Arch 1 x 4, rotated to run along the front
   wall, spans the doorway.
-- The roof is rows of Slope 45 2 x 4: unturned they fall toward -y (the front), and turned R180
+- The roof is rows of Slope 45 2 x 4: unrotated they fall toward -y (the front), and rotated R180
   toward +y (the back). Tan bricks fill each level and show as the gables at the ends. Cheese
   slopes finish the ridge.
-- A brick with a stud on its side holds a tile turned upright: a house sign.
-- A jumper puts the lamp post half a stud off the grid, centred on its 1 x 2 base.
+- A brick with a stud on its side holds a tile rotated upright: a house sign.
+- A jumper puts the lamp post half a stud off the grid, centered on its 1 x 2 base.
 
 Run: ``uv run bricky build examples/cottage.py``
 """
@@ -39,7 +39,7 @@ def opening(x: int, y: int, course: int) -> str | None:
 def lay(
     builder: ModelBuilder, cells: list[tuple[int, int]], along_x: bool, z: float, course: int
 ) -> None:
-    """Fill a straight run of wall cells with bricks, one colour at a time, longest first."""
+    """Fill a straight run of wall cells with bricks, one color at a time, longest first."""
     i = 0
     while i < len(cells):
         kind = opening(*cells[i], course)
@@ -67,9 +67,9 @@ def walls(builder: ModelBuilder) -> None:
             lay(builder, [(x, y) for x in xs], along_x=True, z=z, course=course)
         for x in (X0, X1 - 1):
             lay(builder, [(x, y) for y in ys], along_x=False, z=z, course=course)
-    # The doorway's arch: an Arch 1 x 4 turned to run along x, its legs either side of the door.
+    # The doorway's arch: an Arch 1 x 4 rotated to run along x, its legs either side of the door.
     builder.place("3659", at=(6, Y0, BASE + 6), rotation="R90", color=WALL, id="door-arch")
-    # The sign: a brick with a stud on its front, and a tile turned upright onto that stud.
+    # The sign: a brick with a stud on its front, and a tile rotated upright onto that stud.
     builder.place("87087", at=(11, Y0, BASE + 3), color=WALL, id="sign-holder")
     builder.place("3070b", at=(11, Y0 - 0.4, BASE + 3.25), rotation="+x+z", color="Blue", id="sign")
 

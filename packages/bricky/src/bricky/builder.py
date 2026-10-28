@@ -2,7 +2,7 @@
 
 Coordinates are ``(x, y, z)``: x points east and y north, both in studs, and z points up, in
 plates. ``at`` always names the minimum corner of the rotated bounding box of whatever is placed,
-a single part or a whole component, so turning something never moves the corner of its footprint.
+a single part or a whole component, so rotating something never moves the corner of its footprint.
 
 The builder also records which line of the build script made each placement (see
 :mod:`bricky.provenance`), so diagnostics and renders can point back at it.
@@ -35,8 +35,8 @@ def to_base_units(at: Coordinates) -> Vector:
     try:
         x, y, z = at
     except ValueError:
-        msg = f"expected (x, y, z), got {tuple(at)!r}"
-        raise ValueError(msg) from None
+        message = f"expected (x, y, z), got {tuple(at)!r}"
+        raise ValueError(message) from None
     return Vector(studs(x), studs(y), plates(z))
 
 
@@ -70,13 +70,13 @@ class _Scope:
         if definition is None:
             entry = self.catalog.entry(part)
             if entry is None:
-                msg = f"unknown part {part!r}; search the catalog with `bricky parts <words>`"
+                message = f"unknown part {part!r}; search the catalog with `bricky parts <words>`"
             else:
-                msg = (
+                message = (
                     f"part {part} ({entry.name}) has no shape in bricky yet, so it cannot be "
                     "placed; `bricky parts <words>` lists parts that can be"
                 )
-            raise ValueError(msg)
+            raise ValueError(message)
         parsed = Rotation.parse(rotation)
         footprint = Box(ORIGIN, definition.size).transformed(Pose(parsed))
         corner = to_base_units(at)
@@ -109,8 +109,8 @@ class _Scope:
         if id is not None:
             _IDENTIFIER.validate_python(id)
             if id in self.ids:
-                msg = f"id {id!r} is already used in {self.label}"
-                raise ValueError(msg)
+                message = f"id {id!r} is already used in {self.label}"
+                raise ValueError(message)
         else:
             number = len(self.ids) + 1
             while f"{prefix}{number}" in self.ids:
@@ -138,11 +138,11 @@ class _Scope:
         for pending in self.instances:
             box = boxes.get(pending.component)
             if box is None:
-                msg = (
+                message = (
                     f"instance {pending.id!r} in {self.label} "
                     f"places unknown component {pending.component!r}"
                 )
-                raise ValueError(msg)
+                raise ValueError(message)
             rotated = box.transformed(Pose(pending.rotation))
             instances.append(
                 Instance(
@@ -237,7 +237,7 @@ class ModelBuilder(_Placer):
 
     @property
     def catalog(self) -> Catalog:
-        """The catalog this builder resolves parts and colours against."""
+        """The catalog this builder resolves parts and colors against."""
         return self._catalog
 
     def component(self, name: str) -> ComponentBuilder:
@@ -249,8 +249,8 @@ class ModelBuilder(_Placer):
             ValueError: If a component with this name already exists.
         """
         if name in self._components:
-            msg = f"component {name!r} already exists"
-            raise ValueError(msg)
+            message = f"component {name!r} already exists"
+            raise ValueError(message)
         scope = _Scope(self._catalog, f"component {name!r}")
         self._components[name] = scope
         return ComponentBuilder(scope)
@@ -267,8 +267,8 @@ class ModelBuilder(_Placer):
         for name in self._dependency_order():
             elements, instances, bounds = self._components[name].resolve(boxes)
             if bounds is None:
-                msg = f"component {name!r} is empty: place at least one part in it"
-                raise ValueError(msg)
+                message = f"component {name!r} is empty: place at least one part in it"
+                raise ValueError(message)
             boxes[name] = bounds
             built[name] = Component(elements=elements, instances=instances)
         elements, instances, _ = self._scope.resolve(boxes)
@@ -296,8 +296,8 @@ class ModelBuilder(_Placer):
                 return
             if name in path:
                 cycle = " -> ".join((*path[path.index(name) :], name))
-                msg = f"components place each other in a cycle: {cycle}"
-                raise ValueError(msg)
+                message = f"components place each other in a cycle: {cycle}"
+                raise ValueError(message)
             scope = self._components.get(name)
             if scope is None:
                 return  # reported by resolve(), with the instance that names it

@@ -21,7 +21,7 @@ class ConnectorKind(StrEnum):
     """A stud, on top of a part or on one of its sides."""
 
     ANTI_STUD = "anti_stud"
-    """A receptor, under a part, that a stud clicks into."""
+    """A socket, under a part, that a stud connects with."""
 
     @property
     def mate(self) -> ConnectorKind:
@@ -125,8 +125,8 @@ class RoundShape(_Shape):
     def _square(self) -> Self:
         width, length = self.size
         if width != length:
-            msg = f"a round part needs a square footprint, not {width} x {length}"
-            raise ValueError(msg)
+            message = f"a round part needs a square footprint, not {width} x {length}"
+            raise ValueError(message)
         return self
 
 
@@ -158,10 +158,10 @@ class ArchShape(_Shape):
     def _legs(self) -> Self:
         legs = self.size[1] - self.span
         if legs < 2 or legs % 2:  # noqa: PLR2004 - one whole-stud leg at each end
-            msg = (
+            message = (
                 f"an arch {self.size[1]} studs long cannot span {self.span}: the legs must be equal"
             )
-            raise ValueError(msg)
+            raise ValueError(message)
         return self
 
 
@@ -196,8 +196,8 @@ class BoxesShape(BaseModel):
     def _within(self) -> Self:
         for box in self.boxes:
             if any(not 0 <= box[a] < box[a + 3] <= self.size[a] for a in range(3)):
-                msg = f"box {box} has no volume or reaches outside the size {self.size}"
-                raise ValueError(msg)
+                message = f"box {box} has no volume or reaches outside the size {self.size}"
+                raise ValueError(message)
         return self
 
 

@@ -80,8 +80,8 @@ def test_an_imported_catalog_builds_and_searches(tmp_path):
     catalog = Catalog.from_data(__import__("json").loads(path.read_text()))
     assert catalog.part("3068bpb0001") is not None
     assert catalog.part("3700") is None
-    assert [p.id for p in catalog.search("tile 2x2")] == ["3068b", "3068bpb0001"]
-    assert [p.id for p in catalog.search("3068")] == ["3068b", "3068bpb0001"]
+    assert [p.id for p in catalog.search_parts("tile 2x2")] == ["3068b", "3068bpb0001"]
+    assert [p.id for p in catalog.search_parts("3068")] == ["3068b", "3068bpb0001"]
 
 
 def test_missing_and_broken_downloads_are_reported(tmp_path):

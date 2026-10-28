@@ -19,7 +19,7 @@ BRICKS = {8: "3008", 6: "3009", 4: "3010", 3: "3622", 2: "3004", 1: "3005"}
 
 
 def opening(x: int, y: int, course: int) -> str | None:
-    """The colour of a door or window cell, if the cell is in one."""
+    """The color of a door or window cell, if the cell is in one."""
     front, back, west, east = y == Y0, y == Y1 - 1, x == X0, x == X1 - 1
     if front and 7 <= x < 9 and course <= 2:
         return DOOR
@@ -36,7 +36,7 @@ def opening(x: int, y: int, course: int) -> str | None:
 def lay(
     builder: ModelBuilder, cells: list[tuple[int, int]], along_x: bool, z: int, course: int
 ) -> None:
-    """Fill a straight run of wall cells with bricks, one colour at a time, longest first."""
+    """Fill a straight run of wall cells with bricks, one color at a time, longest first."""
     i = 0
     while i < len(cells):
         color = opening(*cells[i], course) or WALL

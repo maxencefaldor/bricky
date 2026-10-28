@@ -52,8 +52,8 @@ def installed_codes() -> Mapping[str, tuple[str, Code]]:
         for code in pass_type.codes:
             if code.code in found:
                 other = found[code.code][0]
-                msg = f"passes {other!r} and {name!r} both claim code {code.code}"
-                raise BrickyError(msg)
+                message = f"passes {other!r} and {name!r} both claim code {code.code}"
+                raise BrickyError(message)
             found[code.code] = (name, code)
     return MappingProxyType(dict(sorted(found.items())))
 

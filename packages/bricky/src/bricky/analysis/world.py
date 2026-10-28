@@ -9,7 +9,7 @@ from bricky.model import Element, Instance, Model
 
 
 @dataclass(frozen=True, slots=True)
-class Placed:
+class PlacedElement:
     """An element resolved against the catalog, in world space."""
 
     uid: str
@@ -24,8 +24,8 @@ class Placed:
 
 
 @dataclass(frozen=True, slots=True)
-class Unresolved:
-    """An element whose part is not in the catalog."""
+class UnknownElement:
+    """An element whose part the catalog cannot place: unknown, or without a shape."""
 
     uid: str
     part: str
@@ -36,8 +36,8 @@ class Unresolved:
 class World:
     """Every element of a model, unfolded and placed in world space."""
 
-    placed: tuple[Placed, ...]
-    unresolved: tuple[Unresolved, ...]
+    elements: tuple[PlacedElement, ...]
+    unknown: tuple[UnknownElement, ...]
 
 
 @cache
@@ -51,8 +51,8 @@ def _pose(rotation: str, position: tuple[int, int, int]) -> Pose:
 
 def build_world(model: Model, catalog: Catalog) -> World:
     """Unfold every instance and place each element in world space."""
-    placed: list[Placed] = []
-    unresolved: list[Unresolved] = []
+    placed: list[PlacedElement] = []
+    unknown: list[UnknownElement] = []
 
     def visit(
         elements: tuple[Element, ...],
@@ -64,12 +64,12 @@ def build_world(model: Model, catalog: Catalog) -> World:
             uid = prefix + element.id
             part = catalog.part(element.part)
             if part is None:
-                unresolved.append(Unresolved(uid, element.part, element.color))
+                unknown.append(UnknownElement(uid, element.part, element.color))
                 continue
             pose = parent @ _pose(element.rotation, element.position)
             solids = tuple(solid.transformed(pose) for solid in part.solids)
             placed.append(
-                Placed(
+                PlacedElement(
                     uid=uid,
                     part=part,
                     color=element.color,
@@ -89,4 +89,4 @@ def build_world(model: Model, catalog: Catalog) -> World:
             )
 
     visit(model.elements, model.instances, Pose(), "")
-    return World(placed=tuple(placed), unresolved=tuple(unresolved))
+    return World(elements=tuple(placed), unknown=tuple(unknown))

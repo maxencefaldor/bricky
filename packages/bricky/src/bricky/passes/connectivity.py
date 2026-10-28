@@ -18,7 +18,7 @@ class ConnectivityPass:
         Code(
             code="E301",
             title="Floating group",
-            rule="Two parts are connected when a stud of one sits in a receptor of the other at "
+            rule="Two parts are connected when a stud of one sits in an anti-stud of the other at "
             "the same position, facing it. Connection works both ways: a part held only from "
             "above is connected. A group of connected parts is grounded when any part in it "
             "has its bottom at z = 0 or below. Every group that is not grounded is reported "
@@ -28,8 +28,8 @@ class ConnectivityPass:
 
     def run(self, context: Context) -> Iterator[Diagnostic]:
         """Return the problems found in the model."""
-        placed = context.world.placed
-        parent = list(range(len(placed)))
+        elements = context.world.elements
+        parent = list(range(len(elements)))
 
         def root(i: int) -> int:
             while parent[i] != i:
@@ -37,21 +37,21 @@ class ConnectivityPass:
                 i = parent[i]
             return i
 
-        for link in context.links:
-            parent[root(link.a)] = root(link.b)
+        for connection in context.connections:
+            parent[root(connection.a)] = root(connection.b)
 
         groups: defaultdict[int, list[int]] = defaultdict(list)
-        for i in range(len(placed)):
+        for i in range(len(elements)):
             groups[root(i)].append(i)
 
         for members in sorted(groups.values()):
-            if any(placed[k].bounds.min.z <= 0 for k in members):
+            if any(elements[k].bounds.min.z <= 0 for k in members):
                 continue
             what = "1 element floats" if len(members) == 1 else f"{len(members)} elements float"
             yield Diagnostic(
                 code="E301",
-                check=self.name,
+                pass_name=self.name,
                 message=f"{what}: no chain of stud connections leads to the ground",
-                elements=tuple(placed[k].uid for k in members),
-                region=Region.of(Box.bounding(placed[k].bounds for k in members)),
+                elements=tuple(elements[k].uid for k in members),
+                region=Region.of(Box.bounding(elements[k].bounds for k in members)),
             )

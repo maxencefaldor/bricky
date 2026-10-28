@@ -1,7 +1,7 @@
 """The canonical model format: what a build is, stored once.
 
 A model is a small tree: top-level elements and instances, plus named components that instances
-place. It refers to catalog parts and colours by id and never copies their data, so everything
+place. It refers to catalog parts and colors by id and never copies their data, so everything
 else (world geometry, connections, scores) is derived. Positions are in 0.4 mm base units and
 rotations use the grid-rotation names from :mod:`bricky.geometry`.
 """
@@ -46,7 +46,7 @@ class Element(_Record):
 
     id: Identifier
     part: str = Field(description="BrickLink item number, such as '3001'.")
-    color: int = Field(description="BrickLink colour id.")
+    color: int = Field(description="BrickLink color id.")
     rotation: RotationName = "+x+y"
     position: Position = (0, 0, 0)
 
@@ -106,14 +106,14 @@ def _check_scope(
     seen: set[str] = set()
     for item in (*elements, *instances):
         if item.id in seen:
-            msg = f"duplicate id {item.id!r} in {scope}"
-            raise ValueError(msg)
+            message = f"duplicate id {item.id!r} in {scope}"
+            raise ValueError(message)
         seen.add(item.id)
     for instance in instances:
         if instance.component not in components:
             name = instance.component
-            msg = f"instance {instance.id!r} in {scope} places unknown component {name!r}"
-            raise ValueError(msg)
+            message = f"instance {instance.id!r} in {scope} places unknown component {name!r}"
+            raise ValueError(message)
 
 
 def _check_acyclic(components: Mapping[str, Component]) -> None:
@@ -122,8 +122,8 @@ def _check_acyclic(components: Mapping[str, Component]) -> None:
     def visit(name: str, path: tuple[str, ...]) -> None:
         if name in path:
             cycle = " -> ".join((*path[path.index(name) :], name))
-            msg = f"components place each other in a cycle: {cycle}"
-            raise ValueError(msg)
+            message = f"components place each other in a cycle: {cycle}"
+            raise ValueError(message)
         if name in done:
             return
         for instance in components[name].instances:

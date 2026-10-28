@@ -9,7 +9,7 @@ An MCP server that exposes [bricky](../../README.md) to any agent harness. Run i
 | `render_model` | Draws a saved model: views, highlights by id or script line, cuts |
 | `check_model` | Checks a saved model file |
 | `search_parts` | Searches the parts catalog |
-| `list_colors` | Lists the catalog's colours |
+| `search_colors` | Lists the catalog's colors |
 | `list_passes` | Lists the installed passes, their codes and the profiles that run them |
 | `explain_code` | Gives the exact rule behind a diagnostic code |
 

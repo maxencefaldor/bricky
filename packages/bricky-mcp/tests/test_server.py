@@ -47,7 +47,7 @@ def test_tools_mirror_the_service_requests():
         "check_model",
         "search_parts",
         "show_part",
-        "list_colors",
+        "search_colors",
         "list_passes",
         "explain_code",
     }
@@ -109,14 +109,17 @@ def test_render_model_returns_one_picture_per_view(tmp_path: Path):
     builder.place("3001", at=(0, 0, 0), color="Red", id="base")
     path = tmp_path / "m.bricky.json"
     save_model(builder.build(), path)
-    arguments = {"model": str(path), "views": ["iso", "top"], "highlight": ["base"]}
+    arguments = {"model": str(path), "views": ["perspective", "top"], "highlight": ["base"]}
     result = call("render_model", arguments)
     assert not result.is_error
     text, *images = result.content
     assert [image.type for image in images] == ["image", "image"]
     assert f"top: {tmp_path / 'm.top.png'}" in text.text
-    assert [image["view"] for image in result.structured_content["images"]] == ["iso", "top"]
-    assert (tmp_path / "m.iso.png").is_file()
+    assert [image["view"] for image in result.structured_content["images"]] == [
+        "perspective",
+        "top",
+    ]
+    assert (tmp_path / "m.perspective.png").is_file()
 
 
 def test_errors_come_back_as_tool_errors(tmp_path: Path):
@@ -128,7 +131,7 @@ def test_errors_come_back_as_tool_errors(tmp_path: Path):
 def test_catalog_tools():
     parts = call("search_parts", {"query": "tile 2x2"})
     assert [p["id"] for p in parts.structured_content["parts"]] == ["3068", "14769"]
-    colors = call("list_colors", {"query": "pearl gold"})
+    colors = call("search_colors", {"query": "pearl gold"})
     assert [c["id"] for c in colors.structured_content["colors"]] == [115]
     explained = call("explain_code", {"code": "E202"})
     assert explained.structured_content["codes"][0]["title"] == "Blocked stud"
@@ -145,7 +148,7 @@ def test_scripts_that_print_cannot_corrupt_the_stdio_channel(tmp_path: Path):
     async def go():
         async with Client(server) as client:
             built = await client.call_tool("build_model", {"script": str(script), "render": False})
-            colors = await client.call_tool("list_colors", {"query": "red"})
+            colors = await client.call_tool("search_colors", {"query": "red"})
             return built, colors
 
     built, colors = asyncio.run(go())

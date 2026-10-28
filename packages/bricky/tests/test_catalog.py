@@ -82,16 +82,18 @@ def test_color_search_matches_ids_names_and_types():
 
 def test_search_matches_every_word_and_both_size_spellings():
     catalog = default_catalog()
-    assert [p.id for p in catalog.search("brick 2x2")] == ["3003", "30145", "3941"]
-    assert [p.id for p in catalog.search("brick 2 x 2")] == ["3003", "30145", "3941"]
-    families = {shape.family for p in catalog.search("plate 2x2") if (shape := catalog.shape(p.id))}
+    assert [p.id for p in catalog.search_parts("brick 2x2")] == ["3003", "30145", "3941"]
+    assert [p.id for p in catalog.search_parts("brick 2 x 2")] == ["3003", "30145", "3941"]
+    families = {
+        shape.family for p in catalog.search_parts("plate 2x2") if (shape := catalog.shape(p.id))
+    }
     assert families == {
         Family.PLATE,
         Family.ROUND,
         Family.JUMPER,
     }
-    assert [p.id for p in catalog.search("slope 45 2x2")] == ["3039", "3660"]
-    assert [p.name for p in catalog.search("round 1x1")] == [  # plainer names first
+    assert [p.id for p in catalog.search_parts("slope 45 2x2")] == ["3039", "3660"]
+    assert [p.name for p in catalog.search_parts("round 1x1")] == [  # plainer names first
         "Tile, Round 1 x 1",
         "Brick, Round 1 x 1",
         "Plate, Round 1 x 1",
@@ -126,9 +128,9 @@ def test_parts_without_a_shape_are_known_but_cannot_be_built():
     assert catalog.entry("3700") == CatalogPart.model_validate(TECHNIC)
     assert catalog.part("3700") is None
     assert catalog.entry("nope") is None
-    assert [p.id for p in catalog.search("brick")] == ["3001"]
-    assert [p.id for p in catalog.search("brick", shapeless=True)] == ["3001", "3700"]
-    assert [p.id for p in catalog.search("technic", shapeless=True)] == ["3700"]
+    assert [p.id for p in catalog.search_parts("brick")] == ["3001"]
+    assert [p.id for p in catalog.search_parts("brick", shapeless=True)] == ["3001", "3700"]
+    assert [p.id for p in catalog.search_parts("technic", shapeless=True)] == ["3700"]
 
 
 def test_printed_parts_take_their_base_part_shape():
@@ -138,8 +140,8 @@ def test_printed_parts_take_their_base_part_shape():
     assert plain is not None
     assert printed.name == "Brick 2 x 4 with Pattern"
     assert (printed.size, printed.connectors) == (plain.size, plain.connectors)
-    assert [p.id for p in catalog.search("brick 2x4")] == ["3001", "3001pb001"]
-    assert [p.id for p in catalog.find(family=Family.BRICK)] == ["3001pb001", "3001"]
+    assert [p.id for p in catalog.search_parts("brick 2x4")] == ["3001", "3001pb001"]
+    assert [p.id for p in catalog.find(family=Family.BRICK)] == ["3001", "3001pb001"]
 
 
 def test_entries_are_checked_when_first_used():

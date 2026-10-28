@@ -11,7 +11,7 @@ from bricky.units import PLATE, STUD
 
 
 def world_bounds(model: Model) -> list[Box]:
-    return [p.bounds for p in build_world(model, default_catalog()).placed]
+    return [p.bounds for p in build_world(model, default_catalog()).elements]
 
 
 def test_place_puts_the_rotated_corner_at_the_given_point():
@@ -19,13 +19,13 @@ def test_place_puts_the_rotated_corner_at_the_given_point():
     builder.place("3001", at=(0, 0, 0), color="Red")
     builder.place("3001", at=(5, 1, 3), rotation="R90", color="Red")
     builder.place("3001", at=(0, 6, 0), rotation="R180", color="Red")
-    upright, turned, reversed_ = world_bounds(builder.build())
+    upright, rotated, reversed_ = world_bounds(builder.build())
     assert upright == Box(Vector(0, 0, 0), Vector(40, 80, 24))
-    assert turned == Box(Vector(100, 20, 24), Vector(180, 60, 48))  # 4 studs east, 2 north
+    assert rotated == Box(Vector(100, 20, 24), Vector(180, 60, 48))  # 4 studs east, 2 north
     assert reversed_ == Box(Vector(0, 120, 0), Vector(40, 200, 24))
 
 
-def test_builder_rejects_unknown_parts_and_colours():
+def test_builder_rejects_unknown_parts_and_colors():
     builder = ModelBuilder()
     with pytest.raises(ValueError, match="unknown part"):
         builder.place("99999", at=(0, 0, 0), color="Red")
@@ -54,8 +54,8 @@ def test_instances_unfold_with_hierarchical_ids():
     model = builder.build()
     assert model.element_count() == 4
     world = build_world(model, default_catalog())
-    assert [p.uid for p in world.placed] == ["west/e1", "west/e2", "i2/e1", "i2/e2"]
-    assert world.placed[0].bounds.min == Vector(4 * STUD, 0, 0)
+    assert [p.uid for p in world.elements] == ["west/e1", "west/e2", "i2/e1", "i2/e2"]
+    assert world.elements[0].bounds.min == Vector(4 * STUD, 0, 0)
 
 
 def test_rotation_names_are_canonicalised():

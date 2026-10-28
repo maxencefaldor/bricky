@@ -9,7 +9,7 @@ https://www.bricklink.com/catalogDownload.asp, for members who are signed in:
 - **Codes**: the colors each part comes in, with LEGO's element number for each.
 
 :func:`read_downloads` finds these files in a folder by what they hold, whatever they are called,
-and :func:`bricklink_parts` turns them into catalog colors and parts, each part shaped when its
+and :func:`bricklink_parts` converts them into catalog colors and parts, each part shaped when its
 name describes a shape bricky has a family for (see :mod:`bricky.catalog.names`).
 :mod:`bricky.catalog.importing` puts this together with shapes from LDraw.
 """
@@ -83,8 +83,8 @@ def read_downloads(folder: Path) -> Downloads:
             download is not there.
     """
     if not folder.is_dir():
-        msg = f"no such folder: {folder}"
-        raise BrickyError(msg)
+        message = f"no such folder: {folder}"
+        raise BrickyError(message)
     found: dict[str, tuple[Path, list[dict[str, str]]]] = {}
     for path in sorted(folder.iterdir()):
         if path.suffix.lower() != ".xml" or not path.is_file():
@@ -92,15 +92,15 @@ def read_downloads(folder: Path) -> Downloads:
         kind, records = _read(path)
         if kind is not None:
             if kind in found:
-                msg = f"{path} and {found[kind][0]} are both BrickLink {kind} downloads"
-                raise BrickyError(msg)
+                message = f"{path} and {found[kind][0]} are both BrickLink {kind} downloads"
+                raise BrickyError(message)
             found[kind] = (path, records)
     missing = [kind for kind in ("colors", _PARTS) if kind not in found]
     if missing:
         names = {"colors": "Colors", _PARTS: "Catalog Items (Parts)"}
         wanted = " and ".join(names[kind] for kind in missing)
-        msg = f"{folder} has no BrickLink {wanted} download, as XML, from {DOWNLOAD_PAGE}"
-        raise BrickyError(msg)
+        message = f"{folder} has no BrickLink {wanted} download, as XML, from {DOWNLOAD_PAGE}"
+        raise BrickyError(message)
     records = {kind: found[kind][1] if kind in found else [] for kind in _KINDS}
     try:
         return Downloads(
@@ -137,8 +137,8 @@ def read_downloads(folder: Path) -> Downloads:
             files={kind: path for kind, (path, _) in found.items()},
         )
     except (KeyError, ValueError) as error:
-        msg = f"a BrickLink download in {folder} is missing a field or has a bad value: {error}"
-        raise BrickyError(msg) from None
+        message = f"a BrickLink download in {folder} is missing a field or has a bad value: {error}"
+        raise BrickyError(message) from None
 
 
 def bricklink_parts(
@@ -224,8 +224,8 @@ def _read(path: Path) -> tuple[str | None, list[dict[str, str]]]:
     try:
         root = ET.fromstring(text)  # noqa: S314 - BrickLink's own downloads, read locally
     except ET.ParseError as error:
-        msg = f"{path} is not valid XML: {error}"
-        raise BrickyError(msg) from None
+        message = f"{path} is not valid XML: {error}"
+        raise BrickyError(message) from None
     records = [  # BrickLink escapes some characters twice, such as "(" as "&amp;#40;"
         {child.tag: html.unescape(child.text or "").strip() for child in item}
         for item in root.iter("ITEM")

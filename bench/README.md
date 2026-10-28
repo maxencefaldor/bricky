@@ -1,7 +1,7 @@
 # bricky benchmark
 
 Ten projects, from a brick wall to Notre-Dame de Paris, that measure how well an agent builds
-LEGO® models with bricky. Each project is a prompt, sometimes with inputs: pictures, a cell-by-cell
+LEGO® models with bricky. Each project is a prompt, sometimes with inputs: pictures, a voxel-by-voxel
 plan, notes, or a broken script to repair. Seven have a reference model the agent never sees, and
 are scored against it; the other three are open briefs, judged by looking at the result.
 
@@ -47,10 +47,11 @@ Everything lands in `bench/runs/<time>/`: per run the transcript, the agent's lo
 ## Scores
 
 - **Facts:** whether the final script builds, its element count, and its errors and warnings.
-- **Fidelity**, for projects with a reference: the two models are compared cell by cell, a cell
-  being 1 x 1 stud and 1 plate tall (see `bricky.cells`). The agent's model may be turned and
-  shifted; the best match counts. `shape` is the share of cells filled in both models among cells
-  filled in either. `colour` counts a shared cell only when its colours match too. 1 is identical.
+- **Fidelity**, for projects with a reference: the two models are compared voxel by voxel, a
+  voxel being 1 x 1 stud and 1 plate tall (see `bricky.voxels`). The agent's model may be rotated
+  and shifted; the best match counts. `shape` is the share of voxels filled in both models among
+  voxels filled in either. `color` counts a shared voxel only when its colors match too. 1 is
+  identical.
 - **Effort:** turns, minutes, Claude Code's cost estimate, and how often the agent built.
 
 Judged projects have facts and effort but no fidelity: compare their pictures by eye.
@@ -64,6 +65,6 @@ bench/projects/04-house-plans/
   inputs/        what the agent gets besides the prompt
 ```
 
-Inputs listed under `[[generate]]` in `project.toml` (pictures and cell plans) come from the
+Inputs listed under `[[generate]]` in `project.toml` (pictures and voxel plans) come from the
 reference: `uv run bricky-bench prepare` writes them again after a reference changes. They are
 committed, so every run gives the agent the same files.
