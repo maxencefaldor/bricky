@@ -45,9 +45,13 @@ def strip(
             n = next(k for k in STRIP if k <= j - i)
             x, y = cells[i]
             if n == 1:  # a 1 x 2 brick lies across the strip
-                builder.place(STRIP[1], at=(x, y, z), rot="R0" if along_x else "R90", color=color)
+                builder.place(
+                    STRIP[1], at=(x, y, z), rotation="R0" if along_x else "R90", color=color
+                )
             else:
-                builder.place(STRIP[n], at=(x, y, z), rot="R90" if along_x else "R0", color=color)
+                builder.place(
+                    STRIP[n], at=(x, y, z), rotation="R90" if along_x else "R0", color=color
+                )
             i += n
 
 
@@ -101,7 +105,7 @@ def strip_plates(builder: ModelBuilder, start: Cell, length: int, z: int) -> Non
     end = x + length
     while x < end:
         n = next(k for k in plates if k <= end - x)
-        builder.place(plates[n], at=(x, y, z), rot="R0" if n == 2 else "R90", color=ROOF)
+        builder.place(plates[n], at=(x, y, z), rotation="R0" if n == 2 else "R90", color=ROOF)
         x += n
 
 
@@ -145,7 +149,7 @@ def keep(builder: ModelBuilder) -> None:
     roof_top = 1 + 3 * 10 + 1
     for z in range(roof_top, roof_top + 9, 3):  # flagpole: three Black 1 x 1 bricks
         builder.place("3005", at=(19, 22, z), color="Black")
-    builder.place("3004", at=(19, 22, roof_top + 9), rot="R90", color="Blue")  # the flag
+    builder.place("3004", at=(19, 22, roof_top + 9), rotation="R90", color="Blue")  # the flag
 
 
 def build() -> ModelBuilder:
@@ -153,7 +157,7 @@ def build() -> ModelBuilder:
     # Lawn: 40 x 40 studs of Green 2 x 8 plates.
     for y in range(0, 40, 2):
         for x in range(0, 40, 8):
-            builder.place("3034", at=(x, y, 0), rot="R90", color="Green")
+            builder.place("3034", at=(x, y, 0), rotation="R90", color="Green")
     for x0, y0 in ((0, 0), (32, 0), (0, 32), (32, 32)):
         tower(builder, x0, y0, 8, 8, slits=True)
     curtain(builder, (8, 4), 24, along_x=True, gate=range(18, 22))
@@ -163,5 +167,5 @@ def build() -> ModelBuilder:
     keep(builder)
     # A path from the gate to the keep.
     for y in range(0, 18, 2):
-        builder.place("3020", at=(18, y, 1), rot="R90", color="Tan")
+        builder.place("3020", at=(18, y, 1), rotation="R90", color="Tan")
     return builder

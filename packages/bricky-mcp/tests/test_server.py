@@ -18,7 +18,7 @@ def build():
     print("chatter on stdout")
     builder = ModelBuilder("m")
     builder.place("3001", at=(0, 0, 0), color="Red")
-    builder.place("3022", at=(5, 5, 5), color="Tan", name="float")
+    builder.place("3022", at=(5, 5, 5), color="Tan", id="float")
     return builder
 """
 
@@ -106,7 +106,7 @@ def test_build_model_returns_the_report_and_the_picture(tmp_path: Path):
 
 def test_render_model_returns_one_picture_per_view(tmp_path: Path):
     builder = ModelBuilder("m")
-    builder.place("3001", at=(0, 0, 0), color="Red", name="base")
+    builder.place("3001", at=(0, 0, 0), color="Red", id="base")
     path = tmp_path / "m.bricky.json"
     save_model(builder.build(), path)
     arguments = {"model": str(path), "views": ["iso", "top"], "highlight": ["base"]}

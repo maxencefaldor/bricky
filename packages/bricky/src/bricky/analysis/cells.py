@@ -11,7 +11,7 @@ from typing import Final
 
 from bricky.analysis.world import World, build_world
 from bricky.catalog import Catalog, default_catalog
-from bricky.geometry import Solid, Vec3
+from bricky.geometry import Solid, Vector
 from bricky.model import Model
 from bricky.units import PLATE, STUD
 
@@ -64,7 +64,7 @@ def model_cells(model: Model, catalog: Catalog | None = None) -> dict[CellKey, C
 
 
 def _candidates(solid: Solid) -> list[CellKey]:
-    lo, hi = solid.bounds.lo, solid.bounds.hi
+    lo, hi = solid.bounds.min, solid.bounds.max
     return [
         (x, y, z)
         for x in range(lo.x // STUD, -(-hi.x // STUD))
@@ -73,6 +73,6 @@ def _candidates(solid: Solid) -> list[CellKey]:
     ]
 
 
-def _centre(key: CellKey) -> Vec3:
+def _centre(key: CellKey) -> Vector:
     x, y, z = key
-    return Vec3(x * STUD + _HALF_STUD, y * STUD + _HALF_STUD, z * PLATE + _HALF_PLATE)
+    return Vector(x * STUD + _HALF_STUD, y * STUD + _HALF_STUD, z * PLATE + _HALF_PLATE)

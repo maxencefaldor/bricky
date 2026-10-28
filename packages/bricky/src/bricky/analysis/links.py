@@ -9,9 +9,9 @@ from dataclasses import dataclass
 
 from bricky.analysis.world import World
 from bricky.catalog import ConnectorKind
-from bricky.geometry import Vec3
+from bricky.geometry import Vector
 
-type ReceptorIndex = dict[tuple[Vec3, Vec3], list[int]]
+type ReceptorIndex = dict[tuple[Vector, Vector], list[int]]
 """Element indices owning a receptor, keyed by the receptor's world position and normal."""
 
 
@@ -31,11 +31,11 @@ class Link:
 
 def receptor_index(world: World) -> ReceptorIndex:
     """Index every receptor by its world position and normal."""
-    index: defaultdict[tuple[Vec3, Vec3], list[int]] = defaultdict(list)
+    index: defaultdict[tuple[Vector, Vector], list[int]] = defaultdict(list)
     for i, placed in enumerate(world.placed):
         for connector in placed.connectors:
             if connector.kind is ConnectorKind.ANTI_STUD:
-                index[connector.pos, connector.normal].append(i)
+                index[connector.position, connector.normal].append(i)
     return dict(index)
 
 
@@ -46,7 +46,7 @@ def find_links(world: World, receptors: ReceptorIndex) -> tuple[Link, ...]:
         for connector in placed.connectors:
             if connector.kind is not ConnectorKind.STUD:
                 continue
-            for j in receptors.get((connector.pos, -connector.normal), ()):
+            for j in receptors.get((connector.position, -connector.normal), ()):
                 if j != i:
                     counts[min(i, j), max(i, j)] += 1
     return tuple(Link(a, b, studs) for (a, b), studs in sorted(counts.items()))

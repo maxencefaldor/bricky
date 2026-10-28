@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from functools import cache
 
 from bricky.catalog import Catalog, Connector, Part
-from bricky.geometry import Box, Pose, Rotation, Solid, Vec3
+from bricky.geometry import Box, Pose, Rotation, Solid, Vector
 from bricky.model import Element, Instance, Model
 
 
@@ -45,8 +45,8 @@ def _rotation(name: str) -> Rotation:
     return Rotation.parse(name)
 
 
-def _pose(rot: str, pos: tuple[int, int, int]) -> Pose:
-    return Pose(_rotation(rot), Vec3(*pos))
+def _pose(rotation: str, position: tuple[int, int, int]) -> Pose:
+    return Pose(_rotation(rotation), Vector(*position))
 
 
 def build_world(model: Model, catalog: Catalog) -> World:
@@ -66,7 +66,7 @@ def build_world(model: Model, catalog: Catalog) -> World:
             if part is None:
                 unresolved.append(Unresolved(uid, element.part, element.color))
                 continue
-            pose = parent @ _pose(element.rot, element.pos)
+            pose = parent @ _pose(element.rotation, element.position)
             solids = tuple(solid.transformed(pose) for solid in part.solids)
             placed.append(
                 Placed(
@@ -84,7 +84,7 @@ def build_world(model: Model, catalog: Catalog) -> World:
             visit(
                 component.elements,
                 component.instances,
-                parent @ _pose(instance.rot, instance.pos),
+                parent @ _pose(instance.rotation, instance.position),
                 f"{prefix}{instance.id}/",
             )
 

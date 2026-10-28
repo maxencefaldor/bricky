@@ -12,8 +12,8 @@ def codes(model: Model, **options) -> list[str]:
 
 def stack(*placements: tuple[str, tuple[float, float, float], str]) -> Model:
     builder = ModelBuilder()
-    for part, at, rot in placements:
-        builder.place(part, at=at, rot=rot, color="Red")
+    for part, at, rotation in placements:
+        builder.place(part, at=at, rotation=rotation, color="Red")
     return builder.build()
 
 
@@ -66,7 +66,7 @@ def test_schema_errors():
         elements=(
             Element(id="ghost", part="99999", color=5),
             Element(id="odd", part="3001", color=4242),
-            Element(id="deep", part="3001", color=5, pos=(100, 0, -8)),
+            Element(id="deep", part="3001", color=5, position=(100, 0, -8)),
         )
     )
     assert codes(model, passes=["schema"]) == ["E101", "E102", "E103"]

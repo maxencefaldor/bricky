@@ -3,7 +3,7 @@ from hypothesis import strategies as st
 
 from bricky import ModelBuilder, cells, default_catalog
 from bricky.analysis import Context
-from bricky.geometry import Box, Vec3
+from bricky.geometry import Box, Vector
 
 PARTS = ["3001", "3004", "3024", "3022", "3020", "3070b", "3068b"]  # bricks, plates, tiles
 
@@ -19,7 +19,7 @@ def test_a_brick_fills_its_footprint_three_plates_high():
 
 def test_turned_parts_fill_their_turned_footprint():
     builder = ModelBuilder("turned")
-    builder.place("3020", at=(0, 0, 0), rot="R90", color="Blue")  # Plate 2 x 4, along x
+    builder.place("3020", at=(0, 0, 0), rotation="R90", color="Blue")  # Plate 2 x 4, along x
     assert set(cells(builder.build())) == {(x, y, 0) for x in range(4) for y in range(2)}
 
 
@@ -31,8 +31,8 @@ def test_a_cell_belongs_to_the_part_holding_its_centre():
 
 def test_overlapping_parts_leave_a_cell_to_the_first():
     builder = ModelBuilder("clash")
-    builder.place("3005", at=(0, 0, 0), color="Red", name="first")
-    builder.place("3005", at=(0, 0, 1), color="Blue", name="second")
+    builder.place("3005", at=(0, 0, 0), color="Red", id="first")
+    builder.place("3005", at=(0, 0, 1), color="Blue", id="second")
     filled = cells(builder.build())
     assert [filled[0, 0, z].uid for z in range(4)] == ["first", "first", "first", "second"]
 
@@ -59,8 +59,8 @@ placements = st.tuples(
 def test_moving_a_model_moves_its_cells(parts, dx, dy):
     def model(shift_x: int, shift_y: int):
         builder = ModelBuilder("moved")
-        for part, x, y, z, rot in parts:
-            builder.place(part, at=(x + shift_x, y + shift_y, z), rot=rot, color="Red")
+        for part, x, y, z, rotation in parts:
+            builder.place(part, at=(x + shift_x, y + shift_y, z), rotation=rotation, color="Red")
         return builder.build()
 
     before = cells(model(0, 0))
@@ -70,10 +70,10 @@ def test_moving_a_model_moves_its_cells(parts, dx, dy):
 
 @given(placements)
 def test_a_grid_aligned_part_fills_its_volume(placement):
-    part_id, x, y, z, rot = placement
+    part_id, x, y, z, rotation = placement
     builder = ModelBuilder("single")
-    builder.place(part_id, at=(x, y, z), rot=rot, color="Red")
+    builder.place(part_id, at=(x, y, z), rotation=rotation, color="Red")
     part = default_catalog().part(part_id)
     assert part is not None
-    body = Box(Vec3(0, 0, 0), part.size)
+    body = Box(Vector(0, 0, 0), part.size)
     assert len(cells(builder.build())) == body.volume // (20 * 20 * 8)

@@ -14,7 +14,7 @@ def railing(builder: ModelBuilder, y: int) -> None:
     for x in (0, 2, 4, 6, 8, 10, 11):
         builder.place("3005", at=(x, y, 10), color="White")
     for x in (0, 6):
-        builder.place("3666", at=(x, y, 13), rot="R90", color="White")
+        builder.place("3666", at=(x, y, 13), rotation="R90", color="White")
 
 
 def build() -> ModelBuilder:
@@ -22,10 +22,10 @@ def build() -> ModelBuilder:
     pier(builder, 0)
     pier(builder, 10)
     # Deck: Reddish Brown plates on the piers, each row a 2 x 8 and a 2 x 4 end to end.
-    builder.place("3034", at=(0, 0, 9), rot="R90", color="Reddish Brown")
-    builder.place("3020", at=(8, 0, 9), rot="R90", color="Reddish Brown")
-    builder.place("3020", at=(0, 2, 9), rot="R90", color="Reddish Brown")
-    builder.place("3034", at=(4, 2, 9), rot="R90", color="Reddish Brown")
+    builder.place("3034", at=(0, 0, 9), rotation="R90", color="Reddish Brown")
+    builder.place("3020", at=(8, 0, 9), rotation="R90", color="Reddish Brown")
+    builder.place("3020", at=(0, 2, 9), rotation="R90", color="Reddish Brown")
+    builder.place("3034", at=(4, 2, 9), rotation="R90", color="Reddish Brown")
     railing(builder, 0)
     railing(builder, 3)
     return builder

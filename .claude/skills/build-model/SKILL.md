@@ -35,11 +35,11 @@ def build() -> ModelBuilder:
 
 - `at=(x, y, z)`: x east and y north in studs, z up in plates. It is the minimum corner of the
   rotated bounding box of what you place, a part or a whole component.
-- `rot`: `R0`, `R90`, `R180` or `R270` about the vertical axis. Any of the 24 grid rotations can be
+- `rotation`: `R0`, `R90`, `R180` or `R270` about the vertical axis. Any of the 24 grid rotations can be
   named by where the part's x and y axes go: `+x+z` stands a part up with its top facing -y.
 - Parts that face a way say so in `uv run bricky parts slope`: unturned, slopes fall toward -y
   (the front), bricks with side studs list the faces their studs are on, arches span along y.
-  Turn them with `rot`, for example `R180` for a slope falling toward +y.
+  Rotate them with `rotation`, for example `R180` for a slope falling toward +y.
 - Baseplates are half a plate thick: parts standing on one start at `z = 0.5`.
 - Building sideways: a tile or plate turned `+x+z` faces -y, so its underside grips a side stud
   facing -y. `examples/cottage.py` shows one, with an arch, a roof of slopes and a jumper.
@@ -50,7 +50,7 @@ def build() -> ModelBuilder:
 - Find parts with `uv run bricky parts "plate 2x4"`, or from Python with
   `builder.catalog.find(family="plate", size=(1, 6))`. List colours with
   `uv run bricky colors gray`; names follow BrickLink, such as `Dark Bluish Gray`.
-- Give important parts a `name=`; the report and the pictures label parts by name.
+- Give important parts an `id=`; the report and the pictures label parts by id.
 - To compare with a target (a plan, layers or another model), `from bricky import cells`:
   `cells(builder.build())` maps every filled cell `(x, y, z)`, in studs, studs and plates, to the
   element and colour that fill it.

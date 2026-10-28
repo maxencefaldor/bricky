@@ -14,7 +14,7 @@ from bricky import ModelBuilder
 def build():
     builder = ModelBuilder("tower")
     builder.place("3001", at=(0, 0, 0), color="Red")
-    builder.place("3001", at=(0, 0, 3), rot="R90", color="White")
+    builder.place("3001", at=(0, 0, 3), rotation="R90", color="White")
     return builder
 """
 
@@ -31,7 +31,7 @@ def run(*args: str) -> int:
 @pytest.fixture
 def floating(tmp_path: Path) -> Path:
     builder = ModelBuilder("floating")
-    builder.place("3001", at=(0, 0, 3), color="Red", name="lonely")
+    builder.place("3001", at=(0, 0, 3), color="Red", id="lonely")
     path = tmp_path / "floating.bricky.json"
     save_model(builder.build(), path)
     return path
@@ -55,7 +55,7 @@ def test_check_writes_json(floating, capsys):
 
 def test_build_saves_checks_and_names_script_lines(tmp_path, capsys):
     script = tmp_path / "tower.py"
-    script.write_text(TOWER.replace('at=(0, 0, 3), rot="R90"', 'at=(9, 9, 3), rot="R90"'))
+    script.write_text(TOWER.replace('at=(0, 0, 3), rotation="R90"', 'at=(9, 9, 3), rotation="R90"'))
     assert run("build", str(script), "--no-render") == 1
     assert (tmp_path / "tower.bricky.json").is_file()
     assert (tmp_path / "tower.bricky.map.json").is_file()

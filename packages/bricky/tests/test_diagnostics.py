@@ -58,7 +58,7 @@ def test_reports_describe_each_element_and_count_script_lines():
 
 def test_reports_without_provenance_still_name_parts_and_colours():
     builder = ModelBuilder("m")
-    builder.place("3022", at=(0, 0, 5), color="Tan", name="floating")
+    builder.place("3022", at=(0, 0, 5), color="Tan", id="floating")
     report = check_model(builder.build(), settings=Settings())
     assert report.elements["floating"].source is None
     text = render_report(report)

@@ -29,7 +29,7 @@ class SpatialHash[K: Hashable]:
 
     def _cells(self, box: Box) -> Iterator[tuple[int, int, int]]:
         size = self._cell
-        lo, hi = box.lo, box.hi
+        lo, hi = box.min, box.max
         return product(
             range(lo.x // size, (hi.x - 1) // size + 1),
             range(lo.y // size, (hi.y - 1) // size + 1),

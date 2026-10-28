@@ -66,7 +66,7 @@ def test_facts_count_diagnostics_by_code():
 def test_real_models_compare_through_cells():
     builder = ModelBuilder("pair")
     builder.place("3001", at=(0, 0, 0), color="Red")
-    builder.place("3001", at=(0, 0, 3), rot="R90", color="White")
+    builder.place("3001", at=(0, 0, 3), rotation="R90", color="White")
     reference = cells(builder.build())
     assert len(reference) == 2 * (2 * 4 * 3)  # two bricks, 2 x 4 studs and 3 plates each
     fidelity = compare(reference, reference)

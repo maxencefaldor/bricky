@@ -64,9 +64,9 @@ class Region(BaseModel):
     def of(cls, box: Box) -> Region:
         """Convert a box in base units to a region in agent units."""
         return cls(
-            x=(to_studs(box.lo.x), to_studs(box.hi.x)),
-            y=(to_studs(box.lo.y), to_studs(box.hi.y)),
-            z=(to_plates(box.lo.z), to_plates(box.hi.z)),
+            x=(to_studs(box.min.x), to_studs(box.max.x)),
+            y=(to_studs(box.min.y), to_studs(box.max.y)),
+            z=(to_plates(box.min.z), to_plates(box.max.z)),
         )
 
     def __str__(self) -> str:

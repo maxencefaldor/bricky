@@ -47,7 +47,9 @@ def lay(
         while start < j:
             length = next(n for n in BRICKS if n <= j - start)
             x, y = cells[start]
-            builder.place(BRICKS[length], at=(x, y, z), rot="R90" if along_x else "R0", color=color)
+            builder.place(
+                BRICKS[length], at=(x, y, z), rotation="R90" if along_x else "R0", color=color
+            )
             start += length
         i = j
 
@@ -69,15 +71,15 @@ def build() -> ModelBuilder:
     # Lawn: Green 2 x 8 plates, 16 x 12 studs.
     for y in range(0, 12, 2):
         for x in (0, 8):
-            builder.place("3034", at=(x, y, 0), rot="R90", color="Green")
+            builder.place("3034", at=(x, y, 0), rotation="R90", color="Green")
     # Doorstep.
-    builder.place("3023", at=(7, 1, 1), rot="R90", color="Light Bluish Gray")
+    builder.place("3023", at=(7, 1, 1), rotation="R90", color="Light Bluish Gray")
     walls(builder)
     # Roof: Dark Bluish Gray plates, 12 x 8 studs, on top of the walls.
     roof_z = 1 + 3 * COURSES
     for y in range(Y0, Y1, 2):
-        builder.place("3034", at=(X0, y, roof_z), rot="R90", color="Dark Bluish Gray")
-        builder.place("3020", at=(X0 + 8, y, roof_z), rot="R90", color="Dark Bluish Gray")
+        builder.place("3034", at=(X0, y, roof_z), rotation="R90", color="Dark Bluish Gray")
+        builder.place("3020", at=(X0 + 8, y, roof_z), rotation="R90", color="Dark Bluish Gray")
     # Chimney: two courses of Red 2 x 2 bricks.
     for course in range(2):
         builder.place("3003", at=(10, 6, roof_z + 1 + 3 * course), color="Red")

@@ -57,7 +57,7 @@ class SchemaPass:
                     message=f"{placed.uid} uses colour {placed.color}, which is not in the catalog",
                     elements=(placed.uid,),
                 )
-            if placed.bounds.lo.z < 0:
+            if placed.bounds.min.z < 0:
                 yield Diagnostic(
                     code="E103",
                     check=self.name,

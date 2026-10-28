@@ -1212,18 +1212,21 @@ def _part_problems(part: Part) -> list[str]:
     if Box.bounding(solid.bounds for solid in part.solids) != Box(ORIGIN, size):
         problems.append("its body does not fill its bounding box from the origin")
     sides = {AXES["-x"]: 0, AXES["+x"]: size.x, AXES["-y"]: 0, AXES["+y"]: size.y}
-    places = Counter((c.kind, c.pos, c.normal) for c in part.connectors)
+    places = Counter((c.kind, c.position, c.normal) for c in part.connectors)
     problems += [f"two {kind}s at {pos}" for (kind, pos, _), n in places.items() if n > 1]
     for c in part.connectors:
-        inside = 0 < c.pos.x < size.x and 0 < c.pos.y < size.y
+        inside = 0 < c.position.x < size.x and 0 < c.position.y < size.y
         if c.kind is ConnectorKind.ANTI_STUD:
-            if c.normal != DOWN or c.pos.z != 0 or not inside:
-                problems.append(f"the anti-stud at {c.pos} is not on the bottom face")
+            if c.normal != DOWN or c.position.z != 0 or not inside:
+                problems.append(f"the anti-stud at {c.position} is not on the bottom face")
         elif c.normal == UP:
-            if c.pos.z != size.z or not inside:
-                problems.append(f"the stud at {c.pos} is not on the top face")
-        elif c.normal not in sides or (c.pos.x if c.normal.x else c.pos.y) != sides[c.normal]:
-            problems.append(f"the stud at {c.pos} facing {c.normal} is not on a side face")
+            if c.position.z != size.z or not inside:
+                problems.append(f"the stud at {c.position} is not on the top face")
+        elif (
+            c.normal not in sides
+            or (c.position.x if c.normal.x else c.position.y) != sides[c.normal]
+        ):
+            problems.append(f"the stud at {c.position} facing {c.normal} is not on a side face")
     return problems
 
 

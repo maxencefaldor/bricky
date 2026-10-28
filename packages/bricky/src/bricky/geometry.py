@@ -15,37 +15,37 @@ from typing import Final, Literal
 
 
 @dataclass(frozen=True, slots=True, order=True)
-class Vec3:
+class Vector:
     """An integer vector, in base units unless stated otherwise."""
 
     x: int
     y: int
     z: int
 
-    def __add__(self, other: Vec3) -> Vec3:
-        return Vec3(self.x + other.x, self.y + other.y, self.z + other.z)
+    def __add__(self, other: Vector) -> Vector:
+        return Vector(self.x + other.x, self.y + other.y, self.z + other.z)
 
-    def __sub__(self, other: Vec3) -> Vec3:
-        return Vec3(self.x - other.x, self.y - other.y, self.z - other.z)
+    def __sub__(self, other: Vector) -> Vector:
+        return Vector(self.x - other.x, self.y - other.y, self.z - other.z)
 
-    def __neg__(self) -> Vec3:
-        return Vec3(-self.x, -self.y, -self.z)
+    def __neg__(self) -> Vector:
+        return Vector(-self.x, -self.y, -self.z)
 
-    def __mul__(self, factor: int) -> Vec3:
-        return Vec3(self.x * factor, self.y * factor, self.z * factor)
+    def __mul__(self, factor: int) -> Vector:
+        return Vector(self.x * factor, self.y * factor, self.z * factor)
 
     def __iter__(self) -> Iterator[int]:
         yield self.x
         yield self.y
         yield self.z
 
-    def dot(self, other: Vec3) -> int:
+    def dot(self, other: Vector) -> int:
         """Return the dot product."""
         return self.x * other.x + self.y * other.y + self.z * other.z
 
-    def cross(self, other: Vec3) -> Vec3:
+    def cross(self, other: Vector) -> Vector:
         """Return the cross product."""
-        return Vec3(
+        return Vector(
             self.y * other.z - self.z * other.y,
             self.z * other.x - self.x * other.z,
             self.x * other.y - self.y * other.x,
@@ -56,15 +56,15 @@ class Vec3:
         return (self.x, self.y, self.z)
 
 
-ORIGIN: Final = Vec3(0, 0, 0)
+ORIGIN: Final = Vector(0, 0, 0)
 
-AXES: Final[dict[str, Vec3]] = {
-    "+x": Vec3(1, 0, 0),
-    "-x": Vec3(-1, 0, 0),
-    "+y": Vec3(0, 1, 0),
-    "-y": Vec3(0, -1, 0),
-    "+z": Vec3(0, 0, 1),
-    "-z": Vec3(0, 0, -1),
+AXES: Final[dict[str, Vector]] = {
+    "+x": Vector(1, 0, 0),
+    "-x": Vector(-1, 0, 0),
+    "+y": Vector(0, 1, 0),
+    "-y": Vector(0, -1, 0),
+    "+z": Vector(0, 0, 1),
+    "-z": Vector(0, 0, -1),
 }
 """The six signed grid axes by name."""
 
@@ -74,7 +74,7 @@ DOWN: Final = AXES["-z"]
 _AXIS_NAMES: Final = {vector: name for name, vector in AXES.items()}
 
 
-def axis_name(vector: Vec3) -> str:
+def axis_name(vector: Vector) -> str:
     """Name a signed unit grid axis, such as ``"+x"``.
 
     Raises:
@@ -100,15 +100,24 @@ class Rotation:
     for the four vertical-axis turns.
     """
 
-    ex: Vec3
-    ey: Vec3
-    ez: Vec3 = field(init=False, repr=False, compare=False)
+    x_axis: Vector
+    """Where the rotation takes the x axis."""
+
+    y_axis: Vector
+    """Where the rotation takes the y axis."""
+
+    z_axis: Vector = field(init=False, repr=False, compare=False)
+    """Where the rotation takes the z axis: the cross product of the other two."""
 
     def __post_init__(self) -> None:
-        if self.ex not in _AXIS_NAMES or self.ey not in _AXIS_NAMES or self.ex.dot(self.ey) != 0:
-            msg = f"{self.ex} and {self.ey} are not two perpendicular grid axes"
+        if (
+            self.x_axis not in _AXIS_NAMES
+            or self.y_axis not in _AXIS_NAMES
+            or self.x_axis.dot(self.y_axis) != 0
+        ):
+            msg = f"{self.x_axis} and {self.y_axis} are not two perpendicular grid axes"
             raise ValueError(msg)
-        object.__setattr__(self, "ez", self.ex.cross(self.ey))
+        object.__setattr__(self, "z_axis", self.x_axis.cross(self.y_axis))
 
     @classmethod
     def parse(cls, text: str) -> Rotation:
@@ -129,25 +138,25 @@ class Rotation:
     @property
     def name(self) -> str:
         """The canonical name: images of local x and y, for example ``"+y-x"``."""
-        return axis_name(self.ex) + axis_name(self.ey)
+        return axis_name(self.x_axis) + axis_name(self.y_axis)
 
-    def apply(self, vector: Vec3) -> Vec3:
+    def apply(self, vector: Vector) -> Vector:
         """Rotate a vector."""
-        ex, ey, ez = self.ex, self.ey, self.ez
-        return Vec3(
-            ex.x * vector.x + ey.x * vector.y + ez.x * vector.z,
-            ex.y * vector.x + ey.y * vector.y + ez.y * vector.z,
-            ex.z * vector.x + ey.z * vector.y + ez.z * vector.z,
+        x, y, z = self.x_axis, self.y_axis, self.z_axis
+        return Vector(
+            x.x * vector.x + y.x * vector.y + z.x * vector.z,
+            x.y * vector.x + y.y * vector.y + z.y * vector.z,
+            x.z * vector.x + y.z * vector.y + z.z * vector.z,
         )
 
     def inverse(self) -> Rotation:
         """Return the rotation that undoes this one."""
-        ex, ey, ez = self.ex, self.ey, self.ez
-        return Rotation(Vec3(ex.x, ey.x, ez.x), Vec3(ex.y, ey.y, ez.y))
+        x, y, z = self.x_axis, self.y_axis, self.z_axis
+        return Rotation(Vector(x.x, y.x, z.x), Vector(x.y, y.y, z.y))
 
     def __matmul__(self, other: Rotation) -> Rotation:
         """Compose rotations: ``(a @ b).apply(v) == a.apply(b.apply(v))``."""
-        return Rotation(self.apply(other.ex), self.apply(other.ey))
+        return Rotation(self.apply(other.x_axis), self.apply(other.y_axis))
 
     def __str__(self) -> str:
         return self.name
@@ -156,7 +165,7 @@ class Rotation:
 IDENTITY: Final = Rotation(AXES["+x"], AXES["+y"])
 
 ROTATIONS: Final[tuple[Rotation, ...]] = tuple(
-    Rotation(ex, ey) for ex in AXES.values() for ey in AXES.values() if ex.dot(ey) == 0
+    Rotation(x, y) for x in AXES.values() for y in AXES.values() if x.dot(y) == 0
 )
 """All 24 grid rotations."""
 
@@ -165,40 +174,43 @@ ROTATIONS: Final[tuple[Rotation, ...]] = tuple(
 class Pose:
     """A rigid placement: rotate about the local origin, then translate."""
 
-    rot: Rotation = IDENTITY
-    pos: Vec3 = ORIGIN
+    rotation: Rotation = IDENTITY
+    position: Vector = ORIGIN
 
-    def apply(self, point: Vec3) -> Vec3:
+    def apply(self, point: Vector) -> Vector:
         """Map a point from the local frame to the parent frame."""
-        return self.rot.apply(point) + self.pos
+        return self.rotation.apply(point) + self.position
 
-    def apply_direction(self, direction: Vec3) -> Vec3:
+    def apply_direction(self, direction: Vector) -> Vector:
         """Map a direction from the local frame to the parent frame."""
-        return self.rot.apply(direction)
+        return self.rotation.apply(direction)
 
     def __matmul__(self, inner: Pose) -> Pose:
         """Compose poses: ``(outer @ inner).apply(p) == outer.apply(inner.apply(p))``."""
-        return Pose(self.rot @ inner.rot, self.apply(inner.pos))
+        return Pose(self.rotation @ inner.rotation, self.apply(inner.position))
 
 
 @dataclass(frozen=True, slots=True)
 class Box:
-    """A half-open, axis-aligned box ``[lo, hi)`` with integer corners."""
+    """A half-open, axis-aligned box ``[min, max)`` with integer corners."""
 
-    lo: Vec3
-    hi: Vec3
+    min: Vector
+    """The minimum corner: the smallest coordinate on every axis."""
+
+    max: Vector
+    """The maximum corner: the largest coordinate on every axis."""
 
     def __post_init__(self) -> None:
-        if self.lo.x > self.hi.x or self.lo.y > self.hi.y or self.lo.z > self.hi.z:
-            msg = f"box corners out of order: {self.lo} > {self.hi}"
+        if self.min.x > self.max.x or self.min.y > self.max.y or self.min.z > self.max.z:
+            msg = f"box corners out of order: {self.min} > {self.max}"
             raise ValueError(msg)
 
     @classmethod
-    def spanning(cls, a: Vec3, b: Vec3) -> Box:
+    def spanning(cls, a: Vector, b: Vector) -> Box:
         """Return the box with opposite corners ``a`` and ``b``, in any order."""
         return cls(
-            Vec3(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)),
-            Vec3(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)),
+            Vector(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z)),
+            Vector(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z)),
         )
 
     @classmethod
@@ -213,29 +225,35 @@ class Box:
             msg = "cannot bound an empty set of boxes"
             raise ValueError(msg)
         return cls(
-            Vec3(
-                min(b.lo.x for b in boxes), min(b.lo.y for b in boxes), min(b.lo.z for b in boxes)
+            Vector(
+                min(b.min.x for b in boxes),
+                min(b.min.y for b in boxes),
+                min(b.min.z for b in boxes),
             ),
-            Vec3(
-                max(b.hi.x for b in boxes), max(b.hi.y for b in boxes), max(b.hi.z for b in boxes)
+            Vector(
+                max(b.max.x for b in boxes),
+                max(b.max.y for b in boxes),
+                max(b.max.z for b in boxes),
             ),
         )
 
     @property
-    def size(self) -> Vec3:
+    def size(self) -> Vector:
         """Extent along each axis."""
-        return self.hi - self.lo
+        return self.max - self.min
 
     @property
     def bounds(self) -> Box:
         """The box itself, so a box and a :class:`Convex` both answer ``bounds``."""
         return self
 
-    def corners(self) -> tuple[Vec3, ...]:
+    def corners(self) -> tuple[Vector, ...]:
         """The eight corners: bit 1 of the index picks the high x, bit 2 high y, bit 4 high z."""
-        lo, hi = self.lo, self.hi
+        low, high = self.min, self.max
         return tuple(
-            Vec3(hi.x if i & 1 else lo.x, hi.y if i & 2 else lo.y, hi.z if i & 4 else lo.z)
+            Vector(
+                high.x if i & 1 else low.x, high.y if i & 2 else low.y, high.z if i & 4 else low.z
+            )
             for i in range(8)
         )
 
@@ -253,23 +271,23 @@ class Box:
         size = self.size
         return size.x * size.y * size.z
 
-    def contains(self, point: Vec3) -> bool:
+    def contains(self, point: Vector) -> bool:
         """Return whether a point lies in the box, counting low faces in and high faces out."""
         return (
-            self.lo.x <= point.x < self.hi.x
-            and self.lo.y <= point.y < self.hi.y
-            and self.lo.z <= point.z < self.hi.z
+            self.min.x <= point.x < self.max.x
+            and self.min.y <= point.y < self.max.y
+            and self.min.z <= point.z < self.max.z
         )
 
     def overlaps(self, other: Box) -> bool:
         """Return whether the boxes share positive volume; touching faces do not count."""
         return (
-            self.lo.x < other.hi.x
-            and other.lo.x < self.hi.x
-            and self.lo.y < other.hi.y
-            and other.lo.y < self.hi.y
-            and self.lo.z < other.hi.z
-            and other.lo.z < self.hi.z
+            self.min.x < other.max.x
+            and other.min.x < self.max.x
+            and self.min.y < other.max.y
+            and other.min.y < self.max.y
+            and self.min.z < other.max.z
+            and other.min.z < self.max.z
         )
 
     def intersection(self, other: Box) -> Box | None:
@@ -277,17 +295,21 @@ class Box:
         if not self.overlaps(other):
             return None
         return Box(
-            Vec3(
-                max(self.lo.x, other.lo.x), max(self.lo.y, other.lo.y), max(self.lo.z, other.lo.z)
+            Vector(
+                max(self.min.x, other.min.x),
+                max(self.min.y, other.min.y),
+                max(self.min.z, other.min.z),
             ),
-            Vec3(
-                min(self.hi.x, other.hi.x), min(self.hi.y, other.hi.y), min(self.hi.z, other.hi.z)
+            Vector(
+                min(self.max.x, other.max.x),
+                min(self.max.y, other.max.y),
+                min(self.max.z, other.max.z),
             ),
         )
 
     def transformed(self, pose: Pose) -> Box:
         """Return the box placed by a pose; grid rotations keep boxes axis-aligned."""
-        return Box.spanning(pose.apply(self.lo), pose.apply(self.hi))
+        return Box.spanning(pose.apply(self.min), pose.apply(self.max))
 
 
 _BOX_FACES: Final = (
@@ -301,7 +323,7 @@ _BOX_FACES: Final = (
 """Faces of a box by :meth:`Box.corners` index, counter-clockwise seen from outside."""
 
 
-type Plane = tuple[Vec3, int]
+type Plane = tuple[Vector, int]
 """An outward normal and an offset: points ``p`` with ``normal.dot(p) <= offset`` are inside."""
 
 
@@ -318,16 +340,16 @@ class Convex:
             solid is not convex.
     """
 
-    vertices: tuple[Vec3, ...]
+    vertices: tuple[Vector, ...]
     faces: tuple[tuple[int, ...], ...]
     planes: tuple[Plane, ...] = field(init=False, repr=False, compare=False)
     bounds: Box = field(init=False, repr=False, compare=False)
-    directions: tuple[Vec3, ...] = field(init=False, repr=False, compare=False)
+    directions: tuple[Vector, ...] = field(init=False, repr=False, compare=False)
     """The distinct directions of the edges, each as a primitive vector."""
 
     def __post_init__(self) -> None:
         planes: list[Plane] = []
-        directions: set[Vec3] = set()
+        directions: set[Vector] = set()
         for face in self.faces:
             corners = [self.vertices[i] for i in face]
             normal = _primitive(_newell(corners))
@@ -348,7 +370,9 @@ class Convex:
         xs, ys, zs = zip(*(v.as_tuple() for v in self.vertices), strict=True)
         object.__setattr__(self, "planes", tuple(planes))
         object.__setattr__(
-            self, "bounds", Box(Vec3(min(xs), min(ys), min(zs)), Vec3(max(xs), max(ys), max(zs)))
+            self,
+            "bounds",
+            Box(Vector(min(xs), min(ys), min(zs)), Vector(max(xs), max(ys), max(zs))),
         )
         object.__setattr__(self, "directions", tuple(sorted(directions)))
 
@@ -357,32 +381,32 @@ class Convex:
         cls,
         polygon: Sequence[tuple[int, int]],
         axis: Literal["x", "y", "z"],
-        lo: int,
-        hi: int,
+        start: int,
+        end: int,
     ) -> Convex:
-        """Extrude a convex polygon along an axis, from ``lo`` to ``hi``.
+        """Extrude a convex polygon along an axis, from ``start`` to ``end``.
 
         The polygon runs counter-clockwise in its plane, in coordinates ``(a, b)`` chosen so that
         a, b and the axis are right-handed: ``(x, y)`` along z, ``(y, z)`` along x, and
         ``(z, x)`` along y.
 
         Raises:
-            ValueError: If the polygon is not convex and counter-clockwise, or ``lo >= hi``.
+            ValueError: If the polygon is not convex and counter-clockwise, or ``start >= end``.
         """
-        if lo >= hi:
-            msg = f"a prism needs lo < hi, not {lo} and {hi}"
+        if start >= end:
+            msg = f"a prism needs start < end, not {start} and {end}"
             raise ValueError(msg)
 
-        def point(a: int, b: int, c: int) -> Vec3:
+        def point(a: int, b: int, c: int) -> Vector:
             if axis == "z":
-                return Vec3(a, b, c)
+                return Vector(a, b, c)
             if axis == "x":
-                return Vec3(c, a, b)
-            return Vec3(b, c, a)
+                return Vector(c, a, b)
+            return Vector(b, c, a)
 
         n = len(polygon)
-        vertices = tuple(point(a, b, lo) for a, b in polygon) + tuple(
-            point(a, b, hi) for a, b in polygon
+        vertices = tuple(point(a, b, start) for a, b in polygon) + tuple(
+            point(a, b, end) for a, b in polygon
         )
         bottom = tuple(reversed(range(n)))
         top = tuple(range(n, 2 * n))
@@ -393,7 +417,7 @@ class Convex:
         """Return the solid placed by a pose; proper rotations keep faces wound outward."""
         return Convex(tuple(pose.apply(v) for v in self.vertices), self.faces)
 
-    def contains(self, point: Vec3) -> bool:
+    def contains(self, point: Vector) -> bool:
         """Return whether a point lies in the solid.
 
         A point on a face counts as inside when the face looks toward lower coordinates (its
@@ -406,7 +430,7 @@ class Convex:
                 return False
         return True
 
-    def extent(self, axis: Vec3) -> tuple[int, int]:
+    def extent(self, axis: Vector) -> tuple[int, int]:
         """The lowest and highest values of ``axis.dot(corner)`` over the corners."""
         values = [axis.dot(v) for v in self.vertices]
         return min(values), max(values)
@@ -434,9 +458,9 @@ def overlaps(a: Solid, b: Solid) -> bool:
     for axis in axes:
         if axis == ORIGIN:
             continue
-        a_lo, a_hi = first.extent(axis)
-        b_lo, b_hi = second.extent(axis)
-        if a_hi <= b_lo or b_hi <= a_lo:
+        a_low, a_high = first.extent(axis)
+        b_low, b_high = second.extent(axis)
+        if a_high <= b_low or b_high <= a_low:
             return False
     return True
 
@@ -446,31 +470,31 @@ def _box_convex(box: Box) -> Convex:
     return Convex(box.corners(), _BOX_FACES)
 
 
-def _newell(points: Sequence[Vec3]) -> Vec3:
+def _newell(points: Sequence[Vector]) -> Vector:
     """Newell's normal of a polygon: outward for corners counter-clockwise seen from outside."""
     x = y = z = 0
     for p, q in zip(points, [*points[1:], points[0]], strict=True):
         x += (p.y - q.y) * (p.z + q.z)
         y += (p.z - q.z) * (p.x + q.x)
         z += (p.x - q.x) * (p.y + q.y)
-    return Vec3(x, y, z)
+    return Vector(x, y, z)
 
 
-def _primitive(vector: Vec3) -> Vec3:
+def _primitive(vector: Vector) -> Vector:
     """The vector divided by the greatest common divisor of its components."""
     divisor = gcd(vector.x, vector.y, vector.z)
     if divisor == 0:
         return vector
-    return Vec3(vector.x // divisor, vector.y // divisor, vector.z // divisor)
+    return Vector(vector.x // divisor, vector.y // divisor, vector.z // divisor)
 
 
-def _direction(vector: Vec3) -> Vec3:
+def _direction(vector: Vector) -> Vector:
     """A primitive vector along the same line, its first nonzero component positive."""
     primitive = _primitive(vector)
     return -primitive if _looks_up(-primitive) else primitive
 
 
-def _looks_up(vector: Vec3) -> bool:
+def _looks_up(vector: Vector) -> bool:
     """Whether the first nonzero component is positive."""
     for component in vector:
         if component:

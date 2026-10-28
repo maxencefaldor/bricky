@@ -10,7 +10,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from bricky.geometry import Pose, Solid, Vec3
+from bricky.geometry import Pose, Solid, Vector
 from bricky.units import STUD
 
 
@@ -34,15 +34,15 @@ class Connector:
     """A connection point, in its part's local frame or in world space."""
 
     kind: ConnectorKind
-    pos: Vec3
+    position: Vector
     """Center of the interface, on the part's face."""
 
-    normal: Vec3
+    normal: Vector
     """Outward unit axis."""
 
     def transformed(self, pose: Pose) -> Connector:
         """Return this connector placed by a pose."""
-        return Connector(self.kind, pose.apply(self.pos), pose.apply_direction(self.normal))
+        return Connector(self.kind, pose.apply(self.position), pose.apply_direction(self.normal))
 
 
 class Family(StrEnum):
@@ -285,7 +285,7 @@ class Part:
     id: str
     name: str
     family: Family
-    size: Vec3
+    size: Vector
     solids: tuple[Solid, ...]
     connectors: tuple[Connector, ...]
     note: str = ""

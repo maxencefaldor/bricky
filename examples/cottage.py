@@ -51,8 +51,8 @@ def lay(
             while start < j:
                 n = next(k for k in BRICKS if k <= j - start)
                 x, y = cells[start]
-                rot = "R90" if along_x else "R0"
-                builder.place(BRICKS[n], at=(x, y, z), rot=rot, color=kind or WALL)
+                rotation = "R90" if along_x else "R0"
+                builder.place(BRICKS[n], at=(x, y, z), rotation=rotation, color=kind or WALL)
                 start += n
         i = j
 
@@ -68,24 +68,24 @@ def walls(builder: ModelBuilder) -> None:
         for x in (X0, X1 - 1):
             lay(builder, [(x, y) for y in ys], along_x=False, z=z, course=course)
     # The doorway's arch: an Arch 1 x 4 turned to run along x, its legs either side of the door.
-    builder.place("3659", at=(6, Y0, BASE + 6), rot="R90", color=WALL, name="door-arch")
+    builder.place("3659", at=(6, Y0, BASE + 6), rotation="R90", color=WALL, id="door-arch")
     # The sign: a brick with a stud on its front, and a tile turned upright onto that stud.
-    builder.place("87087", at=(11, Y0, BASE + 3), color=WALL, name="sign-holder")
-    builder.place("3070b", at=(11, Y0 - 0.4, BASE + 3.25), rot="+x+z", color="Blue", name="sign")
+    builder.place("87087", at=(11, Y0, BASE + 3), color=WALL, id="sign-holder")
+    builder.place("3070b", at=(11, Y0 - 0.4, BASE + 3.25), rotation="+x+z", color="Blue", id="sign")
 
 
 def roof(builder: ModelBuilder) -> None:
     """Plates over the walls, then three levels of slopes and a ridge of cheese slopes."""
     z = BASE + 3 * COURSES
     for y in range(Y0 - 1, Y1 + 1, 2):  # a 12 x 8 plate layer, overhanging a stud all round
-        builder.place("3034", at=(X0 - 1, y, z), rot="R90", color="Dark Bluish Gray")
-        builder.place("3020", at=(X0 + 7, y, z), rot="R90", color="Dark Bluish Gray")
+        builder.place("3034", at=(X0 - 1, y, z), rotation="R90", color="Dark Bluish Gray")
+        builder.place("3020", at=(X0 + 7, y, z), rotation="R90", color="Dark Bluish Gray")
     z += 1
     lo, hi = Y0 - 1, Y1 + 1
     while True:
         for x in range(X0 - 1, X1 + 1, 4):
             builder.place("3037", at=(x, lo, z), color="Red")  # Slope 45 2 x 4, falls to -y
-            builder.place("3037", at=(x, hi - 2, z), rot="R180", color="Red")  # falls to +y
+            builder.place("3037", at=(x, hi - 2, z), rotation="R180", color="Red")  # falls to +y
         if hi - lo == 4:
             break
         for x in range(X0 - 1, X1 + 1, 2):  # the gable: bricks the next level stands on
@@ -95,7 +95,7 @@ def roof(builder: ModelBuilder) -> None:
     # The ridge: cheese slopes on the studs of the last two slopes' flat tops.
     for x in range(X0 - 1, X1 + 1):
         builder.place("54200", at=(x, lo + 1, z + 3), color="Red")  # falls to -y
-        builder.place("54200", at=(x, hi - 2, z + 3), rot="R180", color="Red")  # falls to +y
+        builder.place("54200", at=(x, hi - 2, z + 3), rotation="R180", color="Red")  # falls to +y
 
 
 def garden(builder: ModelBuilder) -> None:
@@ -106,7 +106,7 @@ def garden(builder: ModelBuilder) -> None:
     builder.place("15573", at=(4, 1, BASE), color="Black")  # Jumper 1 x 2, along y
     for level in range(3):
         builder.place("3062b", at=(4, 1.5, BASE + 1 + 3 * level), color="Black")  # round brick
-    builder.place("4073", at=(4, 1.5, BASE + 10), color="Trans-Yellow", name="lamp")
+    builder.place("4073", at=(4, 1.5, BASE + 10), color="Trans-Yellow", id="lamp")
     # A round bush.
     builder.place("3941", at=(12, 1, BASE), color="Green")  # Brick, Round 2 x 2
     builder.place("4032", at=(12, 1, BASE + 3), color="Bright Light Orange")  # flowers
@@ -114,7 +114,7 @@ def garden(builder: ModelBuilder) -> None:
 
 def build() -> ModelBuilder:
     builder = ModelBuilder("cottage")
-    builder.place("3867", at=(0, 0, 0), color="Green", name="baseplate")  # Baseplate 16 x 16
+    builder.place("3867", at=(0, 0, 0), color="Green", id="baseplate")  # Baseplate 16 x 16
     walls(builder)
     roof(builder)
     garden(builder)

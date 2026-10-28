@@ -23,7 +23,7 @@ def build() -> ModelBuilder:
         builder.instance("column", at=(index * SPACING, 0, 0))
 
     top = 3 * HEIGHT
-    builder.place("3034", at=(0, 0, top), rot="R90", color="Dark Tan")
-    builder.place("3034", at=(8, 0, top), rot="R90", color="Dark Tan")
-    builder.place("3034", at=(4, 0, top + 1), rot="R90", color="Dark Tan")
+    builder.place("3034", at=(0, 0, top), rotation="R90", color="Dark Tan")
+    builder.place("3034", at=(8, 0, top), rotation="R90", color="Dark Tan")
+    builder.place("3034", at=(4, 0, top + 1), rotation="R90", color="Dark Tan")
     return builder

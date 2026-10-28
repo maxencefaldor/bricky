@@ -32,10 +32,10 @@ def test_renumbered_elements_are_unchanged():
 
 def test_an_element_moved_or_recoloured_under_its_id_has_changed():
     before, after = ModelBuilder("m"), ModelBuilder("m")
-    before.place("3001", at=(0, 0, 0), color="Red", name="base")
-    before.place("3022", at=(0, 0, 3), color="Tan", name="cap")
-    after.place("3001", at=(0, 0, 0), color="Blue", name="base")  # recoloured
-    after.place("3022", at=(0, 2, 3), color="Tan", name="cap")  # moved two studs north
+    before.place("3001", at=(0, 0, 0), color="Red", id="base")
+    before.place("3022", at=(0, 0, 3), color="Tan", id="cap")
+    after.place("3001", at=(0, 0, 0), color="Blue", id="base")  # recoloured
+    after.place("3022", at=(0, 2, 3), color="Tan", id="cap")  # moved two studs north
     result = diff(before, after)
     assert result.changed == ("base", "cap")
     assert (result.added, result.removed, result.unchanged) == ((), (), 0)
@@ -45,8 +45,8 @@ def test_an_element_moved_or_recoloured_under_its_id_has_changed():
 
 def test_another_part_under_the_same_id_is_added_and_removed():
     before, after = ModelBuilder("m"), ModelBuilder("m")
-    before.place("3001", at=(0, 0, 0), color="Red", name="base")
-    after.place("3020", at=(0, 0, 0), color="Red", name="base")  # a plate instead of a brick
+    before.place("3001", at=(0, 0, 0), color="Red", id="base")
+    after.place("3020", at=(0, 0, 0), color="Red", id="base")  # a plate instead of a brick
     result = diff(before, after)
     assert (result.added, result.removed, result.changed) == (("base",), ("base",), ())
     assert (result.filled, result.emptied, result.recoloured) == (0, 2 * 4 * 2, 0)
@@ -54,10 +54,10 @@ def test_another_part_under_the_same_id_is_added_and_removed():
 
 def test_a_part_turned_onto_itself_is_unchanged_and_one_turned_round_is_not():
     before, after = ModelBuilder("m"), ModelBuilder("m")
-    before.place("3003", at=(0, 0, 0), color="Red", name="square")  # Brick 2 x 2
-    before.place("3040", at=(4, 0, 0), color="Red", name="slope")  # Slope 45 2 x 1
-    after.place("3003", at=(0, 0, 0), rot="R180", color="Red", name="square")
-    after.place("3040", at=(4, 0, 0), rot="R180", color="Red", name="slope")
+    before.place("3003", at=(0, 0, 0), color="Red", id="square")  # Brick 2 x 2
+    before.place("3040", at=(4, 0, 0), color="Red", id="slope")  # Slope 45 2 x 1
+    after.place("3003", at=(0, 0, 0), rotation="R180", color="Red", id="square")
+    after.place("3040", at=(4, 0, 0), rotation="R180", color="Red", id="slope")
     result = diff(before, after)
     assert result.unchanged == 1
     assert result.changed == ("slope",)
@@ -75,8 +75,8 @@ placements = st.tuples(
 
 def build(name: str, parts: list[tuple[str, int, int, int, str, str]]) -> ModelBuilder:
     builder = ModelBuilder(name)
-    for part, x, y, z, rot, color in parts:
-        builder.place(part, at=(x, y, z), rot=rot, color=color)
+    for part, x, y, z, rotation, color in parts:
+        builder.place(part, at=(x, y, z), rotation=rotation, color=color)
     return builder
 
 

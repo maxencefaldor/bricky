@@ -22,7 +22,7 @@ from bricky.analysis.links import receptor_index
 from bricky.catalog import Catalog, ColorType, ConnectorKind
 from bricky.diagnostics import Region, Report, Severity
 from bricky.errors import BrickyError
-from bricky.geometry import AXES, Box, Convex, Vec3
+from bricky.geometry import AXES, Box, Convex, Vector
 from bricky.model import Model
 from bricky.provenance import Frame, Provenance
 from bricky.units import PLATE, STUD, STUD_HEIGHT, plates, studs, to_plates, to_studs
@@ -227,7 +227,7 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
     studs_ = _exposed_studs(world)
     body = Box.bounding(p.bounds for p in placed)
     axes = list(AXES.values())
-    tips = [Vec3(x, y, z) + axes[axis] * STUD_HEIGHT for x, y, z, axis, _ in studs_]
+    tips = [Vector(x, y, z) + axes[axis] * STUD_HEIGHT for x, y, z, axis, _ in studs_]
     framed = Box.bounding([body, *(Box(tip, tip) for tip in tips)])
     bounds = _cut(framed, clips)
     return Scene(
@@ -242,7 +242,7 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
         labels=labels,
         marks=marks,
         clips=list(clips),
-        bounds=(*bounds.lo, *bounds.hi),
+        bounds=(*bounds.min, *bounds.max),
     )
 
 
@@ -328,7 +328,7 @@ def _boxes(  # noqa: PLR0913 - keyword-only options, one per concern
     else:
         masks = [ALL_FACES] * len(solids)
     return [
-        (solid.lo.x, solid.lo.y, solid.lo.z, solid.hi.x, solid.hi.y, solid.hi.z, i, mask)
+        (solid.min.x, solid.min.y, solid.min.z, solid.max.x, solid.max.y, solid.max.z, i, mask)
         for (solid, i), mask in zip(solids, masks, strict=True)
     ]
 
@@ -388,11 +388,11 @@ def _exposed_studs(world: World) -> list[tuple[int, int, int, int, int]]:
     """Every stud not seated in another part's receptor, where it would be hidden."""
     receptors = receptor_index(world)
     return [
-        (c.pos.x, c.pos.y, c.pos.z, _AXIS_CODES[c.normal], i)
+        (c.position.x, c.position.y, c.position.z, _AXIS_CODES[c.normal], i)
         for i, p in enumerate(world.placed)
         for c in p.connectors
         if c.kind is ConnectorKind.STUD
-        and not any(j != i for j in receptors.get((c.pos, -c.normal), ()))
+        and not any(j != i for j in receptors.get((c.position, -c.normal), ()))
     ]
 
 
@@ -402,7 +402,7 @@ def _cut(bounds: Box, clips: Sequence[Clip]) -> Box:
     Raises:
         BrickyError: If the clips keep nothing.
     """
-    lo, hi = list(bounds.lo), list(bounds.hi)
+    lo, hi = list(bounds.min), list(bounds.max)
     for clip in clips:
         axis = "xyz".index(clip.axis)
         if clip.keep == "below":
@@ -413,7 +413,7 @@ def _cut(bounds: Box, clips: Sequence[Clip]) -> Box:
         cut = ", ".join(str(clip) for clip in clips)
         msg = f"the cut {cut} leaves nothing of the model to draw"
         raise BrickyError(msg)
-    return Box(Vec3(*lo), Vec3(*hi))
+    return Box(Vector(*lo), Vector(*hi))
 
 
 def _mark_kind(severity: Severity) -> Literal["error", "warning"] | None:
@@ -513,8 +513,8 @@ def _kept(box: Box, clip: Clip) -> bool:
     """Whether a box lies wholly on the side of a clip plane that stays visible."""
     axis = "xyz".index(clip.axis)
     if clip.keep == "below":
-        return tuple(box.hi)[axis] <= clip.value
-    return tuple(box.lo)[axis] >= clip.value
+        return tuple(box.max)[axis] <= clip.value
+    return tuple(box.min)[axis] >= clip.value
 
 
 def visible_faces(boxes: Sequence[Box], opaque: Sequence[bool]) -> list[int]:
@@ -523,7 +523,7 @@ def visible_faces(boxes: Sequence[Box], opaque: Sequence[bool]) -> list[int]:
     Bit ``2 * axis`` is the low face along that axis and bit ``2 * axis + 1`` the high face. A face
     is hidden when the opaque boxes whose opposite faces lie in the same plane cover it entirely.
     """
-    corners = [(tuple(box.lo), tuple(box.hi)) for box in boxes]
+    corners = [(tuple(box.min), tuple(box.max)) for box in boxes]
     # Opaque faces by plane (axis, which side of their box, coordinate), bucketed on a coarse grid.
     planes: dict[tuple[int, int, int], dict[tuple[int, int], list[int]]] = {}
     for j, (lo, hi) in enumerate(corners):

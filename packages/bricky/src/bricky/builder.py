@@ -15,19 +15,19 @@ from typing import Final
 from pydantic import TypeAdapter
 
 from bricky.catalog import Catalog, default_catalog
-from bricky.geometry import ORIGIN, Box, Pose, Rotation, Vec3
+from bricky.geometry import ORIGIN, Box, Pose, Rotation, Vector
 from bricky.model import Component, Element, Identifier, Instance, Model
 from bricky.provenance import Provenance, ScopeSources, Source, capture
 from bricky.units import plates, studs
 
-type Point = Sequence[float]
+type Coordinates = Sequence[float]
 """``(x, y, z)`` with x and y in studs and z in plates."""
 
 _IDENTIFIER: Final = TypeAdapter(Identifier)
 
 
-def to_units(at: Point) -> Vec3:
-    """Convert a point in studs, studs and plates to base units.
+def to_base_units(at: Coordinates) -> Vector:
+    """Convert coordinates in studs, studs and plates to base units.
 
     Raises:
         ValueError: If the point does not have three coordinates or lands off the grid.
@@ -37,7 +37,7 @@ def to_units(at: Point) -> Vec3:
     except ValueError:
         msg = f"expected (x, y, z), got {tuple(at)!r}"
         raise ValueError(msg) from None
-    return Vec3(studs(x), studs(y), plates(z))
+    return Vector(studs(x), studs(y), plates(z))
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,7 +47,7 @@ class _PendingInstance:
     id: str
     component: str
     rotation: Rotation
-    corner: Vec3
+    corner: Vector
 
 
 class _Scope:
@@ -63,7 +63,9 @@ class _Scope:
         self.element_sources: dict[str, Source] = {}
         self.instance_sources: dict[str, Source] = {}
 
-    def place(self, part: str, at: Point, color: int | str, rot: str, name: str | None) -> str:
+    def place(
+        self, part: str, at: Coordinates, color: int | str, rotation: str, id: str | None
+    ) -> str:
         definition = self.catalog.part(part)
         if definition is None:
             entry = self.catalog.entry(part)
@@ -75,46 +77,47 @@ class _Scope:
                     "placed; `bricky parts <words>` lists parts that can be"
                 )
             raise ValueError(msg)
-        rotation = Rotation.parse(rot)
-        footprint = Box(ORIGIN, definition.size).transformed(Pose(rotation))
-        corner = to_units(at)
-        pos = corner - footprint.lo
+        parsed = Rotation.parse(rotation)
+        footprint = Box(ORIGIN, definition.size).transformed(Pose(parsed))
+        corner = to_base_units(at)
         color_id = self.catalog.resolve_color(color).id
         element = Element(
-            id=self.claim(name, "e"),
+            id=self.claim(id, "e"),
             part=definition.id,
             color=color_id,
-            rot=rotation.name,
-            pos=pos.as_tuple(),
+            rotation=parsed.name,
+            position=(corner - footprint.min).as_tuple(),
         )
         self.elements.append(element)
         self.extents.append(Box(corner, corner + footprint.size))
         self.record(self.element_sources, element.id)
         return element.id
 
-    def instance(self, component: str, at: Point, rot: str, name: str | None) -> str:
-        rotation = Rotation.parse(rot)
-        corner = to_units(at)
+    def instance(self, component: str, at: Coordinates, rotation: str, id: str | None) -> str:
         pending = _PendingInstance(
-            id=self.claim(name, "i"), component=component, rotation=rotation, corner=corner
+            id=self.claim(id, "i"),
+            component=component,
+            rotation=Rotation.parse(rotation),
+            corner=to_base_units(at),
         )
         self.instances.append(pending)
         self.record(self.instance_sources, pending.id)
         return pending.id
 
-    def claim(self, name: str | None, prefix: str) -> str:
-        if name is not None:
-            _IDENTIFIER.validate_python(name)
-            if name in self.ids:
-                msg = f"id {name!r} is already used in {self.label}"
+    def claim(self, id: str | None, prefix: str) -> str:
+        """Claim an id in this scope: the one given, or the next free one with the prefix."""
+        if id is not None:
+            _IDENTIFIER.validate_python(id)
+            if id in self.ids:
+                msg = f"id {id!r} is already used in {self.label}"
                 raise ValueError(msg)
         else:
             number = len(self.ids) + 1
             while f"{prefix}{number}" in self.ids:
                 number += 1
-            name = f"{prefix}{number}"
-        self.ids.add(name)
-        return name
+            id = f"{prefix}{number}"
+        self.ids.add(id)
+        return id
 
     @staticmethod
     def record(table: dict[str, Source], key: str) -> None:
@@ -140,17 +143,16 @@ class _Scope:
                     f"places unknown component {pending.component!r}"
                 )
                 raise ValueError(msg)
-            turned = box.transformed(Pose(pending.rotation))
-            pos = pending.corner - turned.lo
+            rotated = box.transformed(Pose(pending.rotation))
             instances.append(
                 Instance(
                     id=pending.id,
                     component=pending.component,
-                    rot=pending.rotation.name,
-                    pos=pos.as_tuple(),
+                    rotation=pending.rotation.name,
+                    position=(pending.corner - rotated.min).as_tuple(),
                 )
             )
-            extents.append(Box(pending.corner, pending.corner + turned.size))
+            extents.append(Box(pending.corner, pending.corner + rotated.size))
         bounds = Box.bounding(extents) if extents else None
         return tuple(self.elements), tuple(instances), bounds
 
@@ -168,43 +170,43 @@ class _Placer:
     def place(
         self,
         part: str,
-        at: Point,
+        at: Coordinates,
         *,
         color: int | str,
-        rot: str = "R0",
-        name: str | None = None,
+        rotation: str = "R0",
+        id: str | None = None,
     ) -> str:
-        """Place a part and return its id.
+        """Place a part and return the element's id.
 
         Args:
-            part: BrickLink item number, such as ``"3001"``.
+            part: BrickLink item number, such as ``"3001"``, or another number of the part.
             at: Minimum corner of the rotated part, ``(x, y, z)`` in studs, studs and plates.
-            color: BrickLink colour id or name, such as ``"Red"``.
-            rot: Grid rotation, such as ``"R90"`` or ``"+y-x"``.
-            name: Element id; generated when omitted.
+            color: BrickLink color id or name, such as ``"Red"``.
+            rotation: Grid rotation, such as ``"R90"`` or ``"+y-x"``.
+            id: The element's id; generated when omitted.
 
         Raises:
-            ValueError: If the part, colour, rotation, position or name is invalid.
+            ValueError: If the part, color, rotation, coordinates or id is invalid.
         """
-        return self._scope.place(part, at, color, rot, name)
+        return self._scope.place(part, at, color, rotation, id)
 
     def instance(
-        self, component: str, at: Point, *, rot: str = "R0", name: str | None = None
+        self, component: str, at: Coordinates, *, rotation: str = "R0", id: str | None = None
     ) -> str:
-        """Place a copy of a component and return its id.
+        """Place a copy of a component and return the instance's id.
 
         Args:
             component: Name given to :meth:`ModelBuilder.component`.
             at: Minimum corner of the rotated component's bounding box, ``(x, y, z)`` in studs,
                 studs and plates, exactly as for :meth:`place`.
-            rot: Grid rotation, such as ``"R90"``.
-            name: Instance id; generated when omitted.
+            rotation: Grid rotation, such as ``"R90"``.
+            id: The instance's id; generated when omitted.
 
         Raises:
-            ValueError: If the rotation, position or name is invalid. Unknown and empty
+            ValueError: If the rotation, coordinates or id is invalid. Unknown and empty
                 components are reported by :meth:`ModelBuilder.build`.
         """
-        return self._scope.instance(component, at, rot, name)
+        return self._scope.instance(component, at, rotation, id)
 
 
 class ComponentBuilder(_Placer):
@@ -221,7 +223,7 @@ class ModelBuilder(_Placer):
         >>> builder = ModelBuilder("wall")
         >>> builder.place("3001", at=(0, 0, 0), color="Red")
         'e1'
-        >>> builder.place("3001", at=(0, 2, 3), color="Red", rot="R90")
+        >>> builder.place("3001", at=(0, 2, 3), color="Red", rotation="R90")
         'e2'
         >>> builder.build().element_count()
         2
