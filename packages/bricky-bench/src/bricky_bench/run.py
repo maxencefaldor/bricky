@@ -24,8 +24,8 @@ from typing import Final
 
 from pydantic import BaseModel, Field, ValidationError
 
-from bricky import cells
-from bricky.analysis import Cell, CellKey
+from bricky import voxels
+from bricky.analysis import Voxel, VoxelKey
 from bricky.errors import BrickyError
 from bricky.files import load_model, write_file
 from bricky.service import BuildResult, Session
@@ -130,8 +130,8 @@ class Completed:
 async def run_projects(  # noqa: PLR0913 - keyword-only options, one per concern
     projects: Sequence[Project],
     *,
-    repo: Path,
-    out: Path,
+    repository: Path,
+    output: Path,
     agent: Agent,
     repeats: int,
     jobs: int,
@@ -143,24 +143,26 @@ async def run_projects(  # noqa: PLR0913 - keyword-only options, one per concern
         BrickyError: If the repository lacks the skill or bricky's wheel cannot be built.
     """
     for needed in (SKILL, EXAMPLES):
-        if not (repo / needed).is_dir():
-            msg = f"{repo} has no {needed}; run bricky-bench from the bricky repository root"
-            raise BrickyError(msg)
-    references: dict[str, dict[CellKey, Cell]] = {}
+        if not (repository / needed).is_dir():
+            message = (
+                f"{repository} has no {needed}; run bricky-bench from the bricky repository root"
+            )
+            raise BrickyError(message)
+    references: dict[str, dict[VoxelKey, Voxel]] = {}
     for project in projects:
         if project.reference is not None:
-            references[project.id] = cells(await reference_model(project, session))
+            references[project.id] = voxels(await reference_model(project, session))
     gate = asyncio.Semaphore(jobs)
     with tempfile.TemporaryDirectory(prefix="bricky-bench-wheel-") as scratch:
-        wheel = await build_wheel(repo, Path(scratch))
+        wheel = await build_wheel(repository, Path(scratch))
 
         async def one(project: Project, repeat: int) -> Record:
             async with gate:
                 return await run_project(
                     project,
                     repeat=repeat,
-                    repo=repo,
-                    out=out / project.id / str(repeat),
+                    repository=repository,
+                    output=output / project.id / str(repeat),
                     wheel=wheel,
                     agent=agent,
                     reference=references.get(project.id),
@@ -174,7 +176,7 @@ async def run_projects(  # noqa: PLR0913 - keyword-only options, one per concern
                 for repeat in range(1, repeats + 1)
             ]
     records = [task.result() for task in tasks]
-    await asyncio.to_thread(write_summary, records, out)
+    await asyncio.to_thread(write_summary, records, output)
     return records
 
 
@@ -182,28 +184,30 @@ async def run_project(  # noqa: PLR0913 - keyword-only options, one per concern
     project: Project,
     *,
     repeat: int,
-    repo: Path,
-    out: Path,
+    repository: Path,
+    output: Path,
     wheel: Path,
     agent: Agent,
-    reference: dict[CellKey, Cell] | None,
+    reference: dict[VoxelKey, Voxel] | None,
     session: Session,
 ) -> Record:
-    """Run one project once in a fresh workspace, score it, and keep the evidence in ``out``."""
+    """Run one project once in a fresh workspace, score it, and keep the evidence in ``output``."""
     started = datetime.now(UTC)
     workspace = await asyncio.to_thread(_scratch_folder, f"bricky-{project.id}-")
     try:
-        await asyncio.to_thread(make_workspace, workspace, project, wheel=wheel, repo=repo)
+        await asyncio.to_thread(
+            make_workspace, workspace, project, wheel=wheel, repository=repository
+        )
         await _setup(workspace)
         spec = project.spec
         prompt = spec.prompt.strip() + footer(project)
         done = await execute(
             agent.argv(prompt, spec.max_turns), cwd=workspace, seconds=spec.minutes * 60
         )
-        await asyncio.to_thread(write_file, out / "transcript.jsonl", done.stdout)
-        await asyncio.to_thread(write_file, out / "agent.log", done.stderr)
+        await asyncio.to_thread(write_file, output / "transcript.jsonl", done.stdout)
+        await asyncio.to_thread(write_file, output / "agent.log", done.stderr)
         score = await score_workspace(workspace, project, reference, session)
-        await asyncio.to_thread(_keep, workspace, out / "workspace")
+        await asyncio.to_thread(_keep, workspace, output / "workspace")
     finally:
         await asyncio.to_thread(shutil.rmtree, workspace, ignore_errors=True)
     record = Record(
@@ -217,7 +221,7 @@ async def run_project(  # noqa: PLR0913 - keyword-only options, one per concern
         score=score,
     )
     await asyncio.to_thread(
-        write_file, out / "record.json", record.model_dump_json(indent=2).encode()
+        write_file, output / "record.json", record.model_dump_json(indent=2).encode()
     )
     return record
 
@@ -229,7 +233,7 @@ def footer(project: Project) -> str:
     return FOOTER.format(inputs=inputs, slug=project.slug)
 
 
-def make_workspace(workspace: Path, project: Project, *, wheel: Path, repo: Path) -> None:
+def make_workspace(workspace: Path, project: Project, *, wheel: Path, repository: Path) -> None:
     """Lay out a workspace: a uv project using bricky's wheel, the skill, examples and inputs.
 
     Versions of bricky's own dependencies are pinned to the runner's, so renders find the same
@@ -249,34 +253,36 @@ def make_workspace(workspace: Path, project: Project, *, wheel: Path, repo: Path
         ]
     )
     (workspace / "pyproject.toml").write_text(pyproject, encoding="utf-8")
-    shutil.copytree(repo / SKILL, workspace / SKILL)
+    shutil.copytree(repository / SKILL, workspace / SKILL)
     (workspace / "examples").mkdir()
-    for example in sorted((repo / EXAMPLES).glob("*.py")):
+    for example in sorted((repository / EXAMPLES).glob("*.py")):
         shutil.copy2(example, workspace / "examples" / example.name)
     if project.inputs.is_dir():
         shutil.copytree(project.inputs, workspace / "inputs")
     (workspace / "models").mkdir()
 
 
-async def build_wheel(repo: Path, out: Path) -> Path:
+async def build_wheel(repository: Path, output: Path) -> Path:
     """Build bricky's wheel from the repository and return its path.
 
     Raises:
         BrickyError: If the build fails.
     """
-    argv = ["uv", "build", "--quiet", "--package", "bricky", "--wheel", "--out-dir", str(out)]
-    done = await execute(argv, cwd=repo, seconds=_BUILD_MINUTES * 60, env=_clean_environment())
-    wheels = await asyncio.to_thread(lambda: sorted(out.glob("bricky-*.whl")))
+    argv = ["uv", "build", "--quiet", "--package", "bricky", "--wheel", "--out-dir", str(output)]
+    done = await execute(
+        argv, cwd=repository, seconds=_BUILD_MINUTES * 60, environment=_clean_environment()
+    )
+    wheels = await asyncio.to_thread(lambda: sorted(output.glob("bricky-*.whl")))
     if done.code != 0 or not wheels:
-        msg = f"could not build bricky's wheel:\n{done.stderr.decode(errors='replace')}"
-        raise BrickyError(msg)
+        message = f"could not build bricky's wheel:\n{done.stderr.decode(errors='replace')}"
+        raise BrickyError(message)
     return wheels[-1]
 
 
 async def score_workspace(
     workspace: Path,
     project: Project,
-    reference: dict[CellKey, Cell] | None,
+    reference: dict[VoxelKey, Voxel] | None,
     session: Session,
 ) -> Score:
     """Build the agent's final script in its workspace and score the model it makes."""
@@ -284,7 +290,9 @@ async def score_workspace(
     if not await asyncio.to_thread((workspace / script).is_file):
         return Score(built=False, failure=f"the agent wrote no {script.as_posix()}")
     argv = ["uv", "run", "--quiet", "bricky", "build", script.as_posix(), "--output-format", "json"]
-    done = await execute(argv, cwd=workspace, seconds=_BUILD_MINUTES * 60, env=_clean_environment())
+    done = await execute(
+        argv, cwd=workspace, seconds=_BUILD_MINUTES * 60, environment=_clean_environment()
+    )
     if done.code is None:
         return Score(built=False, failure=f"building {script.as_posix()} did not finish")
     try:
@@ -297,7 +305,7 @@ async def score_workspace(
     score = facts(result.report, result.elements)
     if reference is not None:
         model = await asyncio.to_thread(load_model, workspace / result.model)
-        score.fidelity = compare(cells(model, session.catalog), reference)
+        score.fidelity = compare(voxels(model, session.catalog), reference)
     return score
 
 
@@ -320,11 +328,11 @@ def read_transcript(done: Completed) -> AgentRun:
     return run
 
 
-def write_summary(records: Sequence[Record], out: Path) -> None:
+def write_summary(records: Sequence[Record], output: Path) -> None:
     """Write every record as JSON, and a table of them as Markdown."""
     data = [record.model_dump(mode="json") for record in records]
-    write_file(out / "summary.json", (json.dumps(data, indent=2) + "\n").encode())
-    write_file(out / "summary.md", summary_table(records).encode())
+    write_file(output / "summary.json", (json.dumps(data, indent=2) + "\n").encode())
+    write_file(output / "summary.md", summary_table(records).encode())
 
 
 def summary_table(records: Sequence[Record]) -> str:
@@ -336,7 +344,7 @@ def summary_table(records: Sequence[Record]) -> str:
         "Built",
         "Errors",
         "Shape",
-        "Colour",
+        "Color",
         "Turns",
         "Builds",
         "Minutes",
@@ -372,7 +380,7 @@ async def execute(
     *,
     cwd: Path,
     seconds: float,
-    env: dict[str, str] | None = None,
+    environment: dict[str, str] | None = None,
 ) -> Completed:
     """Run a process to its end, or stop it after ``seconds``, and return what it wrote.
 
@@ -382,14 +390,14 @@ async def execute(
     process = await asyncio.create_subprocess_exec(
         *argv,
         cwd=cwd,
-        env=env if env is not None else _clean_environment(),
+        env=environment if environment is not None else _clean_environment(),
         stdin=asyncio.subprocess.DEVNULL,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     if process.stdout is None or process.stderr is None:  # pragma: no cover - pipes requested
-        msg = "could not capture the process's output"
-        raise BrickyError(msg)
+        message = "could not capture the process's output"
+        raise BrickyError(message)
     readers = [
         asyncio.create_task(process.stdout.read()),
         asyncio.create_task(process.stderr.read()),
@@ -426,12 +434,12 @@ async def _setup(workspace: Path) -> None:
     """Create the workspace's environment, so the agent's first build starts at once."""
     done = await execute(["uv", "sync", "--quiet"], cwd=workspace, seconds=_BUILD_MINUTES * 60)
     if done.code != 0:
-        msg = f"could not set up {workspace}:\n{done.stderr.decode(errors='replace')}"
-        raise BrickyError(msg)
+        message = f"could not set up {workspace}:\n{done.stderr.decode(errors='replace')}"
+        raise BrickyError(message)
 
 
 def _clean_environment() -> dict[str, str]:
-    """This process's environment without its virtual environment, which belongs to the repo."""
+    """The environment of this process, without the repository's virtual environment."""
     venv = str(Path(sys.prefix) / "bin")
     environment = {
         key: value

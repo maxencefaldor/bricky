@@ -7,7 +7,7 @@ geometry, checks it and draws it. It answers with facts the agent can act on: di
 the script line behind every part, and pictures with rulers in studs and plates. It never fixes the
 model itself; that stays the agent's job.
 
-![The Elizabeth Tower example: iso, front, right and top views with rulers](docs/images/elizabeth-tower.png)
+![The Elizabeth Tower example: perspective, front, right and top views with rulers](docs/images/elizabeth-tower.png)
 
 > Status: v0.2. Exact-geometry kernel, a catalog of every part and color imported from BrickLink,
 > with shapes from eleven families and from the LDraw library, the digital checks, provenance from
@@ -38,7 +38,7 @@ error[E201]: base and overlap occupy the same space
 
 The picture marks the same parts, so the agent sees where they are:
 
-![The broken example, with every part a diagnostic names tinted red and labelled](docs/images/broken.png)
+![The broken example, with every part a diagnostic names tinted red and labeled](docs/images/broken.png)
 
 ## Writing a model
 
@@ -49,27 +49,27 @@ from bricky import ModelBuilder
 def build() -> ModelBuilder:
     builder = ModelBuilder("wall")
     builder.place("3001", at=(0, 0, 0), color="Red")  # Brick 2 x 4
-    builder.place("3001", at=(0, 2, 3), rotation="R90", color="Red")  # turned a quarter
+    builder.place("3001", at=(0, 2, 3), rotation="R90", color="Red")  # rotated a quarter turn
     return builder
 ```
 
 - **Coordinates:** `(x, y, z)` with x east and y north in studs, and z up in plates. A brick is three
   plates tall.
 - **Placement:** `at` is the minimum corner of the rotated bounding box of whatever is placed, a
-  part or a whole component, so turning something never moves the corner of its footprint.
-- **Rotations:** `R0`, `R90`, `R180` and `R270` turn about the vertical axis. Any of the 24 grid
+  part or a whole component, so rotating something never moves the corner of its footprint.
+- **Rotations:** `R0`, `R90`, `R180` and `R270` rotate about the vertical axis. Any of the 24 grid
   rotations can be named by the images of x and y, such as `+x-y` for upside down.
 - **Reuse:** `builder.component("column")` stores a group of parts once;
   `builder.instance("column", at=...)` places copies.
-- **Parts and colours:** ids follow the BrickLink catalog, such as `3001` and `Dark Bluish Gray`.
+- **Parts and colors:** ids follow the BrickLink catalog, such as `3001` and `Dark Bluish Gray`.
   Scripts can query the catalog: `builder.catalog.find(family="plate", size=(1, 6))`.
 - **Families:** bricks, plates, tiles and baseplates; slopes, inverted and curved slopes; round
   parts; bricks with studs on their sides; jumpers; arches. `bricky parts` says which way a part
-  faces when unturned, such as a slope falling toward -y. Shapes are exact: curves are flat facets
-  with corners on the grid, and studs on a side connect to parts turned to face them.
-- **Cells:** `cells(builder.build())` says which part and colour fill every cell, a cell being one
-  stud square and one plate tall, keyed `(x, y, z)` in the units of `at`. Comparing a model with a
-  target, a plan or another model, takes a few exact lines.
+  faces when unrotated, such as a slope falling toward -y. Shapes are exact: curves are flat facets
+  with corners on the grid, and studs on a side connect to parts rotated to face them.
+- **Voxels:** `voxels(builder.build())` maps every voxel a model fills, one stud square and one
+  plate tall, keyed `(x, y, z)` in the units of `at`, to the element and color that fill it.
+  Comparing a model with a target, a plan or another model, takes a few exact lines.
 
 ![The cottage example: slopes, an arch, round parts, a tile on a side stud and a jumper](docs/images/cottage.png)
 
@@ -85,8 +85,8 @@ for what it is best at, and every part's record says where its shape came from:
   tall. Printed parts take the shape of the part they are printed on. Every other part is
   converted from the [LDraw.org Parts Library](https://library.ldraw.org) (CC BY): its body as
   boxes on a 0.8 mm grid, its studs where LDraw draws them, its anti-studs wherever the underside
-  leaves a stud room. Where a part has both, the import compares them and reports every
-  disagreement.
+  leaves a stud room. Where a part has both, the import compares them: where they disagree,
+  the name has hidden a detail, so the part takes LDraw's shape, and the import reports it.
 
 ```sh
 uv run bricky catalog import --bricklink ~/bricklink --ldraw ~/ldraw   # either, or both
@@ -114,13 +114,13 @@ Set `catalog` in `[tool.bricky]`, or `BRICKY_CATALOG`, to use another catalog fi
   records the script lines that placed each element. The map is tied to the model's exact bytes,
   so a stale map is ignored rather than trusted.
 - **What changed since the last build**: elements added, removed, changed and unchanged, by the
-  script line that placed them, and cells filled, emptied and recoloured. Elements match by part,
-  colour and the space they take, so renumbered elements count as unchanged; an element that kept
-  its id and part but moved, turned or changed colour counts as changed. The picture outlines
+  script line that placed them, and voxels filled, emptied and recolored. Elements match by part,
+  color and the space they take, so renumbered elements count as unchanged; an element that kept
+  its id and part but moved, rotated or recolored counts as changed. The picture outlines
   what is new or changed, so an edit that did more, or less, than intended shows at once.
 - **The report**: each diagnostic states a fact (what, where, which elements) and each element
-  carries its part, colour and script line. A `by source line` summary says where to look first.
-- **The picture** (`script.png`): iso, front, right and top views. The orthographic views carry
+  carries its part, color and script line. A `by source line` summary says where to look first.
+- **The picture** (`script.png`): perspective, front, right and top views. The orthographic views carry
   rulers in the units `at` uses, so a position read off the picture is a position to write.
 
 `bricky render model.bricky.json` looks closer. It writes `model.<view>.png` beside the model, so
@@ -129,10 +129,10 @@ the picture the last build drew stays as it was:
 | Option | Does |
 | --- | --- |
 | `--views front --views top` | Single views at full size; `sheet` is all four |
-| `--highlight "lintel*"` | Highlights parts by uid pattern and draws the rest faintly |
+| `--highlight "lintel*"` | Highlights elements by uid pattern and draws the rest faintly |
 | `--highlight @horseshoe` | Highlights what a script function, file or `file:line` placed |
-| `--clip "z<120"` | Cuts the model open; z in plates, x and y in studs |
-| `--html` | Also writes a viewer people can orbit and cut in a browser |
+| `--clip "z<120"` | Clips the model open; z in plates, x and y in studs |
+| `--html` | Also writes a viewer people can orbit and clip in a browser |
 
 Renders run three.js in headless Chromium through Playwright. three.js is vendored, so renders
 work offline. Set `BRICKY_RENDER_BROWSER` to use a Chromium you already have.
@@ -142,10 +142,10 @@ work offline. Set `BRICKY_RENDER_BROWSER` to use a Chromium you already have.
 | Code | Pass | Fact |
 | --- | --- | --- |
 | E101 | schema | The part is not in the catalog |
-| E102 | schema | The colour is not in the catalog |
+| E102 | schema | The color is not in the catalog |
 | E103 | schema | A part reaches below the ground plane |
 | E201 | collision | Two parts occupy the same space |
-| E202 | collision | Studs push into a part that has no receptor there |
+| E202 | collision | Studs push into a part that has no anti-stud there |
 | E301 | connectivity | A group of parts has no connected path to the ground |
 
 `bricky explain <code>` gives the exact rule behind each one. Passes are plugins, registered under
@@ -159,13 +159,13 @@ as not installed.
 - **Claude Code:** run the CLI directly. The `build-model` skill in `.claude/skills` teaches the
   loop, and Claude Code reads the rendered PNGs.
 - **Any MCP client:** `uv run bricky-mcp` serves `build_model`, `render_model`, `check_model`,
-  `search_parts`, `list_colors`, `list_passes` and `explain_code` over stdio. Their arguments come
+  `search_parts`, `search_colors`, `list_passes` and `explain_code` over stdio. Their arguments come
   from the same request models as the CLI; builds and renders return their pictures as images.
 
 ## Benchmark
 
 [`bench/`](bench/README.md) holds ten projects, from a brick wall to Notre-Dame de Paris: prompts
-with pictures, plans, notes or a broken script to repair. Seven are scored cell by cell against a
+with pictures, plans, notes or a broken script to repair. Seven are scored voxel by voxel against a
 reference the agent never sees. `uv run bricky-bench run` runs them with Claude Code in fresh
 workspaces and keeps every transcript, model and score.
 
@@ -198,5 +198,5 @@ LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or en
 
 ## License
 
-[Apache-2.0](LICENSE). three.js, vendored for renders, is under the MIT licence in
+[Apache-2.0](LICENSE). three.js, vendored for renders, is under the MIT license in
 `packages/bricky/src/bricky/render/assets/three/LICENSE`.

@@ -1,6 +1,6 @@
 """Geometry generators for part families.
 
-A family turns a part's shape, a few numbers from the catalog, into the part's solids and
+A family converts a part's shape, a few numbers from the catalog, into the part's solids and
 connectors, so many parts share one tested definition. Every generator places the part's bounding
 box with its minimum corner at the origin, and works in exact base units (see :mod:`bricky.units`).
 
@@ -57,8 +57,8 @@ def build_part(entry: CatalogPart, shape: Shape) -> Part:
     if isinstance(shape, BoxesShape):
         bounds = Box(ORIGIN, Vector(*shape.size))
     elif bounds.min != ORIGIN:  # pragma: no cover - every family builds from the origin
-        msg = f"part {entry.id}: its bounding box starts at {bounds.min}, not at the origin"
-        raise ValueError(msg)
+        message = f"part {entry.id}: its bounding box starts at {bounds.min}, not at the origin"
+        raise ValueError(message)
     return Part(
         id=entry.id,
         name=entry.name,
@@ -97,8 +97,8 @@ def _geometry(shape: object) -> Geometry:  # noqa: C901, PLR0911 - one return pe
             return _arch(shape)
         case BoxesShape():
             return _boxes(shape)
-    msg = f"no family generates {shape!r}"  # pragma: no cover - the shape union is closed
-    raise TypeError(msg)
+    message = f"no family generates {shape!r}"  # pragma: no cover - the shape union is closed
+    raise TypeError(message)
 
 
 def _positions(width: int, length: int, rows: Iterable[int] | None = None) -> list[tuple[int, int]]:

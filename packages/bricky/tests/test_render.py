@@ -34,7 +34,7 @@ def test_clips_read_studs_and_plates():
         Clip.parse("x<0.01")
 
 
-def test_faces_pressed_against_opaque_neighbours_are_left_out():
+def test_faces_pressed_against_opaque_neighbors_are_left_out():
     lower = Box(Vector(0, 0, 0), Vector(40, 80, 24))
     upper = Box(Vector(0, 0, 24), Vector(40, 80, 48))
     offset = Box(Vector(20, 0, 48), Vector(60, 80, 72))
@@ -43,7 +43,7 @@ def test_faces_pressed_against_opaque_neighbours_are_left_out():
     assert masks[0] == ALL_FACES & ~top
     assert masks[1] == ALL_FACES & ~bottom  # its top is only half covered
     assert masks[2] & bottom
-    # A transparent neighbour hides nothing.
+    # A transparent neighbor hides nothing.
     assert visible_faces([lower, upper], [True, False])[0] == ALL_FACES
 
 
@@ -61,7 +61,7 @@ def test_scenes_mark_the_parts_diagnostics_name():
     model = builder.build()
     report = check_model(model, settings=Settings())
     scene = build_scene(model, default_catalog(), report=report)
-    flags = dict(zip(scene.uids, (part[1] for part in scene.parts), strict=True))
+    flags = dict(zip(scene.uids, (element[1] for element in scene.elements), strict=True))
     assert flags["float"] & Flag.ERROR
     assert not flags["top"] & Flag.ERROR
     assert [label.text for label in scene.labels] == ["E301 float"]
@@ -83,10 +83,10 @@ def test_highlights_select_by_uid_or_script_function():
         model, default_catalog(), provenance=provenance, highlight=["@lintels"]
     )
     for scene in (by_uid, by_function):
-        flags = dict(zip(scene.uids, (part[1] for part in scene.parts), strict=True))
+        flags = dict(zip(scene.uids, (element[1] for element in scene.elements), strict=True))
         assert flags["lintel1"] & Flag.HIGHLIGHT
         assert flags["post"] & Flag.GHOST
-    with pytest.raises(BrickyError, match="matches no part"):
+    with pytest.raises(BrickyError, match="matches no element"):
         build_scene(model, default_catalog(), highlight=["missing*"])
     with pytest.raises(BrickyError, match="needs the model's source map"):
         build_scene(model, default_catalog(), highlight=["@lintels"])
@@ -94,7 +94,7 @@ def test_highlights_select_by_uid_or_script_function():
 
 def test_scenes_mark_the_parts_new_or_changed_since_the_last_build():
     scene = build_scene(stack().build(), default_catalog(), changed=["top"])
-    flags = dict(zip(scene.uids, (part[1] for part in scene.parts), strict=True))
+    flags = dict(zip(scene.uids, (element[1] for element in scene.elements), strict=True))
     assert flags["top"] == Flag.CHANGED
     assert flags["bottom"] == 0
 
@@ -126,7 +126,7 @@ def test_the_renderer_draws_every_view_at_the_requested_size():
     async def draw() -> list[bytes]:
         async with Renderer(Settings().render_browser) as renderer:
             first = await renderer.render(scene, views, width=640, height=480)
-            again = await renderer.render(scene, [View.ISO], width=320, height=240)
+            again = await renderer.render(scene, [View.PERSPECTIVE], width=320, height=240)
         return [*first, *again]
 
     images = asyncio.run(draw())
@@ -134,17 +134,17 @@ def test_the_renderer_draws_every_view_at_the_requested_size():
     assert all(len(image) > 5000 for image in images)
 
 
-def test_parts_that_are_not_boxes_become_shapes():
+def test_elements_that_are_not_boxes_become_meshes():
     builder = ModelBuilder("mixed")
     builder.place("3001", at=(0, 0, 0), color="Red", id="brick")
     builder.place("3039", at=(0, 4, 0), color="Red", id="slope")  # Slope 45 2 x 2
     builder.place("3659", at=(3, 0, 0), color="Tan", id="arch")  # Arch 1 x 4
     scene = build_scene(builder.build(), default_catalog())
     assert {box[6] for box in scene.boxes} == {scene.uids.index("brick")}
-    shapes = {scene.uids[s.part]: s for s in scene.shapes}
-    assert set(shapes) == {"slope", "arch"}
-    assert len(shapes["slope"].faces) == 7  # a five-sided profile, extruded
-    arch = shapes["arch"]
+    meshes = {scene.uids[mesh.element]: mesh for mesh in scene.meshes}
+    assert set(meshes) == {"slope", "arch"}
+    assert len(meshes["slope"].faces) == 7  # a five-sided profile, extruded
+    arch = meshes["arch"]
     # The arch is two legs and a dozen slices; the faces they share are inside, and left out.
     assert len({frozenset(face) for face in arch.faces}) == len(arch.faces)
     corners = len(arch.vertices) // 3
@@ -152,7 +152,7 @@ def test_parts_that_are_not_boxes_become_shapes():
     assert all(0 <= corner < corners for corner in arch.edges)
 
 
-def test_shapes_are_drawn_as_their_own_profile():
+def test_meshes_are_drawn_as_their_own_profile():
     def front(part: str) -> bytes:
         builder = ModelBuilder("one")
         builder.place(part, at=(0, 0, 0), color="Red")

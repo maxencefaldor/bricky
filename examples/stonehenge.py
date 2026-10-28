@@ -13,7 +13,7 @@ import math
 from bricky import ModelBuilder
 
 WIDTH, DEPTH = 40, 48  # base, in studs
-CX, CY = 20, 20  # centre of the circle
+CX, CY = 20, 20  # center of the circle
 GROUND = 1  # top of the base plates, in plates
 BRICK = 3  # plates per brick
 
@@ -199,7 +199,7 @@ def upright(builder: ModelBuilder, name: str, corner: Cell, along_y: bool, brick
 
 def horseshoe(builder: ModelBuilder) -> None:
     trilithon(builder)
-    # Trilithons stand along y on the sides of the horseshoe: turn the component a quarter.
+    # Trilithons stand along y on the sides of the horseshoe: rotate the component a quarter turn.
     builder.instance("trilithon", at=(27, 21, GROUND), rotation="R90", id="tri51-52")
     builder.instance("trilithon", at=(26, 13, GROUND), rotation="R90", id="tri53-54")
     builder.instance("trilithon", at=(13, 13, GROUND), rotation="R90", id="tri57-58")

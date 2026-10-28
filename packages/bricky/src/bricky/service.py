@@ -64,8 +64,8 @@ _PROFILE_HELP: Final = (
 _PASSES_HELP: Final = "Pass names to run instead of a profile."
 _MAX_HELP: Final = "Maximum diagnostics to return; defaults to the configured cap."
 _VIEWS_HELP: Final = (
-    "Views to draw: sheet (iso, front, right and top on one image), iso, front, back, left, right "
-    "or top."
+    "Views to draw: sheet (perspective, front, right and top on one image), perspective, front, "
+    "back, left, right or top."
 )
 _WIDTH: Final = 1600
 _HEIGHT: Final = 1200
@@ -127,9 +127,9 @@ class Image(BaseModel):
 class ScriptOutput(BaseModel):
     """What a build script printed."""
 
-    stdout: str = Field(default="", description="Standard output, cut to the configured limit.")
-    stderr: str = Field(default="", description="Standard error, cut to the configured limit.")
-    truncated: bool = Field(default=False, description="Whether either stream was cut.")
+    stdout: str = Field(default="", description="Standard output, up to the configured limit.")
+    stderr: str = Field(default="", description="Standard error, up to the configured limit.")
+    truncated: bool = Field(default=False, description="Whether either stream was truncated.")
 
     def describe(self) -> str:
         """Render the output for reading, or an empty string when the script printed nothing."""
@@ -139,7 +139,7 @@ class ScriptOutput(BaseModel):
         if self.stderr.strip():
             parts.append("script errors:\n" + _indent(self.stderr.rstrip()))
         if self.truncated:
-            parts.append("(output cut to the configured limit)")
+            parts.append("(output truncated at the configured limit)")
         return "\n\n".join(parts)
 
 
@@ -216,18 +216,19 @@ class Changes(BaseModel):
 
     Elements count with every instance unfolded. Elements match by what they are and the space
     they take, not by id, so renumbered elements are unchanged; an element whose id and part are
-    the same but whose place, rotation or colour differ has changed.
+    the same but whose position, rotation or color differ has changed.
     """
 
     added: int = Field(description="Elements the earlier model did not have.")
     removed: int = Field(description="Elements of the earlier model that are gone.")
     changed: int = Field(
-        description="Elements with the same id and part, now in another place, rotation or colour."
+        description="Elements with the same id and part, now in another position, rotation or "
+        "color."
     )
-    unchanged: int = Field(description="Elements of the same part and colour in the same space.")
-    cells_filled: int = Field(description="Cells, a stud square and a plate high, now filled.")
-    cells_emptied: int = Field(description="Cells filled before and empty now.")
-    cells_recoloured: int = Field(description="Cells filled in both, in another colour.")
+    unchanged: int = Field(description="Elements of the same part and color in the same space.")
+    voxels_filled: int = Field(description="Voxels, a stud square and a plate tall, now filled.")
+    voxels_emptied: int = Field(description="Voxels filled before and empty now.")
+    voxels_recolored: int = Field(description="Voxels filled in both, in another color.")
     added_at: tuple[LineCount, ...] = Field(
         description="Added elements by the script line that placed them, most first."
     )
@@ -247,11 +248,11 @@ class Changes(BaseModel):
             f"since the last build: {self.added} added, {self.removed} removed, "
             f"{self.changed} changed, {self.unchanged} unchanged"
         )
-        cells = (
-            f"  cells: {self.cells_filled} filled, {self.cells_emptied} emptied, "
-            f"{self.cells_recoloured} recoloured"
+        voxels = (
+            f"  voxels: {self.voxels_filled} filled, {self.voxels_emptied} emptied, "
+            f"{self.voxels_recolored} recolored"
         )
-        lines = [elements, cells]
+        lines = [elements, voxels]
         for title, counts in (
             ("added at", self.added_at),
             ("changed at", self.changed_at),
@@ -377,17 +378,17 @@ async def run_script(script: Path, settings: Settings) -> ScriptRun:
         BrickyError: If the script is missing, fails, runs out of time or returns no model.
     """
     if not await asyncio.to_thread(script.is_file):
-        msg = f"no such build script: {script}"
-        raise BrickyError(msg)
+        message = f"no such build script: {script}"
+        raise BrickyError(message)
     try:
         async with asyncio.timeout(settings.build_timeout):
             result, output, code = await _run_child(script, settings.output_limit)
     except TimeoutError:
-        msg = f"{script} did not finish within {settings.build_timeout:g} s and was stopped"
-        raise BrickyError(msg) from None
+        message = f"{script} did not finish within {settings.build_timeout:g} s and was stopped"
+        raise BrickyError(message) from None
     if result is None:
-        msg = f"{script}: the build process exited with code {code} before reporting a result"
-        raise BrickyError(_with_output(msg, output))
+        message = f"{script}: the build process exited with code {code} before reporting a result"
+        raise BrickyError(_with_output(message, output))
     if result.failure is not None or result.model is None:
         raise BrickyError(_with_output(f"{script} failed: {result.failure}", output))
     return ScriptRun(model=result.model, provenance=result.provenance, output=output)
@@ -413,8 +414,8 @@ async def _run_child(script: Path, limit: int) -> tuple[RunResult | None, Script
             stderr=asyncio.subprocess.PIPE,
         )
         if process.stdout is None or process.stderr is None:  # pragma: no cover - pipes requested
-            msg = "could not capture the build script's output"
-            raise BrickyError(msg)
+            message = "could not capture the build script's output"
+            raise BrickyError(message)
         try:
             (stdout, cut_out), (stderr, cut_err) = await asyncio.gather(
                 _read_capped(process.stdout, limit), _read_capped(process.stderr, limit)
@@ -463,9 +464,9 @@ def _compare(
         removed=len(diff.removed),
         changed=len(diff.changed),
         unchanged=diff.unchanged,
-        cells_filled=diff.filled,
-        cells_emptied=diff.emptied,
-        cells_recoloured=diff.recoloured,
+        voxels_filled=diff.filled,
+        voxels_emptied=diff.emptied,
+        voxels_recolored=diff.recolored,
         added_at=_by_line(run.model, run.provenance, diff.added),
         changed_at=_by_line(run.model, run.provenance, diff.changed),
         removed_at=_by_line(before, before_provenance, diff.removed),
@@ -497,12 +498,12 @@ def _save(run: ScriptRun, script: Path, path: Path) -> Path | None:
 async def _read_capped(stream: asyncio.StreamReader, limit: int) -> tuple[str, bool]:
     """Read a stream to its end, keeping at most ``limit`` characters' worth of bytes."""
     kept = bytearray()
-    cut = False
+    truncated = False
     while chunk := await stream.read(65536):
         room = max(limit - len(kept), 0)
         kept += chunk[:room]
-        cut = cut or len(chunk) > room
-    return kept.decode(errors="replace"), cut
+        truncated = truncated or len(chunk) > room
+    return kept.decode(errors="replace"), truncated
 
 
 def _with_output(message: str, output: ScriptOutput) -> str:
@@ -522,19 +523,19 @@ class RenderRequest(BaseModel):
     highlight: list[str] = Field(
         default_factory=list,
         description=(
-            "Parts to highlight, drawing the rest faintly: uid patterns such as 'lintel*', or '@' "
-            "and a function, file or file:line of the build script, such as '@horseshoe'."
+            "Elements to highlight, drawing the rest faintly: uid patterns such as 'lintel*', or "
+            "'@' and a function, file or file:line of the build script, such as '@horseshoe'."
         ),
     )
     clip: list[str] = Field(
         default_factory=list,
-        description="Cut the model to look inside: 'z<130' keeps parts below 130 plates; x and y "
-        "are in studs.",
+        description="Clip the model to look inside: 'z<130' keeps what lies below 130 plates; x "
+        "and y are in studs.",
     )
-    check: bool = Field(default=True, description="Mark the parts that diagnostics name.")
+    check: bool = Field(default=True, description="Mark the elements that diagnostics name.")
     width: int = Field(default=_WIDTH, ge=200, le=4096, description="Image width in pixels.")
     height: int = Field(default=_HEIGHT, ge=200, le=4096, description="Image height in pixels.")
-    out: Path | None = Field(
+    output: Path | None = Field(
         default=None,
         description="Image file to write; with several views, each gets the view's name added. "
         "Defaults to <model>.<view>.png beside the model, so renders never replace the picture "
@@ -542,7 +543,7 @@ class RenderRequest(BaseModel):
     )
     html: bool = Field(
         default=False,
-        description="Also write a standalone HTML viewer people can orbit, cut and highlighted "
+        description="Also write a standalone HTML viewer people can orbit and clip, highlighted "
         "like the pictures.",
     )
 
@@ -593,13 +594,13 @@ async def render(request: RenderRequest, session: Session) -> RenderResult:
         )
         seconds.check = time.perf_counter() - started
     started = time.perf_counter()
-    if request.out is None:
+    if request.output is None:
         stem = model_stem(request.model)
         paths = [request.model.with_name(f"{stem}.{view.value}.png") for view in request.views]
         viewer = request.model.with_name(stem + ".html")
     else:
-        paths = _view_paths(request.out, request.views)
-        viewer = request.out.with_suffix(".html")
+        paths = _view_paths(request.output, request.views)
+        viewer = request.output.with_suffix(".html")
     images = await _render(
         session,
         model,
@@ -739,7 +740,7 @@ class PartsResult(BaseModel):
 async def parts(request: PartsRequest, session: Session) -> PartsResult:
     """Search the parts catalog."""
     catalog = session.catalog
-    hits = await asyncio.to_thread(catalog.search, request.query, shapeless=request.shapeless)
+    hits = await asyncio.to_thread(catalog.search_parts, request.query, shapeless=request.shapeless)
     shown = hits[: request.limit]
     infos = await asyncio.to_thread(lambda: tuple(_part_info(catalog, e) for e in shown))
     return PartsResult(parts=infos, total=len(hits))
@@ -754,23 +755,23 @@ class ColorsRequest(BaseModel):
 
 
 class ColorInfo(BaseModel):
-    """A catalog colour."""
+    """A catalog color."""
 
-    id: int = Field(description="BrickLink colour id.")
-    name: str = Field(description="BrickLink colour name.")
+    id: int = Field(description="BrickLink color id.")
+    name: str = Field(description="BrickLink color name.")
     type: ColorType
-    rgb: str = Field(description="Display colour used by renders.")
+    rgb: str = Field(description="Display color used by renders.")
 
 
 class ColorsResult(BaseModel):
-    """Colours matching a search."""
+    """Colors matching a search."""
 
     colors: tuple[ColorInfo, ...]
 
     def describe(self) -> str:
         """Render the result as a table."""
         rows = [f"{c.id:>4}  {c.name:<22} {c.type:<12} {c.rgb}" for c in self.colors]
-        rows.append(f"{_count(len(self.colors), 'colour')}")
+        rows.append(f"{_count(len(self.colors), 'color')}")
         return "\n".join(rows)
 
 
@@ -829,7 +830,8 @@ class CatalogImportResult(BaseModel):
             lines += [
                 "",
                 f"compared {c.compared:,} named shapes with LDraw: "
-                + _count(len(c.disagreements), "disagreement"),
+                + _count(len(c.disagreements), "disagreement")
+                + (", which take LDraw's shape" if c.disagreements else ""),
                 *(f"  {d}" for d in c.disagreements[:_LISTED_DISAGREEMENTS]),
             ]
             hidden = len(c.disagreements) - _LISTED_DISAGREEMENTS
@@ -984,15 +986,15 @@ async def catalog_show(request: CatalogShowRequest, session: Session) -> Catalog
     catalog = session.catalog
     entry = catalog.entry(request.part)
     if entry is None:
-        msg = f"the catalog has no part {request.part!r}; search it with `bricky parts <words>`"
-        raise BrickyError(msg)
+        message = f"the catalog has no part {request.part!r}; search it with `bricky parts <words>`"
+        raise BrickyError(message)
     part = catalog.part(entry.id)
     names = tuple(c.name for i in entry.colors if (c := catalog.color(i)) is not None)
     images: tuple[Image, ...] = ()
     if request.render:
         if part is None:
-            msg = f"part {entry.id} has no shape to draw"
-            raise BrickyError(msg)
+            message = f"part {entry.id} has no shape to draw"
+            raise BrickyError(message)
         color = next(iter(entry.colors), _SHOW_COLOR)
         model = Model(name=entry.id, elements=(Element(id=entry.id, part=entry.id, color=color),))
         path = request.output or Path(f"{entry.id}.png")
@@ -1102,7 +1104,7 @@ class ExplainRequest(BaseModel):
 class CodeInfo(Code):
     """A diagnostic code and the pass that reports it."""
 
-    check: str = Field(description="Name of the pass that reports the code.")
+    pass_name: str = Field(description="Name of the pass that reports the code.")
 
 
 class ExplainResult(BaseModel):
@@ -1113,7 +1115,7 @@ class ExplainResult(BaseModel):
     def describe(self) -> str:
         """Render the explanations as text."""
         return "\n\n".join(
-            f"{c.code} {c.title} ({c.severity}, pass {c.check})\n{_indent(c.rule)}"
+            f"{c.code} {c.title} ({c.severity}, pass {c.pass_name})\n{_indent(c.rule)}"
             for c in self.codes
         )
 
@@ -1127,12 +1129,12 @@ async def explain(request: ExplainRequest, session: Session) -> ExplainResult:  
     codes = await asyncio.to_thread(installed_codes)
     wanted = request.code.strip().upper()
     if wanted and wanted not in codes:
-        msg = f"no installed pass reports {wanted}; known codes: {', '.join(codes)}"
-        raise BrickyError(msg)
+        message = f"no installed pass reports {wanted}; known codes: {', '.join(codes)}"
+        raise BrickyError(message)
     chosen = [wanted] if wanted else list(codes)
     return ExplainResult(
         codes=tuple(
-            CodeInfo(check=codes[c][0], **codes[c][1].model_dump(exclude={"severity"}))
+            CodeInfo(pass_name=codes[c][0], **codes[c][1].model_dump(exclude={"severity"}))
             for c in chosen
         )
     )

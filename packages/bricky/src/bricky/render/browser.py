@@ -110,8 +110,8 @@ class Renderer:
                 await page.close()
                 self._page = None
                 detail = "; ".join(self._problems) or str(error).strip().splitlines()[0]
-                msg = f"rendering failed: {detail}"
-                raise BrickyError(msg) from None
+                message = f"rendering failed: {detail}"
+                raise BrickyError(message) from None
             return images
 
     async def _open_page(self) -> Page:
@@ -119,14 +119,14 @@ class Renderer:
             return self._page
         await self.start()
         if self._browser is None:  # pragma: no cover - start() either launches or raises
-            msg = "the renderer has no browser"
-            raise BrickyError(msg)
+            message = "the renderer has no browser"
+            raise BrickyError(message)
         page = await self._browser.new_page(device_scale_factor=1)
         page.on("pageerror", lambda error: self._problems.append(str(error)))
         page.on(
             "console",
-            lambda message: (
-                self._problems.append(message.text) if message.type == "error" else None
+            lambda console: (
+                self._problems.append(console.text) if console.type == "error" else None
             ),
         )
         await page.route("**/*", _serve)
@@ -136,8 +136,8 @@ class Renderer:
         except PlaywrightError as error:
             await page.close()
             detail = "; ".join(self._problems) or str(error).strip().splitlines()[0]
-            msg = f"the render page failed to load: {detail}"
-            raise BrickyError(msg) from None
+            message = f"the render page failed to load: {detail}"
+            raise BrickyError(message) from None
         self._page = page
         return page
 

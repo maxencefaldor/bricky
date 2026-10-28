@@ -3,11 +3,11 @@ difficulty = 9
 max_turns = 160
 minutes = 90
 prompt = """
-Rebuild the castle in the plans: `inputs/plans.png` shows it from four sides (iso, front, right and
-top), `inputs/back.png` and `inputs/left.png` show the other two, and `inputs/top.png` is a larger
-plan. The orthographic views have rulers in studs and plates, the units bricky's `at` uses. Match
+Rebuild the castle in the plans: `inputs/plans.png` shows it in perspective and from the front,
+right and top, `inputs/back.png` and `inputs/left.png` show the other two sides, and
+`inputs/top.png` is a larger plan. The orthographic views have rulers in studs and plates, the units bricky's `at` uses. Match
 the towers, walls, gate, battlements, arrow slits, keep, flag and path: their positions, sizes and
-colours.
+colors.
 """
 
 [[generate]]

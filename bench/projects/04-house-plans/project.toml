@@ -3,10 +3,10 @@ difficulty = 4
 max_turns = 60
 minutes = 30
 prompt = """
-Rebuild the house in the plans: `inputs/plans.png` shows it from four sides (iso, front, right and
-top), and `inputs/back.png` and `inputs/left.png` show the other two. The orthographic views have
-rulers in studs and plates, the units bricky's `at` uses. Match every wall, door, window, the roof
-and the chimney: their positions, sizes and colours.
+Rebuild the house in the plans: `inputs/plans.png` shows it in perspective and from the front,
+right and top, and `inputs/back.png` and `inputs/left.png` show the other two sides. The
+orthographic views have rulers in studs and plates, the units bricky's `at` uses. Match every wall,
+door, window, the roof and the chimney: their positions, sizes and colors.
 """
 
 [[generate]]

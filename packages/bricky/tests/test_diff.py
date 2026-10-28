@@ -27,19 +27,19 @@ def test_renumbered_elements_are_unchanged():
     assert result.removed == ()
     assert result.changed == ()
     assert result.unchanged == 4
-    assert (result.filled, result.emptied, result.recoloured) == (3, 0, 0)
+    assert (result.filled, result.emptied, result.recolored) == (3, 0, 0)
 
 
-def test_an_element_moved_or_recoloured_under_its_id_has_changed():
+def test_an_element_moved_or_recolored_under_its_id_has_changed():
     before, after = ModelBuilder("m"), ModelBuilder("m")
     before.place("3001", at=(0, 0, 0), color="Red", id="base")
     before.place("3022", at=(0, 0, 3), color="Tan", id="cap")
-    after.place("3001", at=(0, 0, 0), color="Blue", id="base")  # recoloured
+    after.place("3001", at=(0, 0, 0), color="Blue", id="base")  # recolored
     after.place("3022", at=(0, 2, 3), color="Tan", id="cap")  # moved two studs north
     result = diff(before, after)
     assert result.changed == ("base", "cap")
     assert (result.added, result.removed, result.unchanged) == ((), (), 0)
-    assert result.recoloured == 2 * 4 * 3
+    assert result.recolored == 2 * 4 * 3
     assert (result.filled, result.emptied) == (4, 4)
 
 
@@ -49,7 +49,7 @@ def test_another_part_under_the_same_id_is_added_and_removed():
     after.place("3020", at=(0, 0, 0), color="Red", id="base")  # a plate instead of a brick
     result = diff(before, after)
     assert (result.added, result.removed, result.changed) == (("base",), ("base",), ())
-    assert (result.filled, result.emptied, result.recoloured) == (0, 2 * 4 * 2, 0)
+    assert (result.filled, result.emptied, result.recolored) == (0, 2 * 4 * 2, 0)
 
 
 def test_a_part_turned_onto_itself_is_unchanged_and_one_turned_round_is_not():
@@ -98,4 +98,4 @@ def test_comparing_the_other_way_swaps_what_came_and_went(first, second):
         backward.changed
     )
     assert (forward.filled, forward.emptied) == (backward.emptied, backward.filled)
-    assert forward.recoloured == backward.recoloured
+    assert forward.recolored == backward.recolored

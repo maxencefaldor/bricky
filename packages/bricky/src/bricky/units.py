@@ -10,7 +10,7 @@ convert both ways, refusing values that would land off the grid.
 from typing import Final
 
 MM_PER_UNIT: Final = 0.4
-"""Millimetres per base unit."""
+"""Millimeters per base unit."""
 
 STUD: Final = 20
 """Stud pitch: 8.0 mm."""
@@ -34,8 +34,8 @@ def _exact(value: float, scale: int, unit: str) -> int:
     scaled = value * scale
     rounded = round(scaled)
     if abs(scaled - rounded) > _TOLERANCE:
-        msg = f"{value} {unit} is not a whole number of 0.4 mm base units"
-        raise ValueError(msg)
+        message = f"{value} {unit} is not a whole number of 0.4 mm base units"
+        raise ValueError(message)
     return rounded
 
 

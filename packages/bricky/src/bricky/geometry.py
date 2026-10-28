@@ -83,21 +83,21 @@ def axis_name(vector: Vector) -> str:
     try:
         return _AXIS_NAMES[vector]
     except KeyError:
-        msg = f"{vector} is not a unit grid axis"
-        raise ValueError(msg) from None
+        message = f"{vector} is not a unit grid axis"
+        raise ValueError(message) from None
 
 
 ALIASES: Final[dict[str, str]] = {"R0": "+x+y", "R90": "+y-x", "R180": "-x-y", "R270": "-y+x"}
-"""Short names for the four turns about the vertical axis, counter-clockwise seen from above."""
+"""Short names for the four rotations about the vertical axis, counter-clockwise from above."""
 
 
 @dataclass(frozen=True, slots=True)
 class Rotation:
     """A proper rotation mapping grid axes onto grid axes: one of 24.
 
-    A rotation is named by the images of the local x and y axes, so ``"+x+y"`` is the identity and
-    ``"+y-x"`` turns a part 90° counter-clockwise seen from above. :data:`ALIASES` gives short names
-    for the four vertical-axis turns.
+    A rotation is named by the images of the local x and y axes: ``"+x+y"`` is the identity, and
+    ``"+y-x"`` rotates a part 90° counter-clockwise seen from above. :data:`ALIASES` gives short
+    names to the four rotations about the vertical axis.
     """
 
     x_axis: Vector
@@ -115,8 +115,8 @@ class Rotation:
             or self.y_axis not in _AXIS_NAMES
             or self.x_axis.dot(self.y_axis) != 0
         ):
-            msg = f"{self.x_axis} and {self.y_axis} are not two perpendicular grid axes"
-            raise ValueError(msg)
+            message = f"{self.x_axis} and {self.y_axis} are not two perpendicular grid axes"
+            raise ValueError(message)
         object.__setattr__(self, "z_axis", self.x_axis.cross(self.y_axis))
 
     @classmethod
@@ -130,10 +130,10 @@ class Rotation:
         try:
             return cls(AXES[key[:2]], AXES[key[2:]])
         except KeyError, ValueError:
-            msg = (
+            message = (
                 f"unknown rotation {text!r}: use a name like '+y-x' or one of {', '.join(ALIASES)}"
             )
-            raise ValueError(msg) from None
+            raise ValueError(message) from None
 
     @property
     def name(self) -> str:
@@ -202,8 +202,8 @@ class Box:
 
     def __post_init__(self) -> None:
         if self.min.x > self.max.x or self.min.y > self.max.y or self.min.z > self.max.z:
-            msg = f"box corners out of order: {self.min} > {self.max}"
-            raise ValueError(msg)
+            message = f"box corners out of order: {self.min} > {self.max}"
+            raise ValueError(message)
 
     @classmethod
     def spanning(cls, a: Vector, b: Vector) -> Box:
@@ -222,8 +222,8 @@ class Box:
         """
         boxes = list(boxes)
         if not boxes:
-            msg = "cannot bound an empty set of boxes"
-            raise ValueError(msg)
+            message = "cannot bound an empty set of boxes"
+            raise ValueError(message)
         return cls(
             Vector(
                 min(b.min.x for b in boxes),
@@ -354,15 +354,15 @@ class Convex:
             corners = [self.vertices[i] for i in face]
             normal = _primitive(_newell(corners))
             if len(corners) < 3 or normal == ORIGIN:  # noqa: PLR2004 - a face needs three corners
-                msg = f"face {face} is degenerate"
-                raise ValueError(msg)
+                message = f"face {face} is degenerate"
+                raise ValueError(message)
             offset = normal.dot(corners[0])
             if any(normal.dot(corner) != offset for corner in corners):
-                msg = f"face {face} is not flat"
-                raise ValueError(msg)
+                message = f"face {face} is not flat"
+                raise ValueError(message)
             if any(normal.dot(vertex) > offset for vertex in self.vertices):
-                msg = f"face {face} faces inward, or the solid is not convex"
-                raise ValueError(msg)
+                message = f"face {face} faces inward, or the solid is not convex"
+                raise ValueError(message)
             planes.append((normal, offset))
             for a, b in zip(corners, corners[1:] + corners[:1], strict=True):
                 if a != b:
@@ -394,8 +394,8 @@ class Convex:
             ValueError: If the polygon is not convex and counter-clockwise, or ``start >= end``.
         """
         if start >= end:
-            msg = f"a prism needs start < end, not {start} and {end}"
-            raise ValueError(msg)
+            message = f"a prism needs start < end, not {start} and {end}"
+            raise ValueError(message)
 
         def point(a: int, b: int, c: int) -> Vector:
             if axis == "z":

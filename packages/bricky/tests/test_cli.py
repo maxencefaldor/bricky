@@ -92,7 +92,7 @@ def test_building_again_says_what_changed_and_where(tmp_path, capsys):
     assert run("build", str(script), "--no-render", "--output-format", "json") == 0
     changes = json.loads(capsys.readouterr().out)["changes"]
     assert (changes["added"], changes["removed"], changes["changed"]) == (1, 0, 1)
-    assert changes["cells_filled"] == changes["cells_recoloured"] == 2 * 4 * 3
+    assert changes["voxels_filled"] == changes["voxels_recolored"] == 2 * 4 * 3
     assert changes["added_at"] == [{"line": f"{script}:9 in build()", "elements": 1}]
     # Taking out the first brick renumbers the others, which are still unchanged.
     edited = script.read_text().replace(
@@ -154,8 +154,13 @@ def test_outputs_go_where_they_are_asked_creating_folders(tmp_path):
     assert model.is_file()
     assert (model.parent / "tower.bricky.map.json").is_file()
     shots = tmp_path / "shots" / "look.png"
-    assert run("render", str(model), "--views", "iso", "--views", "top", "--out", str(shots)) == 0
-    assert (shots.parent / "look.iso.png").is_file()
+    assert (
+        run(
+            "render", str(model), "--views", "perspective", "--views", "top", "--output", str(shots)
+        )
+        == 0
+    )
+    assert (shots.parent / "look.perspective.png").is_file()
     assert (shots.parent / "look.top.png").is_file()
 
 
@@ -233,7 +238,7 @@ def test_colors_search(capsys):
     out = capsys.readouterr().out
     assert "Light Bluish Gray" in out
     assert "Dark Bluish Gray" in out
-    assert "2 colours" in out
+    assert "2 colors" in out
 
 
 def test_passes_lists_profiles_and_codes(capsys):

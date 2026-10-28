@@ -11,7 +11,17 @@ position to write in the build script.
 
 from bricky.render.browser import Renderer
 from bricky.render.html import THREE_VERSION, write_html
-from bricky.render.scene import Clip, Flag, Label, Mark, Scene, SceneColor, View, build_scene
+from bricky.render.scene import (
+    Clip,
+    Flag,
+    Label,
+    Mark,
+    Mesh,
+    Scene,
+    SceneColor,
+    View,
+    build_scene,
+)
 
 __all__ = [
     "THREE_VERSION",
@@ -19,6 +29,7 @@ __all__ = [
     "Flag",
     "Label",
     "Mark",
+    "Mesh",
     "Renderer",
     "Scene",
     "SceneColor",

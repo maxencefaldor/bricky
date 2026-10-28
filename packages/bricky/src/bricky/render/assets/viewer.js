@@ -1,7 +1,7 @@
 // bricky viewer: draws a bricky scene with three.js.
 //
 // One module serves two readers. Headless Chromium uses `load` and `draw` to make the pictures an
-// agent reads after every build: orthographic views with stud rulers, an iso view, error marks and
+// agent reads after every build: orthographic views with stud rulers, a perspective view, error marks and
 // labels. The standalone HTML viewer uses `mount` to let people orbit the same scene.
 //
 // Scenes come from bricky.render.scene in base units of 0.4 mm. Model axes are x east, y north and
@@ -21,14 +21,14 @@ const MARGIN = { left: 60, right: 16, top: 34, bottom: 44 };
 const FONT = "12px system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 const VIEWS = {
-  iso: { title: "ISO", note: "from the south-east" },
+  perspective: { title: "PERSPECTIVE", note: "from the south-east" },
   front: { title: "FRONT", note: "looking north", dir: [0, 0, 1], up: [0, 1, 0], u: { vec: [1, 0, 0], axis: "x", sign: 1 }, v: { vec: [0, 1, 0], axis: "z", sign: 1 } },
   back: { title: "BACK", note: "looking south", dir: [0, 0, -1], up: [0, 1, 0], u: { vec: [-1, 0, 0], axis: "x", sign: -1 }, v: { vec: [0, 1, 0], axis: "z", sign: 1 } },
   right: { title: "RIGHT", note: "looking west", dir: [1, 0, 0], up: [0, 1, 0], u: { vec: [0, 0, -1], axis: "y", sign: 1 }, v: { vec: [0, 1, 0], axis: "z", sign: 1 } },
   left: { title: "LEFT", note: "looking east", dir: [-1, 0, 0], up: [0, 1, 0], u: { vec: [0, 0, 1], axis: "y", sign: -1 }, v: { vec: [0, 1, 0], axis: "z", sign: 1 } },
   top: { title: "TOP", note: "north up", dir: [0, 1, 0], up: [0, 0, -1], u: { vec: [1, 0, 0], axis: "x", sign: 1 }, v: { vec: [0, 0, -1], axis: "y", sign: 1 } },
 };
-const SHEET = ["iso", "front", "right", "top"];
+const SHEET = ["perspective", "front", "right", "top"];
 
 function toThree(x, y, z) {
   return new THREE.Vector3(x * MM, z * MM, -y * MM);
@@ -44,45 +44,45 @@ function vec(a) {
 export function buildModel(scene) {
   const root = new THREE.Group();
   const planes = scene.clips.map(clipPlane);
-  // Bodies take their colours from vertices, studs from instances: two sets of materials.
+  // Bodies take their colors from vertices, studs from instances: two sets of materials.
   const bodies = materials(planes, true);
   const studs = materials(planes, false);
   for (const material of Object.values(studs)) material.side = THREE.FrontSide;
 
   const colors = scene.colors.map((c) => new THREE.Color(c.rgb));
   const tint = { error: new THREE.Color(INK.error), warning: new THREE.Color("#e8a400") };
-  const kindOf = (part) => {
-    if (part[1] & FLAG.GHOST) return "ghost";
-    const type = scene.colors[part[0]].type;
+  const kindOf = (element) => {
+    if (element[1] & FLAG.GHOST) return "ghost";
+    const type = scene.colors[element[0]].type;
     return type === "transparent" ? "clear" : type === "pearl" ? "pearl" : "solid";
   };
-  const colorOf = (part) => {
-    const color = colors[part[0]].clone();
-    if (part[1] & FLAG.ERROR) color.lerp(tint.error, 0.55);
-    else if (part[1] & FLAG.WARNING) color.lerp(tint.warning, 0.45);
+  const colorOf = (element) => {
+    const color = colors[element[0]].clone();
+    if (element[1] & FLAG.ERROR) color.lerp(tint.error, 0.55);
+    else if (element[1] & FLAG.WARNING) color.lerp(tint.warning, 0.45);
     return color;
   };
 
-  // Part bounds, for labels and for framing.
-  const partBounds = scene.parts.map(() => new THREE.Box3());
-  for (const b of scene.boxes) {
-    partBounds[b[6]].expandByPoint(toThree(b[0], b[1], b[2])).expandByPoint(toThree(b[3], b[4], b[5]));
+  // Element bounds, for labels and for framing.
+  const elementBounds = scene.elements.map(() => new THREE.Box3());
+  for (const box of scene.boxes) {
+    elementBounds[box[6]].expandByPoint(toThree(box[0], box[1], box[2])).expandByPoint(toThree(box[3], box[4], box[5]));
   }
-  for (const s of scene.shapes) {
-    const v = s.vertices;
-    for (let k = 0; k < v.length; k += 3) partBounds[s.part].expandByPoint(toThree(v[k], v[k + 1], v[k + 2]));
+  for (const mesh of scene.meshes) {
+    const v = mesh.vertices;
+    for (let k = 0; k < v.length; k += 3) elementBounds[mesh.element].expandByPoint(toThree(v[k], v[k + 1], v[k + 2]));
   }
 
   // Bodies: the visible faces of every box, merged into one mesh per material kind. The scene
-  // already left out faces pressed against opaque neighbours, which nobody can see.
+  // already left out faces pressed against opaque neighbors, which nobody can see.
   const faces = { solid: new FaceBuffer(), pearl: new FaceBuffer(), clear: new FaceBuffer(), ghost: new FaceBuffer() };
-  for (const b of scene.boxes) {
-    const part = scene.parts[b[6]];
-    faces[kindOf(part)].addBox(b, colorOf(part));
+  for (const box of scene.boxes) {
+    const element = scene.elements[box[6]];
+    faces[kindOf(element)].addBox(box, colorOf(element));
   }
-  for (const s of scene.shapes) {
-    const part = scene.parts[s.part];
-    faces[kindOf(part)].addShape(s, colorOf(part));
+  for (const mesh of scene.meshes) {
+    const element = scene.elements[mesh.element];
+    faces[kindOf(element)].addMesh(mesh, colorOf(element));
   }
   for (const [kind, buffer] of Object.entries(faces)) {
     if (!buffer.count) continue;
@@ -93,12 +93,12 @@ export function buildModel(scene) {
     root.add(mesh);
   }
 
-  // Studs: cylinders standing on their part's face, along the stud's axis. Studs seated in a
-  // receptor are hidden inside the part above, and the scene leaves them out.
-  const meshes = [];
+  // Studs: cylinders standing on their element's face, along the stud's axis. Studs seated in an
+  // anti-stud are hidden inside the element above, and the scene leaves them out.
+  const studMeshes = [];
   const cylinder = studGeometry();
   const byKind = { solid: [], pearl: [], clear: [], ghost: [] };
-  for (const s of scene.studs) byKind[kindOf(scene.parts[s[4]])].push(s);
+  for (const stud of scene.studs) byKind[kindOf(scene.elements[stud[4]])].push(stud);
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const upright = new THREE.Vector3(0, 1, 0);
@@ -106,25 +106,25 @@ export function buildModel(scene) {
   for (const [kind, list] of Object.entries(byKind)) {
     if (!list.length) continue;
     const mesh = new THREE.InstancedMesh(cylinder, studs[kind], list.length);
-    list.forEach((s, i) => {
-      const a = AXES[s[3]];
+    list.forEach((stud, i) => {
+      const a = AXES[stud[3]];
       q.setFromUnitVectors(upright, new THREE.Vector3(a[0], a[2], -a[1]));
-      mesh.setMatrixAt(i, m.compose(toThree(s[0], s[1], s[2]), q, one));
-      if (kind !== "ghost") mesh.setColorAt(i, colorOf(scene.parts[s[4]]));
+      mesh.setMatrixAt(i, m.compose(toThree(stud[0], stud[1], stud[2]), q, one));
+      if (kind !== "ghost") mesh.setColorAt(i, colorOf(scene.elements[stud[4]]));
     });
     mesh.castShadow = kind === "solid" || kind === "pearl";
     mesh.receiveShadow = kind !== "ghost";
     mesh.renderOrder = kind === "clear" || kind === "ghost" ? 2 : 0;
-    meshes.push(remember(mesh));
+    studMeshes.push(remember(mesh));
     root.add(mesh);
   }
 
-  // Edges: dark outlines so every part reads, coloured and always on top for marked parts.
+  // Edges: dark outlines so every element reads, colored and always on top for marked ones.
   const outline = (filter) => {
     const points = [];
-    for (const b of scene.boxes) if (filter(scene.parts[b[6]][1])) pushEdges(points, b);
-    for (const s of scene.shapes) if (filter(scene.parts[s.part][1])) pushShapeEdges(points, s);
-    for (const s of scene.studs) if (filter(scene.parts[s[4]][1])) pushRim(points, s);
+    for (const box of scene.boxes) if (filter(scene.elements[box[6]][1])) pushEdges(points, box);
+    for (const mesh of scene.meshes) if (filter(scene.elements[mesh.element][1])) pushMeshEdges(points, mesh);
+    for (const stud of scene.studs) if (filter(scene.elements[stud[4]][1])) pushRim(points, stud);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
     return geometry;
@@ -166,10 +166,10 @@ export function buildModel(scene) {
   }
 
   const bounds = new THREE.Box3(toThree(scene.bounds[0], scene.bounds[4], scene.bounds[2]), toThree(scene.bounds[3], scene.bounds[1], scene.bounds[5]));
-  return { root, bounds, partBounds, edgeMaterials, planes, meshes };
+  return { root, bounds, elementBounds, edgeMaterials, planes, studMeshes };
 }
 
-// Snapshot an instanced mesh's matrices and colours, so views can reorder its instances.
+// Snapshot an instanced mesh's matrices and colors, so views can reorder its instances.
 function remember(mesh) {
   const count = mesh.count;
   const matrices = mesh.instanceMatrix.array.slice();
@@ -206,7 +206,7 @@ function orderInstances(meshes, camera) {
 }
 
 // A stud: an open-bottomed cylinder 4.8 mm wide and 1.7 mm tall with a flat top, standing on the
-// origin along +y. Its bottom is always against its part, so it has no bottom cap.
+// origin along +y. Its bottom is always against its element, so it has no bottom cap.
 function studGeometry(segments = 12) {
   const radius = 2.4, height = 1.7;
   const positions = [], normals = [], indices = [];
@@ -220,7 +220,7 @@ function studGeometry(segments = 12) {
     const a = 2 * i, b = a + 1, c = a + 2, d = a + 3;
     indices.push(a, c, b, b, c, d);
   }
-  const centre = positions.length / 3;
+  const center = positions.length / 3;
   positions.push(0, height, 0);
   normals.push(0, 1, 0);
   for (let i = 0; i <= segments; i++) {
@@ -228,7 +228,7 @@ function studGeometry(segments = 12) {
     positions.push(Math.sin(angle) * radius, height, Math.cos(angle) * radius);
     normals.push(0, 1, 0);
   }
-  for (let i = 0; i < segments; i++) indices.push(centre, centre + 1 + i, centre + 2 + i);
+  for (let i = 0; i < segments; i++) indices.push(center, center + 1 + i, center + 2 + i);
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
@@ -274,15 +274,15 @@ class FaceBuffer {
     this.count = 0;
   }
 
-  addBox(b, color) {
-    const lo = [b[0] * MM, b[2] * MM, -b[4] * MM];
-    const hi = [b[3] * MM, b[5] * MM, -b[1] * MM];
+  addBox(box, color) {
+    const low = [box[0] * MM, box[2] * MM, -box[4] * MM];
+    const high = [box[3] * MM, box[5] * MM, -box[1] * MM];
     for (const face of FACES) {
-      if (!(b[7] & (1 << face.bit))) continue;
+      if (!(box[7] & (1 << face.bit))) continue;
       const base = this.positions.length / 3;
       const p = [0, 0, 0];
-      p[face.axis] = face.high ? hi[face.axis] : lo[face.axis];
-      for (const [s, t] of [[lo, lo], [hi, lo], [hi, hi], [lo, hi]]) {
+      p[face.axis] = face.high ? high[face.axis] : low[face.axis];
+      for (const [s, t] of [[low, low], [high, low], [high, high], [low, high]]) {
         p[face.t1] = s[face.t1];
         p[face.t2] = t[face.t2];
         this.positions.push(p[0], p[1], p[2]);
@@ -294,10 +294,10 @@ class FaceBuffer {
     }
   }
 
-  // A part that is not just boxes: its faces, each fanned into triangles with a flat normal.
-  addShape(s, color) {
-    const v = s.vertices;
-    for (const face of s.faces) {
+  // An element that is not just boxes: its faces, each fanned into triangles with a flat normal.
+  addMesh(mesh, color) {
+    const v = mesh.vertices;
+    for (const face of mesh.faces) {
       const points = face.map((i) => [v[3 * i] * MM, v[3 * i + 2] * MM, -v[3 * i + 1] * MM]);
       let nx = 0, ny = 0, nz = 0;
       for (let k = 0; k < points.length; k++) {
@@ -331,35 +331,35 @@ class FaceBuffer {
 // The rim of a stud's top: from above, a stud is lit exactly like the face it stands on, so only
 // its outline shows it.
 const RIM = Array.from({ length: 16 }, (_, i) => [Math.cos((i / 16) * 2 * Math.PI) * 2.4, Math.sin((i / 16) * 2 * Math.PI) * 2.4]);
-function pushRim(points, s) {
-  const a = AXES[s[3]];
+function pushRim(points, stud) {
+  const a = AXES[stud[3]];
   const axis = new THREE.Vector3(a[0], a[2], -a[1]);
-  const centre = toThree(s[0], s[1], s[2]).addScaledVector(axis, 1.7);
+  const center = toThree(stud[0], stud[1], stud[2]).addScaledVector(axis, 1.7);
   const side = Math.abs(axis.y) > 0.5 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
   const other = new THREE.Vector3().crossVectors(axis, side);
   for (let i = 0; i < RIM.length; i++) {
     const [x0, y0] = RIM[i];
     const [x1, y1] = RIM[(i + 1) % RIM.length];
-    const p = centre.clone().addScaledVector(side, x0).addScaledVector(other, y0);
-    const q = centre.clone().addScaledVector(side, x1).addScaledVector(other, y1);
+    const p = center.clone().addScaledVector(side, x0).addScaledVector(other, y0);
+    const q = center.clone().addScaledVector(side, x1).addScaledVector(other, y1);
     points.push(p.x, p.y, p.z, q.x, q.y, q.z);
   }
 }
 
-function pushEdges(points, b) {
-  const lo = toThree(b[0], b[4], b[2]);
-  const hi = toThree(b[3], b[1], b[5]);
-  const xs = [lo.x, hi.x], ys = [lo.y, hi.y], zs = [lo.z, hi.z];
+function pushEdges(points, box) {
+  const low = toThree(box[0], box[4], box[2]);
+  const high = toThree(box[3], box[1], box[5]);
+  const xs = [low.x, high.x], ys = [low.y, high.y], zs = [low.z, high.z];
   for (const y of ys) for (const z of zs) points.push(xs[0], y, z, xs[1], y, z);
   for (const x of xs) for (const z of zs) points.push(x, ys[0], z, x, ys[1], z);
   for (const x of xs) for (const y of ys) points.push(x, y, zs[0], x, y, zs[1]);
 }
 
-// The creased edges of a shape, which the scene picked out.
-function pushShapeEdges(points, s) {
-  const v = s.vertices;
-  for (let k = 0; k < s.edges.length; k += 2) {
-    const a = 3 * s.edges[k], b = 3 * s.edges[k + 1];
+// The creased edges of a mesh, which the scene picked out.
+function pushMeshEdges(points, mesh) {
+  const v = mesh.vertices;
+  for (let k = 0; k < mesh.edges.length; k += 2) {
+    const a = 3 * mesh.edges[k], b = 3 * mesh.edges[k + 1];
     points.push(v[a] * MM, v[a + 2] * MM, -v[a + 1] * MM, v[b] * MM, v[b + 2] * MM, -v[b + 1] * MM);
   }
 }
@@ -385,7 +385,7 @@ function orthoCamera(view, bounds, width, height) {
   const [u0, u1, v0, v1] = [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)];
   const innerW = width - MARGIN.left - MARGIN.right, innerH = height - MARGIN.top - MARGIN.bottom;
   const scale = 0.92 * Math.min(innerW / Math.max(u1 - u0, 1e-3), innerH / Math.max(v1 - v0, 1e-3));
-  // Screen centre of the drawing area, in model millimetres along u and v.
+  // Screen center of the drawing area, in model millimeters along u and v.
   const uMid = (u0 + u1) / 2 + (width / 2 - (MARGIN.left + innerW / 2)) / scale;
   const vMid = (v0 + v1) / 2 - (height / 2 - (MARGIN.top + innerH / 2)) / scale;
   const depth = Math.max(...ds) + 200;
@@ -398,7 +398,7 @@ function orthoCamera(view, bounds, width, height) {
   return { camera, scale, uMid, vMid, u0, u1, v0, v1 };
 }
 
-function isoCamera(bounds, width, height, azimuth = 35, elevation = 30) {
+function perspectiveCamera(bounds, width, height, azimuth = 35, elevation = 30) {
   const camera = new THREE.PerspectiveCamera(24, width / height, 1, 1e6);
   const az = THREE.MathUtils.degToRad(azimuth), el = THREE.MathUtils.degToRad(elevation);
   const dir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
@@ -407,7 +407,7 @@ function isoCamera(bounds, width, height, azimuth = 35, elevation = 30) {
   const radius = bounds.getSize(new THREE.Vector3()).length() / 2;
   let distance = radius * 4;
   const right = new THREE.Vector3(), up = new THREE.Vector3();
-  // Fit the drawing area below the panel title: centre the projected box, then scale the distance.
+  // Fit the drawing area below the panel title: center the projected box, then scale the distance.
   const frameTop = (MARGIN.top - 8) / height * 2; // NDC height reserved for the title
   for (let i = 0; i < 10; i++) {
     camera.position.copy(target).addScaledVector(dir, distance);
@@ -473,7 +473,7 @@ export function load(scene) {
   state.ground.receiveShadow = true;
   state.three.add(state.ground);
   state.scene = scene;
-  return { parts: scene.parts.length, ms: Math.round(performance.now() - started) };
+  return { elements: scene.elements.length, ms: Math.round(performance.now() - started) };
 }
 
 // Free the GPU memory of a scene that is about to be replaced.
@@ -520,24 +520,24 @@ function drawPanel(view, width, height) {
   ctx.fillRect(0, 0, width, height);
   const svg = svgElement("svg", { width, height, viewBox: `0 0 ${width} ${height}` });
   const size = model.bounds.getSize(new THREE.Vector3());
-  const centre = model.bounds.getCenter(new THREE.Vector3());
+  const center = model.bounds.getCenter(new THREE.Vector3());
 
   let camera, pxPerStud, ortho = null;
-  if (view === "iso") {
-    const iso = isoCamera(model.bounds, width, height);
-    camera = iso.camera;
-    pxPerStud = iso.pxPerStud;
+  if (view === "perspective") {
+    const perspective = perspectiveCamera(model.bounds, width, height);
+    camera = perspective.camera;
+    pxPerStud = perspective.pxPerStud;
     const radius = size.length();
     const light = new THREE.Vector3(-0.55, 1.1, 0.75).normalize();
-    sun.position.copy(centre).addScaledVector(light, radius * 1.5);
-    sun.target.position.copy(centre);
+    sun.position.copy(center).addScaledVector(light, radius * 1.5);
+    sun.target.position.copy(center);
     sun.castShadow = true;
     const cam = sun.shadow.camera;
     cam.left = -radius; cam.right = radius; cam.top = radius; cam.bottom = -radius;
     cam.near = radius * 0.1; cam.far = radius * 4;
     cam.updateProjectionMatrix();
     ground.visible = true;
-    ground.position.set(centre.x, model.bounds.min.y - 0.02, centre.z);
+    ground.position.set(center.x, model.bounds.min.y - 0.02, center.z);
     ground.scale.set(radius * 6, radius * 6, 1);
     renderer.setClearColor(PAPER, 1);
   } else {
@@ -546,20 +546,20 @@ function drawPanel(view, width, height) {
     pxPerStud = ortho.scale * STUD * MM;
     const spec = VIEWS[view];
     const light = vec(spec.dir).multiplyScalar(2).add(vec(spec.up).multiplyScalar(1.2)).sub(vec(spec.u.vec).multiplyScalar(0.8)).normalize();
-    sun.position.copy(centre).addScaledVector(light, size.length() * 2);
-    sun.target.position.copy(centre);
+    sun.position.copy(center).addScaledVector(light, size.length() * 2);
+    sun.target.position.copy(center);
     sun.castShadow = false;
     ground.visible = false;
     renderer.setClearColor(0x000000, 0);
     drawGrid(ctx, view, ortho, width, height);
   }
-  hemi.intensity = view === "iso" ? 1.45 : 1.7;
-  // Thin edges when parts are small on screen, so outlines never swamp the colours.
+  hemi.intensity = view === "perspective" ? 1.45 : 1.7;
+  // Thin edges when elements are small on screen, so outlines never swamp the colors.
   const opacity = Math.min(0.42, Math.max(0.07, 0.03 * pxPerStud));
   model.edgeMaterials.plain.opacity = opacity;
 
   const started = performance.now();
-  orderInstances(model.meshes, camera);
+  orderInstances(model.studMeshes, camera);
   renderer.setSize(width, height, false);
   renderer.render(three, camera);
   ctx.drawImage(renderer.domElement, 0, 0, width, height);
@@ -568,7 +568,7 @@ function drawPanel(view, width, height) {
 
   svg.append(text(12, 20, `${VIEWS[view].title}`, { weight: 700, fill: INK.text }));
   svg.append(text(12 + measure(VIEWS[view].title, 700) + 8, 20, VIEWS[view].note, { fill: INK.quiet }));
-  if (view === "iso") drawCompass(svg, camera, centre, width);
+  if (view === "perspective") drawCompass(svg, camera, center, width);
   else drawRulers(svg, view, ortho, width, height);
   drawLabels(svg, camera, width, height);
   panel.append(canvas, svg);
@@ -587,13 +587,13 @@ function header(scene, width) {
   bar.append(title);
   const legend = document.createElement("span");
   legend.className = "legend";
-  const flags = scene.parts.reduce((all, p) => all | p[1], 0);
+  const flags = scene.elements.reduce((all, p) => all | p[1], 0);
   const keys = [];
   if (flags & FLAG.ERROR) keys.push(["error", "error"]);
   if (flags & FLAG.WARNING) keys.push(["warning", "warning"]);
   if (flags & FLAG.HIGHLIGHT) keys.push(["highlight", "highlighted"]);
   if (flags & FLAG.CHANGED) keys.push(["changed", "new or changed since the last build"]);
-  if (scene.clips.length) keys.push([null, `cut: ${scene.clips.map(describeClip).join(", ")}`]);
+  if (scene.clips.length) keys.push([null, `clip: ${scene.clips.map(describeClip).join(", ")}`]);
   for (const [kind, label] of keys) {
     const item = document.createElement("span");
     if (kind) {
@@ -634,18 +634,18 @@ function rulerGeometry(view, ortho, width, height) {
   const vLo = Math.min(spec.v.sign * ortho.v0, spec.v.sign * ortho.v1) / (v.unit * MM);
   const vHi = Math.max(spec.v.sign * ortho.v0, spec.v.sign * ortho.v1) / (v.unit * MM);
   const hStep = tickStep(h, ortho.scale, 34), vStep = tickStep(v, ortho.scale, 22);
-  const ticks = (lo, hi, step) => {
+  const ticks = (low, high, step) => {
     const out = [];
-    for (let t = Math.ceil(lo / step - 1e-9) * step; t <= hi + 1e-9; t += step) out.push(Math.round(t * 1000) / 1000);
+    for (let t = Math.ceil(low / step - 1e-9) * step; t <= high + 1e-9; t += step) out.push(Math.round(t * 1000) / 1000);
     return out;
   };
   return { h, v, xOf, yOf, hTicks: ticks(hLo, hHi, hStep), vTicks: ticks(vLo, vHi, vStep), hLo, hHi, vLo, vHi };
 }
 
-function drawGrid(ctx, view, ortho, width, height, colour = "rgba(31, 35, 40, 0.07)") {
+function drawGrid(ctx, view, ortho, width, height, color = "rgba(31, 35, 40, 0.07)") {
   const g = rulerGeometry(view, ortho, width, height);
   ctx.save();
-  ctx.strokeStyle = colour;
+  ctx.strokeStyle = color;
   ctx.lineWidth = 1;
   const top = MARGIN.top - 4, bottom = height - MARGIN.bottom + 4;
   for (const t of g.hTicks) {
@@ -695,7 +695,7 @@ function drawLabels(svg, camera, width, height) {
   const order = [...scene.labels].sort((a, b) => rank(a.kind) - rank(b.kind));
   for (const label of order) {
     if (shown >= limit) break;
-    const box = model.partBounds[label.part];
+    const box = model.elementBounds[label.element];
     if (box.isEmpty()) continue;
     const anchor = new THREE.Vector3((box.min.x + box.max.x) / 2, box.max.y, (box.min.z + box.max.z) / 2).project(camera);
     if (anchor.z > 1 || Math.abs(anchor.x) > 1 || Math.abs(anchor.y) > 1) continue;
@@ -706,12 +706,12 @@ function drawLabels(svg, camera, width, height) {
       .find((r) => r.x > 2 && r.y > MARGIN.top - 6 && r.x + w < width - 2 && r.y + h < height - 2 && !taken.some((t) => overlaps(t, r.x, r.y, w, h)));
     if (!spot) continue;
     taken.push({ x: spot.x, y: spot.y, w, h });
-    const colour = INK[label.kind];
+    const color = INK[label.kind];
     const tx = spot.x < ax ? spot.x + w : spot.x, ty = spot.y + h / 2;
-    svg.append(svgElement("line", { x1: ax, y1: ay, x2: tx, y2: ty, stroke: colour, "stroke-width": 1.2 }));
-    svg.append(svgElement("circle", { cx: ax, cy: ay, r: 2.5, fill: colour }));
-    svg.append(svgElement("rect", { x: spot.x, y: spot.y, width: w, height: h, rx: 3, fill: "#ffffff", stroke: colour, "stroke-width": 1 }));
-    svg.append(text(spot.x + 4, spot.y + 12, label.text, { weight: 600, fill: colour }));
+    svg.append(svgElement("line", { x1: ax, y1: ay, x2: tx, y2: ty, stroke: color, "stroke-width": 1.2 }));
+    svg.append(svgElement("circle", { cx: ax, cy: ay, r: 2.5, fill: color }));
+    svg.append(svgElement("rect", { x: spot.x, y: spot.y, width: w, height: h, rx: 3, fill: "#ffffff", stroke: color, "stroke-width": 1 }));
+    svg.append(text(spot.x + 4, spot.y + 12, label.text, { weight: 600, fill: color }));
     shown += 1;
   }
 }
@@ -724,9 +724,9 @@ function overlaps(t, x, y, w, h) {
   return x < t.x + t.w + 4 && t.x < x + w + 4 && y < t.y + t.h + 2 && t.y < y + h + 2;
 }
 
-function drawCompass(svg, camera, centre, width) {
-  const a = centre.clone().project(camera);
-  const b = centre.clone().add(new THREE.Vector3(0, 0, -50)).project(camera);
+function drawCompass(svg, camera, center, width) {
+  const a = center.clone().project(camera);
+  const b = center.clone().add(new THREE.Vector3(0, 0, -50)).project(camera);
   let dx = b.x - a.x, dy = -(b.y - a.y);
   const length = Math.hypot(dx, dy) || 1;
   dx /= length; dy /= length;
@@ -782,15 +782,15 @@ export async function mount(element, scene) {
   let model = buildModel(scene);
   three.add(model.root);
   const size = model.bounds.getSize(new THREE.Vector3());
-  const centre = model.bounds.getCenter(new THREE.Vector3());
+  const center = model.bounds.getCenter(new THREE.Vector3());
   const radius = size.length();
-  sun.position.copy(centre).addScaledVector(new THREE.Vector3(-0.55, 1.1, 0.75).normalize(), radius * 1.5);
-  sun.target.position.copy(centre);
+  sun.position.copy(center).addScaledVector(new THREE.Vector3(-0.55, 1.1, 0.75).normalize(), radius * 1.5);
+  sun.target.position.copy(center);
   Object.assign(sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: radius * 0.1, far: radius * 4 });
   sun.shadow.camera.updateProjectionMatrix();
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(radius * 6, radius * 6), new THREE.ShadowMaterial({ opacity: 0.16 }));
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(centre.x, model.bounds.min.y - 0.02, centre.z);
+  ground.position.set(center.x, model.bounds.min.y - 0.02, center.z);
   ground.receiveShadow = true;
   three.add(ground);
 
@@ -803,16 +803,16 @@ export async function mount(element, scene) {
   const look = (view) => {
     const w = element.clientWidth, h = element.clientHeight;
     camera.aspect = w / h;
-    if (view === "iso") {
-      const iso = isoCamera(model.bounds, w, h);
-      camera.position.copy(iso.camera.position);
-      controls.target.copy(iso.target);
+    if (view === "perspective") {
+      const perspective = perspectiveCamera(model.bounds, w, h);
+      camera.position.copy(perspective.camera.position);
+      controls.target.copy(perspective.target);
     } else {
       const spec = VIEWS[view];
       const fit = radius / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 0.55;
-      camera.position.copy(centre).addScaledVector(vec(spec.dir), fit);
+      camera.position.copy(center).addScaledVector(vec(spec.dir), fit);
       camera.up.copy(vec(spec.up));
-      controls.target.copy(centre);
+      controls.target.copy(center);
     }
     camera.updateProjectionMatrix();
     controls.update();
@@ -826,22 +826,22 @@ export async function mount(element, scene) {
   };
   new ResizeObserver(resize).observe(element);
   resize();
-  look("iso");
+  look("perspective");
   const loop = () => {
     if (controls.update()) render();
     requestAnimationFrame(loop);
   };
   loop();
 
-  // Cut the model at a height, plate by plate, to look inside.
-  const cut = (plates) => {
+  // Clip the model at a height, plate by plate, to look inside.
+  const clip = (plates) => {
     const plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), plates * PLATE * MM);
     model.root.traverse((object) => {
       if (object.material) object.material.clippingPlanes = [...model.planes, plane];
     });
     render();
   };
-  return { look, cut, topPlates: scene.bounds[5] / PLATE };
+  return { look, clip, topPlates: scene.bounds[5] / PLATE };
 }
 
 // Headless pages call these through window.bricky.

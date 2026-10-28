@@ -31,8 +31,8 @@ layers above it in this list:
    geometry generated per family, with curves drawn as exact facets.
 4. `model`, `provenance`, `builder`, `files`: the canonical model format, the script lines that
    placed each element, how to write models, and their files and source maps.
-5. `analysis`: derived data (world geometry, spatial index, links, cells), cached in `Context`,
-   and the differences between two builds.
+5. `analysis`: derived data (world geometry, spatial index, connections, voxels), cached in
+   `Context`, and the differences between two builds.
 6. `passes`, `diagnostics`, `check`: plugin passes and the reports they produce.
 7. `render`: scenes resolved from a model, drawn with three.js in headless Chromium.
 8. `runner`, `service`: build scripts in child processes, and every command defined once.
@@ -53,7 +53,7 @@ committed; a reference never reaches the agent's workspace.
   multiprocessing or other event loops directly.
 - **Data:** pydantic models at every boundary (files, settings, CLI, MCP). Use frozen, slotted
   dataclasses for hot geometry.
-- **Exactness:** no floats inside the kernel. Convert agent units (studs, plates) at the edges.
+- **Exactness:** no floats inside the kernel. Convert studs and plates to base units at the edges.
 - **One definition:** each command is a request model plus a function in `bricky.service`. The CLI
   and the MCP server derive from it and never redefine arguments.
 - **Store once:** the model stores ids and poses only. Everything else is derived in `analysis` and
@@ -79,3 +79,36 @@ committed; a reference never reaches the agent's workspace.
   as an adjective.
 - **Tests:** every pass gets a passing case and a failing case. Geometry gets property tests.
   Renders get a test that draws real pixels.
+
+## Vocabulary
+
+Each concept has one name, used in code, docs, messages and pictures alike.
+
+| Term | Meaning |
+| --- | --- |
+| part | A design in the catalog, by its BrickLink id, such as `3001` (Brick 2 x 4) |
+| color | A BrickLink color, by its id, such as `5` (Red) |
+| element | One part in one color, placed in a model, with an `id` |
+| uid | An element's id behind the ids of the instances that hold it, such as `bay2/e3` |
+| component, instance | A group of elements stored once, and one placed copy of it |
+| position, rotation, pose | Where an element's minimum corner sits, how it is rotated, and both |
+| stud, anti-stud | A connector on a part's face, and the socket under a part that a stud fits |
+| connection | Two elements joined by studs of one in anti-studs of the other |
+| shape, family | A part's catalog data, and the generator that turns it into geometry |
+| solid | A box or a convex solid of a part's body |
+| voxel | One stud square and one plate tall: the grid that models are compared on |
+| base unit | 0.4 mm, the integer unit of the kernel; agents write studs and plates |
+| pass, code, diagnostic, report | A check, a fact it can state, one statement of it, and all of them |
+| scene, view, mesh | What a render draws, one picture of it, and an element drawn by its faces |
+| clip, highlight | Keep one side of a plane; draw some elements and the rest faintly |
+
+Rotate, never turn; clip, never cut. Spell American English: color, center, neighbor. Spell words
+out: the only abbreviations are `id`, `uid`, `info`, `cmd` and `e`, besides `x`, `y`, `z` and loop
+indices.
+
+## Writing
+
+Docs, docstrings, comments and messages are formal, direct and plain. Each sentence opens with its
+subject and states one thing in the active voice. No sentence starts with "Because", "It", "It's",
+"There is", "This" or "Note that": name the subject instead. Say what something is or does, not what
+it is not, and leave out filler.

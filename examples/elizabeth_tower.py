@@ -1,7 +1,7 @@
 """The Elizabeth Tower (Big Ben) at roughly 1 stud to 1 m (about 1:125).
 
 Prompt: "Build the Elizabeth Tower (Big Ben) in London."
-References: Wikipedia, "Big Ben": 96 m tall, 12 m square base, four 6.9 m dials centred 54.9 m up,
+References: Wikipedia, "Big Ben": 96 m tall, 12 m square base, four 6.9 m dials centered 54.9 m up,
 gilded dial surrounds, a cast-iron spire, the Ayrton Light above the belfry.
 
 The tower is drawn as voxels (one stud by one stud by one plate), then packed into bricks and
@@ -131,7 +131,7 @@ def spire(x: int, y: int, z: int) -> Color:
 
 
 def tower(x: int, y: int, z: int) -> Color:
-    """Colour of the voxel at (x, y, z), or None for air."""
+    """Color of the voxel at (x, y, z), or None for air."""
     if z < 6:
         return BAND if ring(x, y, OUTER.start, OUTER.stop, thickness=2) else None  # plinth
     if z < 120:
@@ -161,7 +161,7 @@ def pack(
     label: str,
     below: set[Cell] | None,
 ) -> None:
-    """Greedily cover same-coloured cells with the biggest parts that fit, scanning along one axis.
+    """Greedily cover same-colored cells with the biggest parts that fit, scanning along one axis.
 
     Alternating the axis from course to course staggers the joints and interlocks the corners.
     Every part must rest on at least one cell of the layer below (``below=None`` means the ground),

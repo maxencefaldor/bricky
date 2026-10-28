@@ -9,29 +9,29 @@ from bricky.units import STUD
 
 
 class SpatialHash[K: Hashable]:
-    """Buckets boxes into cubic grid cells for fast candidate lookup."""
+    """Sorts boxes into the cubic buckets of a grid, to find the boxes near one quickly."""
 
-    def __init__(self, cell: int = 2 * STUD) -> None:
-        self._cell = cell
+    def __init__(self, bucket: int = 2 * STUD) -> None:
+        self._bucket = bucket
         self._buckets: defaultdict[tuple[int, int, int], list[K]] = defaultdict(list)
 
     def insert(self, key: K, box: Box) -> None:
         """Register a box under a key; a key may own several boxes."""
-        for cell in self._cells(box):
-            self._buckets[cell].append(key)
+        for bucket in self._buckets_of(box):
+            self._buckets[bucket].append(key)
 
     def query(self, box: Box) -> set[K]:
-        """Return the keys of every box that shares a grid cell with this one."""
+        """Return the keys of every box that shares a bucket with this one."""
         found: set[K] = set()
-        for cell in self._cells(box):
-            found.update(self._buckets.get(cell, ()))
+        for bucket in self._buckets_of(box):
+            found.update(self._buckets.get(bucket, ()))
         return found
 
-    def _cells(self, box: Box) -> Iterator[tuple[int, int, int]]:
-        size = self._cell
-        lo, hi = box.min, box.max
+    def _buckets_of(self, box: Box) -> Iterator[tuple[int, int, int]]:
+        size = self._bucket
+        low, high = box.min, box.max
         return product(
-            range(lo.x // size, (hi.x - 1) // size + 1),
-            range(lo.y // size, (hi.y - 1) // size + 1),
-            range(lo.z // size, (hi.z - 1) // size + 1),
+            range(low.x // size, (high.x - 1) // size + 1),
+            range(low.y // size, (high.y - 1) // size + 1),
+            range(low.z // size, (high.z - 1) // size + 1),
         )

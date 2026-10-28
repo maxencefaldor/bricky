@@ -59,13 +59,13 @@ _PAGE: Final = Template("""\
 <header>
   <h1>$heading</h1>
   <nav aria-label="Views">
-    <button type="button" data-view="iso">Iso</button>
+    <button type="button" data-view="perspective">Perspective</button>
     <button type="button" data-view="front">Front</button>
     <button type="button" data-view="right">Right</button>
     <button type="button" data-view="top">Top</button>
   </nav>
-  <label for="cut">Cut at
-    <input id="cut" type="range" min="1" step="1"> <output id="cut-out"></output>
+  <label for="clip">Clip at
+    <input id="clip" type="range" min="1" step="1"> <output id="clip-height"></output>
   </label>
 </header>
 <main id="stage" aria-label="3D view of the model"></main>
@@ -77,12 +77,12 @@ const ui = await mount(document.getElementById("stage"), scene);
 for (const button of document.querySelectorAll("[data-view]")) {
   button.addEventListener("click", () => ui.look(button.dataset.view));
 }
-const cut = document.getElementById("cut");
-const out = document.getElementById("cut-out");
-cut.max = String(ui.topPlates);
-cut.value = cut.max;
-const show = () => { out.textContent = cut.value + " plates"; ui.cut(Number(cut.value)); };
-cut.addEventListener("input", show);
+const clip = document.getElementById("clip");
+const height = document.getElementById("clip-height");
+clip.max = String(ui.topPlates);
+clip.value = clip.max;
+const show = () => { height.textContent = clip.value + " plates"; ui.clip(Number(clip.value)); };
+clip.addEventListener("input", show);
 show();
 </script>
 </body>

@@ -32,6 +32,15 @@ SHAPED = {
     "Slope 30 1 x 1 x 2/3": SlopeShape(
         family=Family.SLOPE, size=(1, 1), run=1, height=2, studs=False
     ),
+    "Slope 18 4 x 2": SlopeShape(family=Family.SLOPE, size=(2, 4), run=3),
+    "Slope 10 6 x 1": SlopeShape(family=Family.SLOPE, size=(1, 6), run=6, studs=False),
+    "Slope 18 2 x 1 x 2/3": SlopeShape(
+        family=Family.SLOPE, size=(1, 2), run=2, height=2, studs=False
+    ),
+    "Slope 45 2 x 6 x 2/3": SlopeShape(family=Family.SLOPE, size=(6, 2), run=1, height=2),
+    "Slope, Inverted 60 4 x 1 x 3": InvertedSlopeShape(
+        family=Family.INVERTED_SLOPE, size=(1, 4), run=2, height=9
+    ),
     "Slope, Inverted 45 2 x 2": InvertedSlopeShape(
         family=Family.INVERTED_SLOPE, size=(2, 2), run=1
     ),
@@ -72,6 +81,8 @@ UNSHAPED = [
     "Plate, Round 4 x 4 with Hole",  # bigger round parts have studs set in
     "Plate, Round 1 x 2",
     "Tile 1 x 2 Grille with Bottom Groove",
+    "Tile, Round 2 x 2 with Open Stud",  # a tile with a stud is not a plain tile
+    "Slope, Curved 3 x 1 x 2 with Hollow Stud",
     "Brick, Modified 1 x 2 with 1 Stud on 1 Side",  # one stud, not one per position
     "Brick, Modified 1 x 1 x 1 2/3 with Studs on 1 Side",
     "Brick, Modified 1 x 2 with Studs on 2 Sides, Adjacent",

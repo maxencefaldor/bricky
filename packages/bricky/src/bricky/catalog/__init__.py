@@ -136,22 +136,22 @@ class Catalog:
             BrickyError: If the data is not a catalog, or an id or name repeats.
         """
         if data.get("format") != CATALOG_FORMAT:
-            msg = f"{origin} is not a bricky catalog: expected format {CATALOG_FORMAT!r}"
-            raise BrickyError(msg)
+            message = f"{origin} is not a bricky catalog: expected format {CATALOG_FORMAT!r}"
+            raise BrickyError(message)
         parts = data.get("parts", [])
         try:
             colors = _COLORS.validate_python(data.get("colors", []))
             if not isinstance(parts, list) or not all(
                 isinstance(p, dict) and isinstance(p.get("id"), str) for p in parts
             ):
-                msg = "every part needs a string id"
-                raise ValueError(msg)  # noqa: TRY301 - reported with the validation errors below
+                message = "every part needs a string id"
+                raise ValueError(message)  # noqa: TRY301 - reported with the validation errors below
             _check_unique(
                 [p["id"] for p in parts], [c.id for c in colors], [c.name for c in colors]
             )
         except (ValidationError, ValueError) as error:
-            msg = f"{origin} is not a valid catalog: {error}"
-            raise BrickyError(msg) from None
+            message = f"{origin} is not a valid catalog: {error}"
+            raise BrickyError(message) from None
         return cls(parts, colors, source=str(data.get("source", "")))
 
     def __len__(self) -> int:
@@ -214,14 +214,14 @@ class Catalog:
         else:
             color = self._color_names.get(value.casefold())
         if color is None:
-            msg = f"unknown color {value!r}; search the catalog with `bricky colors <words>`"
-            raise ValueError(msg)
+            message = f"unknown color {value!r}; search the catalog with `bricky colors <words>`"
+            raise ValueError(message)
         return color
 
     def find(
         self, *, family: Family | str | None = None, size: tuple[int, int] | None = None
     ) -> list[Part]:
-        """Return the parts of a family and footprint, in catalog order.
+        """Return the parts of a family and footprint: plain parts first, then printed ones.
 
         Args:
             family: Part family, such as ``"plate"``; any family when omitted.
@@ -234,16 +234,17 @@ class Catalog:
         """
         wanted = None if family is None else Family(family).value
         footprint = None if size is None else sorted(size)
-        found = []
-        for key in self._entries:
+        plain: list[Part] = []
+        printed: list[Part] = []
+        for key, entry in self._entries.items():
             shape = self._raw_shape(key)
             if shape is None or (wanted is not None and shape.get("family") != wanted):
                 continue
             if footprint is not None and sorted(shape.get("size", ())) != footprint:
                 continue
             if (part := self.part(key)) is not None:
-                found.append(part)
-        return found
+                (printed if _raw(entry, "base") else plain).append(part)
+        return plain + printed
 
     def search_colors(self, query: str = "") -> list[Color]:
         """Return colors whose id, name or type contain every word of the query."""
@@ -254,7 +255,7 @@ class Catalog:
             if all(w in f"{color.id} {color.name.casefold()} {color.type}" for w in words)
         ]
 
-    def search(self, query: str, *, shapeless: bool = False) -> list[CatalogPart]:
+    def search_parts(self, query: str, *, shapeless: bool = False) -> list[CatalogPart]:
         """Return the catalog parts whose id, name, category or family match every word of a query.
 
         A word matches when the part's text contains it, except a size, which must match a whole
@@ -292,8 +293,8 @@ class Catalog:
         try:
             validated = _ENTRY.validate_python(entry)
         except ValidationError as error:
-            msg = f"catalog part {key!r} is not valid: {error}"
-            raise BrickyError(msg) from None
+            message = f"catalog part {key!r} is not valid: {error}"
+            raise BrickyError(message) from None
         self._entries[key] = validated
         return validated
 
@@ -308,14 +309,14 @@ def load_catalog(path: Path) -> Catalog:
         text = path.read_text(encoding="utf-8")
         data = tomllib.loads(text) if path.suffix == ".toml" else json.loads(text)
     except OSError as error:
-        msg = f"cannot read catalog {path}: {error.strerror or error}"
-        raise BrickyError(msg) from None
+        message = f"cannot read catalog {path}: {error.strerror or error}"
+        raise BrickyError(message) from None
     except (tomllib.TOMLDecodeError, json.JSONDecodeError) as error:
-        msg = f"{path} is not a valid catalog: {error}"
-        raise BrickyError(msg) from None
+        message = f"{path} is not a valid catalog: {error}"
+        raise BrickyError(message) from None
     if not isinstance(data, dict):
-        msg = f"{path} is not a bricky catalog"
-        raise BrickyError(msg)
+        message = f"{path} is not a bricky catalog"
+        raise BrickyError(message)
     return Catalog.from_data(data, origin=str(path))
 
 
@@ -382,8 +383,8 @@ def _check_unique(part_ids: list[str], color_ids: list[int], color_names: list[s
     ):
         repeated = sorted(key for key, count in Counter(keys).items() if count > 1)
         if repeated:
-            msg = f"repeated {what}: {', '.join(repeated)}"
-            raise ValueError(msg)
+            message = f"repeated {what}: {', '.join(repeated)}"
+            raise ValueError(message)
 
 
 def _rows(items: Iterable[BaseModel]) -> list[str]:

@@ -107,7 +107,9 @@ def parts_download(parts: list[tuple[str, str]]) -> str:
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<CATALOG>\n{items}</CATALOG>\n'
 
 
-def test_an_import_from_both_shapes_by_name_then_by_ldraw_and_compares_them(tmp_path):
+def test_an_import_from_both_shapes_by_name_then_by_ldraw_and_ldraw_wins_a_disagreement(
+    tmp_path,
+):
     shutil.copy(DATA / "bricklink" / "Colors.xml", tmp_path / "Colors.xml")
     (tmp_path / "parts.xml").write_text(parts_download(BRICKLINK_PARTS))
     catalog_file, coverage = import_catalog(read_downloads(tmp_path), LIBRARY)
@@ -117,7 +119,7 @@ def test_an_import_from_both_shapes_by_name_then_by_ldraw_and_compares_them(tmp_
     assert parts["3700"].shape is not None
     assert parts["3700"].shape.family is Family.BOXES
     assert parts["3700pb01"].base == "3700"
-    assert coverage.by_source == {"name": 3, "LDraw": 1, "printed": 1}
+    assert coverage.by_source == {"name": 2, "LDraw": 2, "printed": 1}
     assert coverage.compared == 3
     assert coverage.disagreements == (
         (
@@ -125,4 +127,6 @@ def test_an_import_from_both_shapes_by_name_then_by_ldraw_and_compares_them(tmp_
             "LDraw gives 40 x 40 x 4 units, 4 studs, 0 anti-studs"
         ),
     )
+    assert parts["3867"].shape is not None
+    assert parts["3867"].shape.family is Family.BOXES  # LDraw's shape, where they disagree
     assert coverage.sources[1].startswith("LDraw.org Parts Library, CC BY, release 2025-01, at ")

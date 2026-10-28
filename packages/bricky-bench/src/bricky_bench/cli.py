@@ -46,7 +46,7 @@ class ListCommand(_Selection):
 
 
 class PrepareCommand(_Selection):
-    """Write the inputs each project generates from its reference: pictures and cell plans."""
+    """Write the inputs each project generates from its reference: pictures and voxel plans."""
 
     async def cli_cmd(self) -> None:
         """Run the command."""
@@ -62,7 +62,7 @@ class RunCommand(_Selection):
 
     repeats: int = Field(default=1, ge=1, description="Runs of each project.")
     jobs: int = Field(default=1, ge=1, description="Runs at the same time.")
-    out: Path = Field(
+    output: Path = Field(
         default=Path("bench/runs"), description="Folder for run folders, one per invocation."
     )
     model: str | None = Field(default=None, description="Model for Claude Code's --model.")
@@ -73,20 +73,20 @@ class RunCommand(_Selection):
     async def cli_cmd(self) -> None:
         """Run the command."""
         projects = load_projects(self.projects_dir, self.project)
-        out = self.out / datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+        output = self.output / datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
         agent = Agent(command=self.agent_command, model=self.model)
         async with Session() as session:
             records = await run_projects(
                 projects,
-                repo=Path.cwd(),
-                out=out,
+                repository=Path.cwd(),
+                output=output,
                 agent=agent,
                 repeats=self.repeats,
                 jobs=self.jobs,
                 session=session,
             )
         print(summary_table(records), end="")
-        print(f"\nruns kept in {out}")
+        print(f"\nruns kept in {output}")
 
 
 class BrickyBench(BaseSettings):
