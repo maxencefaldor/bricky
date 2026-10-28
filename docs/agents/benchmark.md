@@ -73,3 +73,27 @@ and `record.json`; per invocation, `summary.json` and `summary.md`.
 - **Effort:** turns, minutes, Claude Code's cost estimate, and how many builds the agent ran.
 
 Judged projects have facts and effort but no fidelity: compare their pictures by eye.
+
+## First results
+
+On 28 October 2026, one Claude agent per project worked through all ten in a workspace like the
+runner's, with the command line and the skill, and `bricky-bench`'s scorer scored the final
+scripts. Every model builds with no errors and no warnings.
+
+| # | Project | Elements | Shape | Color |
+| --- | --- | ---: | ---: | ---: |
+| 1 | A brick wall | 27 | 1.00 | 1.00 |
+| 2 | A pixel heart | 54 | 1.00 | 1.00 |
+| 3 | Repair a footbridge | 28 | 1.00 | 1.00 |
+| 4 | A house from its plans | 78 | 1.00 | 1.00 |
+| 5 | A toadstool from its layers | 64 | 1.00 | 1.00 |
+| 6 | A lighthouse from one picture | 88 | 0.93 | 0.91 |
+| 7 | A red telephone box | 321 | judged | judged |
+| 8 | A five-storey pagoda | 596 | judged | judged |
+| 9 | A castle from its plans | 401 | 1.00 | 1.00 |
+| 10 | Notre-Dame de Paris | 1,872 | judged | judged |
+
+The projects with exact plans, 1 to 5 and 9, reach a perfect score in one to four builds, so they
+measure whether an agent can use bricky at all. The open briefs set the difficulty: the agents rated the lighthouse, the telephone box and the pagoda 3 out of 5, and
+Notre-Dame 4, for its roofs meeting at the crossing, its rose windows on side studs, and walls that
+pack around openings without floating parts.
