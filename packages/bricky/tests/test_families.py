@@ -1,7 +1,7 @@
 import pytest
 
 from bricky import ModelBuilder, cells, check_model, default_catalog
-from bricky.catalog import ConnectorKind, Part
+from bricky.catalog import Catalog, ConnectorKind, Part
 from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Vec3
 from bricky.units import PLATE, STUD
 
@@ -116,3 +116,12 @@ def test_cells_of_a_slope_follow_its_face():
     assert {(0, 1, z) for z in range(3)} <= set(filled)
     assert (0, 0, 0) in filled
     assert (0, 0, 2) not in filled
+
+
+def test_short_and_tall_arches_build_and_stand_on_their_legs():
+    for key, size, height, span in (("4490", (1, 3), 3, 1), ("2339", (1, 5), 12, 3)):
+        shape = {"family": "arch", "size": size, "height": height, "span": span}
+        arch = Catalog([{"id": key, "name": "Arch", "shape": shape}]).part(key)
+        assert arch is not None
+        assert len(receptors(arch)) == 2  # one under each leg
+        assert arch.size.z == height * PLATE

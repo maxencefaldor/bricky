@@ -8,16 +8,16 @@ https://www.bricklink.com/catalogDownload.asp, for members who are signed in:
 - **Categories**: every category's id and name.
 - **Codes**: the colors each part comes in, with LEGO's element number for each.
 
-:func:`read_downloads` finds these files in a folder by what they hold, whatever they are called.
-:func:`import_catalog` turns them into a catalog: every part and every color, each part shaped when
-its name describes a shape bricky has a family for (see :mod:`bricky.catalog.names`), and each
-printed part shaped like the part it is printed on. Parts without a shape stay in the catalog, so
-bricky knows them, but cannot be placed.
+:func:`read_downloads` finds these files in a folder by what they hold, whatever they are called,
+and :func:`bricklink_parts` turns them into catalog colors and parts, each part shaped when its
+name describes a shape bricky has a family for (see :mod:`bricky.catalog.names`).
+:mod:`bricky.catalog.importing` puts this together with shapes from LDraw.
 """
 
+import html
 import re
 import xml.etree.ElementTree as ET
-from collections import Counter, defaultdict
+from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,7 +25,6 @@ from typing import Final
 
 from pydantic import BaseModel, Field
 
-from bricky.catalog import CatalogFile
 from bricky.catalog.models import CatalogPart, Color, ColorType
 from bricky.catalog.names import shape_from_name
 from bricky.errors import BrickyError
@@ -72,26 +71,8 @@ class Downloads(BaseModel):
     files: dict[str, Path] = Field(description="The file each download was read from, by kind.")
 
 
-class Coverage(BaseModel):
-    """What an import found: how many parts and colors, and how many parts have a shape."""
-
-    parts: int = Field(description="Parts imported.")
-    shaped: int = Field(description="Parts with a shape, which can be placed.")
-    printed: int = Field(description="Printed parts shaped like the part they are printed on.")
-    by_family: dict[str, int] = Field(description="Shaped parts by family, printed ones included.")
-    unshaped_by_category: dict[str, int] = Field(
-        description="Parts without a shape by BrickLink category, most first."
-    )
-    colors: int = Field(description="Colors imported.")
-    skipped_colors: tuple[str, ...] = Field(
-        default=(), description="Colors left out, with why: no RGB value, or a repeated name."
-    )
-
-
 _PARTS: Final = "parts"
 _KINDS: Final = ("colors", "categories", _PARTS, "codes")
-_PRINTED: Final = re.compile(r"p[a-z]{0,3}\d")
-"""How BrickLink numbers printed parts: the base part's number, then p, letters and digits."""
 
 
 def read_downloads(folder: Path) -> Downloads:
@@ -160,11 +141,13 @@ def read_downloads(folder: Path) -> Downloads:
         raise BrickyError(msg) from None
 
 
-def import_catalog(downloads: Downloads) -> tuple[CatalogFile, Coverage]:
-    """Turn BrickLink's downloads into a catalog file, and say how much of it has a shape.
+def bricklink_parts(
+    downloads: Downloads,
+) -> tuple[list[Color], tuple[str, ...], dict[str, CatalogPart]]:
+    """BrickLink's colors, the colors it left out and why, and its parts, by item number.
 
-    The same downloads always give the same file: parts and colors keep BrickLink's order, and the
-    file is dated by the newest download.
+    Each part gets the shape its name describes, if any, and the colors the Codes download lists
+    for it. Parts and colors keep BrickLink's order.
     """
     colors, skipped = _colors(downloads.colors)
     color_ids = {color.name.casefold(): color.id for color in colors}
@@ -173,46 +156,24 @@ def import_catalog(downloads: Downloads) -> tuple[CatalogFile, Coverage]:
         color_id = color_ids.get(code.color.casefold())
         if code.item_type == "P" and color_id is not None:
             known[code.item_id].add(color_id)
-
     entries: dict[str, CatalogPart] = {}
     for item in downloads.parts:
-        if item.id in entries:
-            continue
-        entries[item.id] = CatalogPart(
-            id=item.id,
-            name=" ".join(item.name.split()),
-            category=downloads.categories.get(item.category),
-            alternates=item.alternates,
-            colors=tuple(sorted(known.get(item.id, ()))),
-            shape=shape_from_name(item.name),
-        )
-    printed = _shape_printed_parts(entries)
+        if item.id not in entries:
+            entries[item.id] = CatalogPart(
+                id=item.id,
+                name=" ".join(item.name.split()),
+                category=downloads.categories.get(item.category),
+                alternates=item.alternates,
+                colors=tuple(sorted(known.get(item.id, ()))),
+                shape=shape_from_name(item.name),
+            )
+    return colors, skipped, entries
 
-    families: Counter[str] = Counter()
-    unshaped: Counter[str] = Counter()
-    for entry in entries.values():
-        shape = entry.shape or (entries[entry.base].shape if entry.base else None)
-        if shape is None:
-            unshaped[entry.category or "no category"] += 1
-        else:
-            families[shape.family.value] += 1
-    coverage = Coverage(
-        parts=len(entries),
-        shaped=families.total(),
-        printed=printed,
-        by_family=dict(families.most_common()),
-        unshaped_by_category=dict(unshaped.most_common()),
-        colors=len(colors),
-        skipped_colors=skipped,
-    )
+
+def downloaded(downloads: Downloads) -> str:
+    """When the downloads were made, by the newest file: a date such as ``2026-10-28``."""
     newest = max(path.stat().st_mtime for path in downloads.files.values())
-    date = datetime.fromtimestamp(newest, UTC).date().isoformat()
-    catalog = CatalogFile(
-        source=f"BrickLink catalog downloads of {date}",
-        colors=tuple(colors),
-        parts=tuple(entries.values()),
-    )
-    return catalog, coverage
+    return datetime.fromtimestamp(newest, UTC).date().isoformat()
 
 
 def color_type(bricklink_type: str, name: str) -> ColorType:
@@ -252,30 +213,6 @@ def _colors(found: Iterable[BrickLinkColor]) -> tuple[list[Color], tuple[str, ..
     return colors, tuple(skipped)
 
 
-def _shape_printed_parts(entries: dict[str, CatalogPart]) -> int:
-    """Name the part each printed part is printed on, as its base, and count them.
-
-    A printed part's number is its base part's number followed by p, letters and digits, such as
-    3068bpb0001 for a print on 3068b, and its name starts with the base part's name. Both must
-    hold, and the base part must have a shape.
-    """
-    count = 0
-    for key, entry in entries.items():
-        if entry.shape is not None:
-            continue
-        for match in _PRINTED.finditer(key):
-            base = entries.get(key[: match.start()])
-            if (
-                base is not None
-                and base.shape is not None
-                and entry.name.startswith(base.name + " ")
-            ):
-                entries[key] = entry.model_copy(update={"base": base.id})
-                count += 1
-                break
-    return count
-
-
 def _read(path: Path) -> tuple[str | None, list[dict[str, str]]]:
     """Read one download: what kind it is, and its records as tag-to-text mappings."""
     data = path.read_bytes()
@@ -289,8 +226,9 @@ def _read(path: Path) -> tuple[str | None, list[dict[str, str]]]:
     except ET.ParseError as error:
         msg = f"{path} is not valid XML: {error}"
         raise BrickyError(msg) from None
-    records = [
-        {child.tag: (child.text or "").strip() for child in item} for item in root.iter("ITEM")
+    records = [  # BrickLink escapes some characters twice, such as "(" as "&amp;#40;"
+        {child.tag: html.unescape(child.text or "").strip() for child in item}
+        for item in root.iter("ITEM")
     ]
     return _kind(root.tag, records), records
 

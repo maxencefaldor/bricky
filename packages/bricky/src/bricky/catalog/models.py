@@ -59,6 +59,8 @@ class Family(StrEnum):
     SIDE_STUDS = "side_studs"
     JUMPER = "jumper"
     ARCH = "arch"
+    BOXES = "boxes"
+    """Any part, its body given as boxes and its connectors one by one, as converted from LDraw."""
 
 
 type Side = Literal["-x", "+x", "-y", "+y"]
@@ -163,6 +165,42 @@ class ArchShape(_Shape):
         return self
 
 
+type Axis = Literal["+x", "-x", "+y", "-y", "+z", "-z"]
+type Corners = tuple[int, int, int, int, int, int]
+
+
+class BoxesShape(BaseModel):
+    """Any part, given explicitly: its body as boxes, its studs and its anti-studs.
+
+    Coordinates are base units in the part's frame, the minimum corner of its body at the origin.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    family: Literal[Family.BOXES]
+    size: tuple[int, int, int] = Field(
+        description="The part's bounding box, from the origin, which the body lies within."
+    )
+    boxes: tuple[Corners, ...] = Field(
+        min_length=1, description="The body: boxes as x0, y0, z0, x1, y1, z1."
+    )
+    studs: tuple[tuple[int, int, int, Axis], ...] = Field(
+        default=(), description="Each stud: where its base sits, x, y, z, and the axis it points."
+    )
+    anti_studs: tuple[tuple[int, int], ...] = Field(
+        default=(), description="Each anti-stud on the bottom face, z = 0: x, y."
+    )
+    source: str = Field(description="Where the shape was converted from, such as 'LDraw 3001.dat'.")
+
+    @model_validator(mode="after")
+    def _within(self) -> Self:
+        for box in self.boxes:
+            if any(not 0 <= box[a] < box[a + 3] <= self.size[a] for a in range(3)):
+                msg = f"box {box} has no volume or reaches outside the size {self.size}"
+                raise ValueError(msg)
+        return self
+
+
 type Shape = Annotated[
     BlockShape
     | BaseplateShape
@@ -172,7 +210,8 @@ type Shape = Annotated[
     | RoundShape
     | SideStudsShape
     | JumperShape
-    | ArchShape,
+    | ArchShape
+    | BoxesShape,
     Field(discriminator="family"),
 ]
 """How bricky generates a part's geometry: its family and the numbers the family needs."""

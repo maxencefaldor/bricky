@@ -17,6 +17,7 @@ from bricky.catalog.models import (
     ArchShape,
     BaseplateShape,
     BlockShape,
+    BoxesShape,
     CatalogPart,
     Connector,
     ConnectorKind,
@@ -53,7 +54,9 @@ def build_part(entry: CatalogPart, shape: Shape) -> Part:
     """Generate a catalog part's solids and connectors from a shape: its own, or its base's."""
     solids, connectors, note = _geometry(shape)
     bounds = Box.bounding(solid.bounds for solid in solids)
-    if bounds.lo != ORIGIN:  # pragma: no cover - every family builds from the origin
+    if isinstance(shape, BoxesShape):
+        bounds = Box(ORIGIN, Vec3(*shape.size))
+    elif bounds.lo != ORIGIN:  # pragma: no cover - every family builds from the origin
         msg = f"part {entry.id}: its bounding box starts at {bounds.lo}, not at the origin"
         raise ValueError(msg)
     return Part(
@@ -72,7 +75,7 @@ type Geometry = tuple[Sequence[Solid], list[Connector], str]
 """A part's solids, its connectors, and a note on how it sits when placed unrotated."""
 
 
-def _geometry(shape: object) -> Geometry:  # noqa: PLR0911 - one return per family
+def _geometry(shape: object) -> Geometry:  # noqa: C901, PLR0911 - one return per family
     match shape:
         case BlockShape():
             return _block(shape)
@@ -92,6 +95,8 @@ def _geometry(shape: object) -> Geometry:  # noqa: PLR0911 - one return per fami
             return _jumper(shape)
         case ArchShape():
             return _arch(shape)
+        case BoxesShape():
+            return _boxes(shape)
     msg = f"no family generates {shape!r}"  # pragma: no cover - the shape union is closed
     raise TypeError(msg)
 
@@ -165,7 +170,8 @@ def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
     """A smooth top curving down from the back to a low lip at the front (y = 0), no studs.
 
     The curve is a quarter ellipse, flat at the back and steep at the front, drawn as a few facets
-    with corners on whole base units.
+    with corners on whole base units. Under the front row the part is too low for a stud, so a
+    curved slope longer than one stud has anti-studs under every row but that one.
     """
     width, length = shape.size
     height = shape.height * PLATE
@@ -177,7 +183,8 @@ def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
     ]
     profile: Profile = [(0, 0), (back, 0), *_distinct(arc)]
     body = Convex.prism(profile, "x", 0, width * STUD)
-    connectors = _anti_studs(_positions(width, length))
+    rows = range(1, length) if length > 1 else range(1)  # the front row is too low for a stud
+    connectors = _anti_studs(_positions(width, length, rows))
     return [body], connectors, "curves down toward -y (the front) when unrotated"
 
 
@@ -258,12 +265,24 @@ def _arch(shape: ArchShape) -> Geometry:
         Box(Vec3(0, end, 0), Vec3(thickness, length * STUD, height)),
     ]
     for (y0, z0), (y1, z1) in pairwise(curve):
+        if y0 == y1:  # a steep facet beside a leg: no body between it and the leg
+            continue
         slice_ = [(y0, z0), (y1, z1), (y1, height), (y0, height)]
         solids.append(Convex.prism(slice_, "x", 0, thickness))
     legs = [j for j in range(length) if j * STUD < start or j * STUD >= end]
     connectors = _studs(_positions(width, length), height)
     connectors += _anti_studs(_positions(width, length, legs))
     return solids, connectors, "spans along y when unrotated"
+
+
+def _boxes(shape: BoxesShape) -> Geometry:
+    """A body of boxes, with studs and anti-studs where the shape says."""
+    solids = [Box(Vec3(x0, y0, z0), Vec3(x1, y1, z1)) for x0, y0, z0, x1, y1, z1 in shape.boxes]
+    connectors = _anti_studs(shape.anti_studs)
+    connectors += [
+        Connector(ConnectorKind.STUD, Vec3(x, y, z), AXES[axis]) for x, y, z, axis in shape.studs
+    ]
+    return solids, connectors, f"converted from {shape.source}, as it is oriented there"
 
 
 def _distinct(points: Sequence[tuple[int, int]]) -> Profile:

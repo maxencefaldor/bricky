@@ -50,6 +50,11 @@ _NEUTRAL: Final = frozenset(
         "Hollow Studs",
         "Solid Stud",
         "Solid Studs",
+        "Bottom Pin",
+        "Flat Bottom Pin",
+        "Connections between Studs",
+        "Thick Top",
+        "Reinforced Underside",
     }
 )
 """Details that leave a part's outer shape and connectors as bricky models them."""
@@ -73,11 +78,11 @@ _INVERTED: Final = _pattern(rf"Slope, Inverted (?P<angle>\d+) {_SIZE}{_HEIGHT}{_
 _CURVED: Final = _pattern(rf"Slope, Curved {_SIZE}{_HEIGHT}{_DETAIL}")
 _ROUND: Final = _pattern(rf"(?P<kind>Brick|Plate|Tile), Round {_SIZE}{_HEIGHT}{_DETAIL}")
 _SIDE_STUDS: Final = _pattern(
-    r"Brick, Modified 1 x (?P<length>\d+) with (?:(?P<count>\d+) )?Studs? on (?P<sides>\d) "
-    r"Sides?(?P<adjacent>, Adjacent)?"
+    r"Brick, Modified 1 x (?P<length>\d+) with (?:(?P<count>\d+) )?Studs? on (?:(?P<sides>\d) )?"
+    r"Sides?(?:, (?P<arrangement>Adjacent|Opposite))?"
 )
 _JUMPER: Final = _pattern(rf"Plate, Modified {_SIZE} with (?P<detail>.*\b1 Stud\b.*) \(Jumper\)")
-_ARCH: Final = _pattern(rf"(?:Brick, )?Arch 1 x (?P<b>\d+){_HEIGHT}")
+_ARCH: Final = _pattern(rf"(?:Brick, )?Arch 1 x (?P<b>\d+){_HEIGHT}{_DETAIL}")
 
 _SIDES_OF_ONE: Final[dict[tuple[int, bool], tuple[Side, ...]]] = {
     (1, False): ("-y",),
@@ -135,7 +140,7 @@ def _neutral(detail: str | None, allowed: frozenset[str] = _NEUTRAL) -> bool:
     """Whether every fragment of a detail is allowed, splitting it at "with", "and" and commas."""
     if detail is None:
         return True
-    fragments = re.split(r"\s*(?:\bwith(?:out)?\b|\band\b|,)\s*", detail)
+    fragments = re.split(r"\s*(?:\bwith(?:out)?\b|\band\b|,|(?:^|\s)-\s)\s*", detail)
     return all(fragment in allowed for fragment in fragments if fragment)
 
 
@@ -231,7 +236,10 @@ def _side_studs(name: str) -> Shape | None:
     match = _SIDE_STUDS.match(name)
     if match is None:
         return None
-    length, sides, adjacent = int(match["length"]), int(match["sides"]), bool(match["adjacent"])
+    length, sides = int(match["length"]), int(match["sides"] or 1)
+    adjacent = match["arrangement"] == "Adjacent"
+    if match["arrangement"] == "Opposite" and sides != 2:  # noqa: PLR2004 - opposite means two
+        return None
     count = match["count"]
     if count is not None and int(count) != length:
         return None
@@ -258,7 +266,7 @@ def _jumper(name: str) -> Shape | None:
 def _arch(name: str) -> Shape | None:
     """Plain arches: one stud wide, a one-stud leg at each end, the opening between them."""
     match = _ARCH.match(name)
-    if match is None:
+    if match is None or not _neutral(match["detail"]):
         return None
     length = int(match["b"])
     height = plates(match["height"], 3)
