@@ -127,7 +127,7 @@ def test_errors_come_back_as_tool_errors(tmp_path: Path):
 
 def test_catalog_tools():
     parts = call("search_parts", {"query": "tile 2x2"})
-    assert [p["id"] for p in parts.structured_content["parts"]] == ["3068b", "14769"]
+    assert [p["id"] for p in parts.structured_content["parts"]] == ["3068", "14769"]
     colors = call("list_colors", {"query": "pearl gold"})
     assert [c["id"] for c in colors.structured_content["colors"]] == [115]
     explained = call("explain_code", {"code": "E202"})

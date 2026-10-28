@@ -34,7 +34,9 @@ from bricky.catalog import (
     catalog_path,
     load_catalog,
 )
-from bricky.catalog.bricklink import DOWNLOAD_PAGE, Coverage, import_catalog, read_downloads
+from bricky.catalog.bricklink import DOWNLOAD_PAGE, read_downloads
+from bricky.catalog.importing import Coverage, Progress, import_catalog
+from bricky.catalog.ldraw import Library
 from bricky.check import check_model
 from bricky.diagnostics import Code, Report, render_report
 from bricky.errors import BrickyError
@@ -69,6 +71,7 @@ _WIDTH: Final = 1600
 _HEIGHT: Final = 1200
 _LISTED_LINES: Final = 10
 _LISTED_CATEGORIES: Final = 25
+_LISTED_DISAGREEMENTS: Final = 40
 _SHOW_COLOR: Final = 86
 """Light Bluish Gray: the color a part is drawn in when the catalog lists none for it."""
 
@@ -782,12 +785,18 @@ async def colors(request: ColorsRequest, session: Session) -> ColorsResult:
 
 
 class CatalogImportRequest(BaseModel):
-    """Import BrickLink's catalog: every part and every color, into the catalog bricky uses."""
+    """Import the catalog: parts and colors from BrickLink, shapes from names and LDraw."""
 
-    bricklink: CliPositionalArg[Path] = Field(
+    bricklink: Path | None = Field(
+        default=None,
         description="Folder holding BrickLink's catalog downloads as XML, from "
         f"{DOWNLOAD_PAGE}: Catalog Items (Parts), Colors, Categories and Codes. File names do "
-        "not matter."
+        "not matter. Without it, parts come from LDraw and colors from bricky's sample.",
+    )
+    ldraw: Path | None = Field(
+        default=None,
+        description="LDraw parts library folder, holding parts and p, such as an unzipped "
+        "complete.zip from library.ldraw.org; it shapes the parts no name describes.",
     )
     output: Path | None = Field(
         default=None,
@@ -797,38 +806,35 @@ class CatalogImportRequest(BaseModel):
 
 
 class CatalogImportResult(BaseModel):
-    """What an import wrote, and how much of the catalog has a shape."""
+    """What an import wrote, where each part's shape came from, and what the checks found."""
 
     catalog: Path = Field(description="The catalog file written.")
-    source: str
-    files: dict[str, Path] = Field(description="The BrickLink download read for each kind.")
     coverage: Coverage
     in_use: bool = Field(description="Whether bricky uses this catalog from now on.")
 
     def describe(self) -> str:
         """Render the result as text."""
         c = self.coverage
-        shaped = (
-            f"  {c.shaped:,} parts have a shape and can be placed, {c.printed:,} of them printed "
-            "parts shaped like their base"
-        )
         lines = [
-            f"imported {c.parts:,} parts and {c.colors:,} colors ({self.source})",
-            shaped,
-            f"  {c.parts - c.shaped:,} parts have no shape yet and cannot be placed",
+            f"imported {c.parts:,} parts and {c.colors:,} colors from:",
+            *(f"  {source}" for source in c.sources),
             "",
-            "shaped parts by family:",
-            *(f"  {family}: {count:,}" for family, count in c.by_family.items()),
-            "",
-            "parts without a shape, by category (most first):",
-            *(
-                f"  {category}: {count:,}"
-                for category, count in list(c.unshaped_by_category.items())[:_LISTED_CATEGORIES]
-            ),
+            f"{c.shaped:,} parts have a shape and can be placed; {c.parts - c.shaped:,} have none",
+            "shapes by source: " + _pairs(c.by_source),
+            "shapes by family: " + _pairs(c.by_family),
         ]
-        hidden = len(c.unshaped_by_category) - _LISTED_CATEGORIES
-        if hidden > 0:
-            lines.append(f"  ... and {hidden} more categories")
+        _section(lines, "parts without a shape, by category (most first)", c.unshaped_by_category)
+        _section(lines, "LDraw files that could not be converted, by reason", c.ldraw_failures)
+        if c.compared:
+            lines += [
+                "",
+                f"compared {c.compared:,} named shapes with LDraw: "
+                + _count(len(c.disagreements), "disagreement"),
+                *(f"  {d}" for d in c.disagreements[:_LISTED_DISAGREEMENTS]),
+            ]
+            hidden = len(c.disagreements) - _LISTED_DISAGREEMENTS
+            if hidden > 0:
+                lines.append(f"  ... and {hidden} more, in the JSON output")
         if c.skipped_colors:
             lines += ["", "colors left out:", *(f"  {color}" for color in c.skipped_colors)]
         lines += ["", f"wrote {self.catalog}"]
@@ -840,24 +846,29 @@ class CatalogImportResult(BaseModel):
         return "\n".join(lines)
 
 
-async def catalog_import(request: CatalogImportRequest, session: Session) -> CatalogImportResult:
-    """Import BrickLink's catalog downloads and write the catalog file.
+async def catalog_import(
+    request: CatalogImportRequest, session: Session, progress: Progress | None = None
+) -> CatalogImportResult:
+    """Import the catalog from BrickLink's downloads, an LDraw library, or both.
+
+    Args:
+        request: The sources and where to write.
+        session: The session, whose settings say which catalog bricky uses.
+        progress: Told how many parts have been looked at, out of how many.
 
     Raises:
-        BrickyError: If a download is missing or invalid, or the file cannot be written.
+        BrickyError: If no source is given, a source is missing or invalid, or the file cannot be
+            written.
     """
-    downloads = await asyncio.to_thread(read_downloads, request.bricklink)
-    catalog, coverage = await asyncio.to_thread(import_catalog, downloads)
+    bricklink = None
+    if request.bricklink is not None:
+        bricklink = await asyncio.to_thread(read_downloads, request.bricklink)
+    ldraw = None if request.ldraw is None else await asyncio.to_thread(Library, request.ldraw)
+    catalog, coverage = await asyncio.to_thread(import_catalog, bricklink, ldraw, progress)
     output = request.output or IMPORTED_CATALOG
     await asyncio.to_thread(write_file, output, catalog.dump())
     in_use = catalog_path(session.settings).resolve() == output.resolve()
-    return CatalogImportResult(
-        catalog=output,
-        source=catalog.source,
-        files=downloads.files,
-        coverage=coverage,
-        in_use=in_use,
-    )
+    return CatalogImportResult(catalog=output, coverage=coverage, in_use=in_use)
 
 
 class CatalogStatusRequest(BaseModel):
@@ -1239,6 +1250,20 @@ def _describe_timings(seconds: Timings) -> str:
         if value
     ]
     return "time: " + ", ".join(stages) if stages else "time: 0 s"
+
+
+def _pairs(counts: dict[str, int]) -> str:
+    return ", ".join(f"{name} {count:,}" for name, count in counts.items()) or "none"
+
+
+def _section(lines: list[str], title: str, counts: dict[str, int]) -> None:
+    if not counts:
+        return
+    lines += ["", f"{title}:"]
+    lines += [f"  {name}: {count:,}" for name, count in list(counts.items())[:_LISTED_CATEGORIES]]
+    hidden = len(counts) - _LISTED_CATEGORIES
+    if hidden > 0:
+        lines.append(f"  ... and {hidden} more")
 
 
 def _count(value: float, noun: str) -> str:

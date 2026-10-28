@@ -5,7 +5,8 @@ import pytest
 
 from bricky import BrickyError
 from bricky.catalog import Catalog, ColorType
-from bricky.catalog.bricklink import color_type, import_catalog, read_downloads
+from bricky.catalog.bricklink import color_type, read_downloads
+from bricky.catalog.importing import import_catalog
 
 DOWNLOADS = Path(__file__).parent / "data" / "bricklink"
 
@@ -25,7 +26,7 @@ def test_downloads_are_recognized_by_what_they_hold():
 
 
 def test_an_import_keeps_every_part_and_shapes_what_it_can():
-    catalog_file, coverage = import_catalog(read_downloads(DOWNLOADS))
+    catalog_file, coverage = import_catalog(read_downloads(DOWNLOADS), None)
     parts = {part.id: part for part in catalog_file.parts}
     assert list(parts) == [
         "3001",
@@ -45,7 +46,8 @@ def test_an_import_keeps_every_part_and_shapes_what_it_can():
     assert parts["3068bpb0001"].base == "3068b"
     assert parts["3068bpx1"].base is None  # its name is not the base part's
     assert parts["3044c"].shape is None
-    assert (coverage.parts, coverage.shaped, coverage.printed) == (9, 5, 2)
+    assert (coverage.parts, coverage.shaped) == (9, 5)
+    assert coverage.by_source == {"name": 3, "printed": 2}
     assert coverage.by_family == {"brick": 2, "tile": 2, "slope": 1}
     assert coverage.unshaped_by_category == {
         "Tile, Decorated": 1,
@@ -57,7 +59,7 @@ def test_an_import_keeps_every_part_and_shapes_what_it_can():
 
 
 def test_colors_come_with_their_bricklink_types():
-    catalog_file, coverage = import_catalog(read_downloads(DOWNLOADS))
+    catalog_file, coverage = import_catalog(read_downloads(DOWNLOADS), None)
     colors = {color.id: color for color in catalog_file.colors}
     assert list(colors) == [1, 5, 12, 86, 101, 115]
     assert colors[5].rgb == "#C91A09"
@@ -70,10 +72,10 @@ def test_colors_come_with_their_bricklink_types():
 
 
 def test_an_imported_catalog_builds_and_searches(tmp_path):
-    catalog_file, _ = import_catalog(read_downloads(DOWNLOADS))
+    catalog_file, _ = import_catalog(read_downloads(DOWNLOADS), None)
     path = tmp_path / "catalog.json"
     path.write_bytes(catalog_file.dump())
-    again, _ = import_catalog(read_downloads(DOWNLOADS))
+    again, _ = import_catalog(read_downloads(DOWNLOADS), None)
     assert again.dump() == path.read_bytes()
     catalog = Catalog.from_data(__import__("json").loads(path.read_text()))
     assert catalog.part("3068bpb0001") is not None

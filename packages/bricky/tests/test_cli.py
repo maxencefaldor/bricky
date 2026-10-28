@@ -175,10 +175,11 @@ DOWNLOADS = Path(__file__).parent / "data" / "bricklink"
 
 def test_the_catalog_is_imported_and_looked_into(tmp_path, capsys, monkeypatch):
     output = tmp_path / "catalog.json"
-    assert run("catalog", "import", str(DOWNLOADS), "--output", str(output)) == 0
+    assert run("catalog", "import", "--bricklink", str(DOWNLOADS), "--output", str(output)) == 0
     out = capsys.readouterr().out
-    assert "imported 9 parts and 6 colors" in out
-    assert "5 parts have a shape and can be placed, 2 of them printed parts" in out
+    assert "imported 9 parts and 6 colors from:\n  BrickLink catalog downloads of " in out
+    assert "5 parts have a shape and can be placed; 4 have none" in out
+    assert "shapes by source: name 3, printed 2" in out
     assert "  Technic, Brick: 1" in out
     assert "Mystery Color (240): no RGB value" in out
     assert "bricky does not use it yet" in out
@@ -200,6 +201,24 @@ def test_the_catalog_is_imported_and_looked_into(tmp_path, capsys, monkeypatch):
     assert re.search(shapeless, capsys.readouterr().out)
     assert run("catalog", "show", "3700", "--render") == 2
     assert "part 3700 has no shape to draw" in capsys.readouterr().err
+
+
+def test_shapes_come_from_ldraw_for_parts_no_name_describes(tmp_path, capsys, monkeypatch):
+    output = tmp_path / "catalog.json"
+    ldraw = str(DOWNLOADS.parent / "ldraw")
+    assert run("catalog", "import", "--ldraw", ldraw, "--output", str(output)) == 0
+    captured = capsys.readouterr()
+    assert "looked at 8 of 8 parts" in captured.err
+    assert "shapes by source: LDraw 5, printed 1" in captured.out
+    assert "encloses no volume: 1" in captured.out
+    monkeypatch.setenv("BRICKY_CATALOG", str(output))
+    assert run("catalog", "show", "4490") == 0
+    out = capsys.readouterr().out
+    assert "shape: boxes, 3 x 1 studs, 3 plates tall, 3 studs, 2 anti-studs" in out
+    assert "converted from LDraw 4490.dat, as it is oriented there" in out
+    assert run("catalog", "verify") == 0
+    assert run("catalog", "import") == 2
+    assert "needs BrickLink's downloads, an LDraw library, or both" in capsys.readouterr().err
 
 
 def test_parts_search(capsys):

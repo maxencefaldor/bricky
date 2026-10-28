@@ -1,0 +1,11 @@
+0 Brick  1 x  2
+0 Name: 3004.dat
+0 Author: bricky tests
+0 !LDRAW_ORG Part UPDATE 2024-05
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 s\3004s01.dat
+1 16 -10 0 0 1 0 0 0 1 0 0 0 1 stud.dat
+1 16 10 0 0 1 0 0 0 1 0 0 0 1 stud.dat

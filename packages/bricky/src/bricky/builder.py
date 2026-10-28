@@ -82,7 +82,7 @@ class _Scope:
         color_id = self.catalog.resolve_color(color).id
         element = Element(
             id=self.claim(name, "e"),
-            part=part,
+            part=definition.id,
             color=color_id,
             rot=rotation.name,
             pos=pos.as_tuple(),

@@ -26,8 +26,8 @@ def test_the_sample_catalog_is_used_here_and_covers_every_family():
     assert catalog_path() == SAMPLE_CATALOG
     catalog = default_catalog()
     assert len(catalog.parts) > 100
-    assert {part.family for part in catalog.parts} == set(Family)
-    assert catalog.source == "sample, entered by hand"
+    assert {part.family for part in catalog.parts} == set(Family) - {Family.BOXES}
+    assert catalog.source.startswith("sample: BrickLink catalog downloads of ")
 
 
 def test_brick_geometry():
@@ -82,8 +82,8 @@ def test_color_search_matches_ids_names_and_types():
 
 def test_search_matches_every_word_and_both_size_spellings():
     catalog = default_catalog()
-    assert [p.id for p in catalog.search("brick 2x4")] == ["3001", "30145"]
-    assert [p.id for p in catalog.search("brick 2 x 4")] == ["3001", "30145"]
+    assert [p.id for p in catalog.search("brick 2x2")] == ["3003", "30145", "3941"]
+    assert [p.id for p in catalog.search("brick 2 x 2")] == ["3003", "30145", "3941"]
     families = {shape.family for p in catalog.search("plate 2x2") if (shape := catalog.shape(p.id))}
     assert families == {
         Family.PLATE,
@@ -93,19 +93,19 @@ def test_search_matches_every_word_and_both_size_spellings():
     assert [p.id for p in catalog.search("slope 45 2x2")] == ["3039", "3660"]
     assert [p.name for p in catalog.search("round 1x1")] == [  # plainer names first
         "Tile, Round 1 x 1",
-        "Brick, Round 1 x 1 Open Stud",
-        "Plate, Round 1 x 1 Straight Side",
+        "Brick, Round 1 x 1",
+        "Plate, Round 1 x 1",
     ]
 
 
 def test_find_by_family_and_footprint_in_either_order():
     catalog = default_catalog()
     assert [p.id for p in catalog.find(family=Family.PLATE, size=(6, 1))] == ["3666"]
-    assert [p.id for p in catalog.find(family=Family.BRICK, size=(2, 2))] == ["3003"]
+    assert [p.id for p in catalog.find(family=Family.BRICK, size=(2, 2))] == ["3003", "30145"]
     assert [p.id for p in catalog.find(family=Family.SLOPE, size=(2, 2))] == [
         "3039",
         "3678b",
-        "3684",
+        "3684a",
     ]
     assert {p.footprint for p in catalog.find(family=Family.TILE)} >= {(1, 1), (2, 2)}
     assert catalog.find(family=Family.PLATE, size=(5, 1)) == []
@@ -196,3 +196,14 @@ def test_parts_without_a_shape_are_reported_by_the_builder_and_the_checks():
     assert [d.message for d in report.diagnostics] == [
         "axle uses part '3700' (Technic, Brick 1 x 2 with Hole), which has no shape in the catalog"
     ]
+
+
+def test_other_numbers_find_a_part_and_models_store_its_own():
+    catalog = default_catalog()
+    tile = catalog.entry("3068b")
+    assert tile is not None
+    assert (tile.id, tile.name) == ("3068", "Tile 2 x 2")
+    assert catalog.part("3068b") == catalog.part("3068")
+    builder = ModelBuilder(catalog=catalog)
+    builder.place("3068b", at=(0, 0, 0), color="Red")
+    assert builder.build().elements[0].part == "3068"

@@ -117,6 +117,11 @@ class Catalog:
         self._entries: dict[str, CatalogPart | Mapping[str, Any]] = {}
         for entry in parts:
             self._entries[entry.id if isinstance(entry, CatalogPart) else str(entry["id"])] = entry
+        self._aliases: dict[str, str] = {}
+        for key, entry in self._entries.items():
+            for alternate in _raw_list(entry, "alternates"):
+                if alternate not in self._entries:
+                    self._aliases.setdefault(alternate, key)
         self._colors = {color.id: color for color in colors}
         self._color_names = {color.name.casefold(): color for color in self._colors.values()}
         self._parts: dict[str, Part | None] = {}
@@ -168,8 +173,12 @@ class Catalog:
         return tuple(self._colors.values())
 
     def entry(self, part_id: str) -> CatalogPart | None:
-        """Return what the catalog lists for this BrickLink item number, with or without a shape."""
-        return self._entry(part_id) if part_id in self._entries else None
+        """Return what the catalog lists for a BrickLink item number, with or without a shape.
+
+        A part's other numbers find it too: ``3068b`` finds the part BrickLink lists as ``3068``.
+        """
+        key = part_id if part_id in self._entries else self._aliases.get(part_id)
+        return None if key is None else self._entry(key)
 
     def shape(self, part_id: str) -> Shape | None:
         """Return a part's shape: its own, or for a printed part, its base's; ``None`` if none."""

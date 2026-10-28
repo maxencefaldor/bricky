@@ -112,13 +112,19 @@ class ExplainCommand(service.ExplainRequest, _Output):
 
 
 class CatalogImportCommand(service.CatalogImportRequest, _Output):
-    """Import BrickLink's catalog: every part and every color, into the catalog bricky uses."""
+    """Import the catalog: parts and colors from BrickLink, shapes from names and LDraw."""
 
     async def cli_cmd(self) -> None:
-        """Run the command."""
+        """Run the command, telling how far it got on standard error."""
         async with service.Session() as session:
-            result = await service.catalog_import(self, session)
+            result = await service.catalog_import(self, session, _progress)
         self.emit(result, result.describe())
+
+
+def _progress(done: int, total: int) -> None:
+    if done == total or done % 1000 == 0:
+        end = "\n" if done == total else ""
+        print(f"\rlooked at {done:,} of {total:,} parts", end=end, file=sys.stderr, flush=True)
 
 
 class CatalogStatusCommand(service.CatalogStatusRequest, _Output):
@@ -157,7 +163,7 @@ class CatalogCommand(BaseModel):
     """Import the catalog of parts and colors, and look into it."""
 
     import_: CliSubCommand[CatalogImportCommand] = Field(
-        alias="import", description="Import BrickLink's catalog of parts and colors."
+        alias="import", description="Import parts and colors from BrickLink, shapes from LDraw."
     )
     status: CliSubCommand[CatalogStatusCommand] = Field(
         description="Say which catalog bricky uses and what is in it."
