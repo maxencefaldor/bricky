@@ -1,4 +1,0 @@
-# Formatting-only commits, which git blame skips: git config blame.ignoreRevsFile .git-blame-ignore-revs
-
-# Format with ruff's defaults, add copyright lines and reflow Markdown
-4e683f09014d845bacc18b48bf03172e9293668a

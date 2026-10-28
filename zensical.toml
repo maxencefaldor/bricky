@@ -5,7 +5,6 @@ site_author = "Maxence Faldor"
 site_url = "https://maxencefaldor.github.io/bricky/"
 repo_url = "https://github.com/maxencefaldor/bricky"
 repo_name = "maxencefaldor/bricky"
-edit_uri = "edit/main/docs/"
 exclude_docs = """
 *.py
 __pycache__/
@@ -41,13 +40,10 @@ nav = [
 ]
 
 [project.theme]
-language = "en"
 logo = "assets/logo.svg"
 favicon = "assets/logo.svg"
 features = [
-  "content.code.annotate",
   "content.code.copy",
-  "content.tabs.link",
   "content.tooltips",
   "navigation.footer",
   "navigation.indexes",
@@ -82,36 +78,21 @@ accent = "amber"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to system preference"
 
+# Listing extensions replaces Zensical's defaults, which leave out snippets: the docs use only these.
 [project.markdown_extensions]
-abbr = {}
-admonition = {}
-attr_list = {}
-def_list = {}
-footnotes = {}
 md_in_html = {}
-tables = {}
 toc.permalink = true
-pymdownx.betterem = {}
-pymdownx.details = {}
 pymdownx.highlight.anchor_linenums = true
 pymdownx.highlight.line_spans = "__span"
 pymdownx.highlight.pygments_lang_class = true
-pymdownx.inlinehilite = {}
-pymdownx.keys = {}
-pymdownx.snippets.base_path = ["."]
 pymdownx.snippets.check_paths = true
-pymdownx.superfences.custom_fences = [
-  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
-]
+pymdownx.superfences.custom_fences = [{ name = "mermaid", class = "mermaid" }]
 pymdownx.tabbed.alternate_style = true
-pymdownx.tasklist.custom_checkbox = true
 
 [project.plugins.mkdocstrings.handlers.python]
-paths = ["packages/bricky/src", "packages/bricky-mcp/src", "packages/bricky-bench/src"]
 inventories = ["https://docs.python.org/3/objects.inv", "https://docs.pydantic.dev/latest/objects.inv"]
 
 [project.plugins.mkdocstrings.handlers.python.options]
-docstring_style = "google"
 show_source = false
 show_root_heading = true
 show_root_full_path = false
