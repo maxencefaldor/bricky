@@ -3,6 +3,7 @@
 import asyncio
 import json
 import struct
+from pathlib import Path
 
 import pytest
 
@@ -26,7 +27,7 @@ def png_size(data: bytes) -> tuple[int, int]:
     return width, height
 
 
-def test_clips_read_studs_and_plates():
+def test_clips_read_studs_and_plates() -> None:
     assert Clip.parse("z<130") == Clip(axis="z", keep="below", value=130 * PLATE)
     assert Clip.parse(" x >= 2.5 ") == Clip(axis="x", keep="above", value=50)
     assert str(Clip.parse("y<8")) == "y < 8"
@@ -36,7 +37,7 @@ def test_clips_read_studs_and_plates():
         Clip.parse("x<0.01")
 
 
-def test_faces_pressed_against_opaque_neighbors_are_left_out():
+def test_faces_pressed_against_opaque_neighbors_are_left_out() -> None:
     lower = Box(Vector(0, 0, 0), Vector(40, 80, 24))
     upper = Box(Vector(0, 0, 24), Vector(40, 80, 48))
     offset = Box(Vector(20, 0, 48), Vector(60, 80, 72))
@@ -49,7 +50,7 @@ def test_faces_pressed_against_opaque_neighbors_are_left_out():
     assert visible_faces([lower, upper], [True, False])[0] == ALL_FACES
 
 
-def test_scenes_drop_seated_studs_and_keep_exposed_ones():
+def test_scenes_drop_seated_studs_and_keep_exposed_ones() -> None:
     scene = build_scene(stack().build(), default_catalog())
     assert len(scene.studs) == 8
     assert {stud[4] for stud in scene.studs} == {scene.uids.index("top")}
@@ -64,7 +65,7 @@ def test_scenes_drop_seated_studs_and_keep_exposed_ones():
     assert scene.title.startswith("stack: 2 elements, 2 x 4 studs, 6 plates tall")
 
 
-def test_scenes_mark_the_parts_diagnostics_name():
+def test_scenes_mark_the_parts_diagnostics_name() -> None:
     builder = stack()
     builder.place("3022", at=(9, 9, 9), color="Tan", id="float")
     model = builder.build()
@@ -80,7 +81,7 @@ def test_scenes_mark_the_parts_diagnostics_name():
     assert "check: 1 error, 0 warnings" in scene.title
 
 
-def test_highlights_select_by_uid_or_script_function():
+def test_highlights_select_by_uid_or_script_function() -> None:
     builder = ModelBuilder("m")
 
     def lintels() -> None:
@@ -105,7 +106,7 @@ def test_highlights_select_by_uid_or_script_function():
         build_scene(model, default_catalog(), highlight=["@lintels"])
 
 
-def test_scenes_mark_the_parts_new_or_changed_since_the_last_build():
+def test_scenes_mark_the_parts_new_or_changed_since_the_last_build() -> None:
     scene = build_scene(stack().build(), default_catalog(), changed=["top"])
     flags = dict(
         zip(scene.uids, (element[1] for element in scene.elements), strict=True)
@@ -114,14 +115,14 @@ def test_scenes_mark_the_parts_new_or_changed_since_the_last_build():
     assert flags["bottom"] == 0
 
 
-def test_clips_frame_the_part_left_to_see():
+def test_clips_frame_the_part_left_to_see() -> None:
     scene = build_scene(stack().build(), default_catalog(), clips=[Clip.parse("z<3")])
     assert scene.bounds[5] == 3 * PLATE
     with pytest.raises(BrickyError, match="leaves nothing"):
         build_scene(stack().build(), default_catalog(), clips=[Clip.parse("z>40")])
 
 
-def test_the_standalone_viewer_embeds_the_scene(tmp_path):
+def test_the_standalone_viewer_embeds_the_scene(tmp_path: Path) -> None:
     scene = build_scene(stack().build(), default_catalog(), cull=False)
     path = write_html(scene, tmp_path / "stack.html")
     page = path.read_text()
@@ -137,7 +138,7 @@ def test_the_standalone_viewer_embeds_the_scene(tmp_path):
     assert "export async function mount" in page
 
 
-def test_the_renderer_draws_every_view_at_the_requested_size():
+def test_the_renderer_draws_every_view_at_the_requested_size() -> None:
     scene = build_scene(stack().build(), default_catalog())
     views = [View.SHEET, View.FRONT, View.TOP]
 
@@ -154,7 +155,7 @@ def test_the_renderer_draws_every_view_at_the_requested_size():
     assert all(len(image) > 5000 for image in images)
 
 
-def test_the_perspectives_from_each_corner_draw_different_pictures():
+def test_the_perspectives_from_each_corner_draw_different_pictures() -> None:
     builder = ModelBuilder("corner")
     builder.place("3001", at=(0, 0, 0), color="Red")
     builder.place(
@@ -173,7 +174,7 @@ def test_the_perspectives_from_each_corner_draw_different_pictures():
     assert len(set(images)) == len(corners)
 
 
-def test_elements_that_are_not_boxes_become_meshes():
+def test_elements_that_are_not_boxes_become_meshes() -> None:
     builder = ModelBuilder("mixed")
     builder.place("3001", at=(0, 0, 0), color="Red", id="brick")
     builder.place("3039", at=(0, 4, 0), color="Red", id="slope")  # Slope 45 2 x 2
@@ -184,14 +185,15 @@ def test_elements_that_are_not_boxes_become_meshes():
     assert set(meshes) == {"slope", "arch"}
     assert len(meshes["slope"].faces) == 7  # a five-sided profile, extruded
     arch = meshes["arch"]
-    # The arch is two legs and a dozen slices; its mesh leaves out the inner faces they share.
+    # The arch is two legs and a dozen slices; its mesh leaves out the inner faces they
+    # share.
     assert len({frozenset(face) for face in arch.faces}) == len(arch.faces)
     corners = len(arch.vertices) // 3
     assert len(arch.edges) % 2 == 0
     assert all(0 <= corner < corners for corner in arch.edges)
 
 
-def test_meshes_are_drawn_as_their_own_profile():
+def test_meshes_are_drawn_as_their_own_profile() -> None:
     def front(part: str) -> bytes:
         builder = ModelBuilder("one")
         builder.place(part, at=(0, 0, 0), color="Red")
@@ -206,5 +208,6 @@ def test_meshes_are_drawn_as_their_own_profile():
 
         return asyncio.run(draw())
 
-    # A Slope 45 2 x 2 and a Brick 2 x 2 share their bounding box, but not their side view.
+    # A Slope 45 2 x 2 and a Brick 2 x 2 share their bounding box, but not their side
+    # view.
     assert front("3039") != front("3003")

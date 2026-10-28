@@ -1,15 +1,15 @@
 # Copyright 2026 Maxence Faldor
-"""Benchmark projects: a prompt, inputs and a budget, and sometimes a reference to score against.
+"""Benchmark projects: a prompt, inputs and a budget, and sometimes a reference.
 
 Each project is a folder under ``bench/projects``, named ``NN-name``:
 
-- ``project.toml``: the title, difficulty (1 to 10), prompt and budget, and any inputs to generate
-  from the reference (see :class:`ProjectFile`).
+- ``project.toml``: the title, difficulty (1 to 10), prompt and budget, and any inputs
+  to generate from the reference (see :class:`ProjectFile`).
 - ``inputs/``: everything the agent receives besides the prompt: pictures, descriptions,
   blueprints, scripts. The runner copies this folder into the agent's workspace.
-- ``reference.py``, optional: a build script for the model the project asks for. The agent never
-  sees the reference. The runner scores a project with a reference by comparing voxels (see
-  :mod:`bricky_bench.score`).
+- ``reference.py``, optional: a build script for the model the project asks for. The
+  agent never sees the reference. The runner scores a project with a reference by
+  comparing voxels (see :mod:`bricky_bench.score`).
 """
 
 import tomllib
@@ -43,8 +43,8 @@ class Render(_FileModel):
     view: View = Field(default=View.SHEET, description="The view to draw.")
     caption: str | None = Field(
         default=None,
-        description="Text for the line above the views, replacing bricky's summary, which "
-        "states the model's size and element count.",
+        description="Text for the line above the views, replacing bricky's summary, "
+        "which states the model's size and element count.",
     )
     width: int = Field(default=1600, ge=200, le=4096)
     height: int = Field(default=1200, ge=200, le=4096)
@@ -93,7 +93,10 @@ class Project:
 
     @property
     def slug(self) -> str:
-        """The agent's script name: the folder name without its number, such as ``house_plans``."""
+        """The agent's script name: the folder name without its number.
+
+        The folder ``04-house-plans`` gives the script name ``house_plans``.
+        """
         _, _, name = self.id.partition("-")
         return (name or self.id).replace("-", "_")
 
@@ -142,14 +145,17 @@ def load_project(path: Path) -> Project:
 def load_projects(root: Path, wanted: tuple[str, ...] = ()) -> list[Project]:
     """Read every project under a folder, sorted by name, or just the wanted ones.
 
-    A wanted name is a folder name or a project number, so ``"4"`` and ``"04"`` both find
-    ``04-house-plans``.
+    A wanted name is a folder name or a project number, so ``"4"`` and ``"04"`` both
+    find ``04-house-plans``.
 
     Raises:
         BrickyError: If the folder holds no projects, or a wanted project is missing.
     """
     if not root.is_dir():
-        message = f"no projects folder at {root}; run bricky-bench from the bricky repository root"
+        message = (
+            f"no projects folder at {root}; "
+            "run bricky-bench from the bricky repository root"
+        )
         raise BrickyError(message)
     projects = [load_project(path) for path in sorted(root.iterdir()) if path.is_dir()]
     if not projects:

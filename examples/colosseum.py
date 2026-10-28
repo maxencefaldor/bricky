@@ -1,16 +1,17 @@
 # Copyright 2026 Maxence Faldor
 """The Colosseum in Rome, at 1:150: a stud is 1.2 m and a plate 0.48 m.
 
-References: Wikipedia, "Colosseum": an ellipse 189 m by 156 m and 48 m tall, around an arena of
-87 m by 55 m. Three stories of 80 arches, framed by Tuscan, Ionic and Corinthian half-columns,
-stand under an attic with pilasters, small windows and corbels. The outer ring survives on the
-north side only, held at each end by a brick buttress; the south shows the arcades of the second
-ring. Inside, the seating is gone down to its radial walls, the arena lies open over the
-hypogeum, and a stage of wooden boards covers the east end.
+References: Wikipedia, "Colosseum": an ellipse 189 m by 156 m and 48 m tall, around an
+arena of 87 m by 55 m. Three stories of 80 arches, framed by Tuscan, Ionic and
+Corinthian half-columns, stand under an attic with pilasters, small windows and corbels.
+The outer ring survives on the north side only, held at each end by a brick buttress;
+the south shows the arcades of the second ring. Inside, the seating is gone down to its
+radial walls, the arena lies open over the hypogeum, and a stage of wooden boards covers
+the east end.
 
-The script draws the monument as voxels on elliptical rings, then fills them with bricks and plates
-(``builder.fill``). The half-columns are round bricks, placed one by one. x runs east, y north,
-and z up, in plates; the monument stands on a plaza of baseplates.
+The script draws the monument as voxels on elliptical rings, then fills them with bricks
+and plates (``builder.fill``). The half-columns are round bricks, placed one by one. x
+runs east, y north, and z up, in plates; the monument stands on a plaza of baseplates.
 
 Run: ``uv run bricky build examples/colosseum.py``
 """
@@ -41,7 +42,8 @@ CAVEA = (9.5, 42.0)
 PODIUM = (42.0, 43.0)
 ANNULAR_WALLS = ((16.0, 17.5), (25.5, 27.0), (34.5, 36.0))
 
-# Heights, in plates: three arcades of 21-plate half-columns, cornices, the attic and its crown.
+# Heights, in plates: three arcades of 21-plate half-columns, cornices, the attic and
+# its crown.
 ARCADES = ((1, 22), (24, 45), (48, 69))
 CORNICES = ((22, 24), (45, 48), (69, 72))
 ATTIC = (72, 95)
@@ -66,8 +68,8 @@ type Voxel = tuple[int, int, int]
 def depth_at(x: int, y: int) -> float:
     """How far a stud square lies inside the outer ellipse, in studs; negative outside.
 
-    A square at depth 3 lies on the ellipse whose semi-axes are 3 studs shorter, so equal depths
-    draw rings of equal width, like the monument's concentric walls.
+    A square at depth 3 lies on the ellipse whose semi-axes are 3 studs shorter, so
+    equal depths draw rings of equal width, like the monument's concentric walls.
     """
     east, north = x + 0.5 - CENTER_X, y + 0.5 - CENTER_Y
     low, high = -6.0, OUTER_Y - 0.5
@@ -82,7 +84,7 @@ def depth_at(x: int, y: int) -> float:
 
 @cache
 def angle(x: int, y: int) -> float:
-    """The square's angle around the ellipse, in degrees from east, counter-clockwise."""
+    """The square's angle around the ellipse, in degrees from east, counterclockwise."""
     depth = min(depth_at(x, y), OUTER_Y - 1)
     east, north = x + 0.5 - CENTER_X, y + 0.5 - CENTER_Y
     return atan2(north / (OUTER_Y - depth), east / (OUTER_X - depth)) * 180 / pi % 360
@@ -95,7 +97,10 @@ def bay(x: int, y: int) -> tuple[int, float]:
 
 
 def bay_width(depth: float) -> float:
-    """The width of one bay at a depth, in studs: the ring's perimeter, after Ramanujan, over 80."""
+    """The width of one bay at a depth, in studs: the ring's perimeter over 80.
+
+    The perimeter follows Ramanujan's approximation for an ellipse.
+    """
     semi_x, semi_y = OUTER_X - depth, OUTER_Y - depth
     ramanujan = 3 * (semi_x + semi_y) - sqrt(
         (3 * semi_x + semi_y) * (semi_x + 3 * semi_y)
@@ -104,7 +109,7 @@ def bay_width(depth: float) -> float:
 
 
 def from_pier(x: int, y: int) -> float:
-    """How far a square lies from the nearest pier, the boundary between two bays, in studs."""
+    """How far a square lies from the nearest pier, which divides two bays, in studs."""
     _, across = bay(x, y)
     return min(across, 1 - across) * bay_width(depth_at(x, y))
 
@@ -115,7 +120,10 @@ def surviving(x: int, y: int) -> bool:
 
 
 def noise(*key: int) -> float:
-    """A fixed pseudo-random number in [0, 1) for a key, so ruins look broken but build the same."""
+    """A fixed pseudo-random number in [0, 1) for a key.
+
+    The fixed numbers make ruins look broken yet build the same every time.
+    """
     value = 0
     for part in key:
         value = (value * 1_000_003 + part * 7_919 + 104_729) % 2_147_483_647
@@ -123,26 +131,30 @@ def noise(*key: int) -> float:
 
 
 def arch_top(across: float, width: float) -> int:
-    """The height of an arched opening above its sill, in plates: 13 at the sides, 17 on top."""
+    """The height of an arched opening above its sill, in plates.
+
+    The opening is 13 plates tall at the sides and 17 at the top.
+    """
     side = (across - 0.5) / (width / 2)  # from -1 at one side to 1 at the other
     return 13 + round(4 * sqrt(max(0.0, 1 - side * side)))
 
 
 def within(value: float, band: tuple[float, float]) -> bool:
-    """Whether a value lies in a band, from its start up to, but not including, its end."""
+    """Whether a value lies in a band, which includes its start and excludes its end."""
     return band[0] <= value < band[1]
 
 
 def ruin_top(bay_index: int) -> int:
     """How tall the broken outer ring still stands in a bay, in plates.
 
-    The ring stands to whole bricks: below the arches' springing, or over the first story.
+    The ring stands to whole bricks: below the arches' springing, or over the first
+    story.
     """
     return 3 * (2, 3, 4, 7)[int(4 * noise(bay_index, 1))]
 
 
 def outer_ring(x: int, y: int) -> dict[int, str]:
-    """The outer wall's column of voxels at a square, with its arches, windows and ruins."""
+    """The outer wall's voxel column at a square, with its arches, windows and ruins."""
     column: dict[int, str] = {}
     bay_index, across = bay(x, y)
     intact = surviving(x, y)
@@ -165,7 +177,7 @@ def outer_ring(x: int, y: int) -> dict[int, str]:
 
 
 def outer_skin(x: int, y: int, depth: float) -> dict[int, str]:
-    """What stands out of the outer face: the stylobate, cornices, pilasters and corbels."""
+    """What juts from the outer face: the stylobate, cornices, pilasters and corbels."""
     column = {0: STEPS} if depth >= -2 else {}
     if depth < -1.5 or not surviving(x, y):
         return column
@@ -185,7 +197,10 @@ def outer_skin(x: int, y: int, depth: float) -> dict[int, str]:
 
 
 def ambulatory(x: int, y: int) -> dict[int, str]:
-    """The vaults between the outer and second rings, as floors, where the outer ring stands."""
+    """The vaults between the outer and second rings, as floors.
+
+    The vaults stand only where the outer ring stands.
+    """
     if not surviving(x, y):
         return {}
     return {z: CORNICE for band in CORNICES for z in range(*band)}
@@ -205,13 +220,19 @@ def second_ring(x: int, y: int) -> dict[int, str]:
 
 
 def seating_height(depth: float) -> int:
-    """The top of the seating at a depth, in plates: rising from the podium to the second ring."""
+    """The top of the seating at a depth, in plates.
+
+    The seating rises from the podium to the second ring.
+    """
     share = (CAVEA[1] - depth) / (CAVEA[1] - CAVEA[0])
     return 2 * round((PODIUM_TOP + share * (SECOND_RING_TOP - PODIUM_TOP)) / 2)
 
 
 def cavea(x: int, y: int, depth: float) -> dict[int, str]:
-    """The seating's remains: radial walls, ring walls with passages, and one rebuilt sector."""
+    """The seating's remains: radial walls, ring walls and one rebuilt sector.
+
+    Passages cross the ring walls.
+    """
     column: dict[int, str] = {}
     bay_index, across = bay(x, y)
     top = seating_height(depth)
@@ -248,7 +269,7 @@ def arena(x: int, y: int, depth: float) -> dict[int, str]:
 
 
 def buttress(x: int, y: int, depth: float) -> dict[int, str]:
-    """The brick buttresses that hold the ends of the surviving outer ring, as stepped wedges."""
+    """The stepped brick wedges that buttress the ends of the surviving outer ring."""
     if not within(depth, (-1.0, SECOND_RING[0])):
         return {}
     position = angle(x, y)
@@ -325,8 +346,8 @@ def plaza(builder: ModelBuilder) -> None:
 def build() -> ModelBuilder:
     """Fill the monument's voxels, add the half-columns, and stand it on the plaza.
 
-    The monument is a component, so the fill counts plates from zero, and its one instance stands
-    on the baseplates, half a plate up.
+    The monument is a component, so the fill counts plates from zero, and its one
+    instance stands on the baseplates, half a plate up.
     """
     builder = ModelBuilder("colosseum")
     plaza(builder)

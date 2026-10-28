@@ -13,7 +13,7 @@ def wall(builder: ModelBuilder, x: int) -> str:
     return builder.place("3001", at=(x, 0, 0), color="Red")
 
 
-def test_capture_records_the_script_stack_innermost_first():
+def test_capture_records_the_script_stack_innermost_first() -> None:
     source = capture()
     assert source is not None
     assert (
@@ -22,7 +22,7 @@ def test_capture_records_the_script_stack_innermost_first():
     assert Path(source.site.file).name == HERE
 
 
-def test_bricky_and_library_frames_are_not_script_frames():
+def test_bricky_and_library_frames_are_not_script_frames() -> None:
     import pydantic  # noqa: PLC0415 - any installed library will do
 
     assert is_script_file(__file__)
@@ -31,7 +31,7 @@ def test_bricky_and_library_frames_are_not_script_frames():
     assert not is_script_file("<frozen runpy>")
 
 
-def test_placements_remember_the_helper_and_its_caller():
+def test_placements_remember_the_helper_and_its_caller() -> None:
     builder = ModelBuilder()
     element = wall(builder, 0)
     source = builder.provenance().model.elements[element]
@@ -42,7 +42,7 @@ def test_placements_remember_the_helper_and_its_caller():
     assert "in wall(), called from" in str(source)
 
 
-def test_traces_follow_instances_to_the_element():
+def test_traces_follow_instances_to_the_element() -> None:
     builder = ModelBuilder()
     column = builder.component("column")
     column.place("3003", at=(0, 0, 0), color="Tan", id="block")
@@ -57,7 +57,7 @@ def test_traces_follow_instances_to_the_element():
     assert builder.provenance().trace(model, "nowhere/at/all").source is None
 
 
-def test_relative_paths_keep_files_outside_the_root():
+def test_relative_paths_keep_files_outside_the_root() -> None:
     source = Source(frames=(Frame(file=__file__, line=3, function="f"),))
     inside = source.relative_to(Path(__file__).parent)
     assert inside.site.file == HERE
@@ -65,7 +65,7 @@ def test_relative_paths_keep_files_outside_the_root():
     assert outside.site.file == __file__
 
 
-def test_source_maps_are_ignored_once_the_model_changes(tmp_path):
+def test_source_maps_are_ignored_once_the_model_changes(tmp_path: Path) -> None:
     builder = ModelBuilder("m")
     wall(builder, 0)
     path = tmp_path / "m.bricky.json"

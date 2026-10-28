@@ -1,15 +1,17 @@
 # Copyright 2026 Maxence Faldor
 """Fill voxels with bricks and plates, the way a builder lays courses.
 
-Many models are easiest to draw as voxels: which color fills each stud square, one plate tall.
-:func:`plan_fill` turns such a drawing into parts a script places: bricks where three plate levels
-of a course share a color, plates everywhere else, each part as large as fits.
+Many models are easiest to draw as voxels: which color fills each stud square, one plate
+tall. :func:`plan_fill` turns such a drawing into parts a script places: bricks where
+three plate levels of a course share a color, plates everywhere else, each part as large
+as fits.
 
-The courses bond. Each level lays its parts along x or along y, alternating from level to level,
-so joints rarely line up above each other. Every part rests on at least one voxel of the level
-below, so an overhang takes a part that reaches back over what holds it. Overhangs, and the
-squares beside them, take plates, so each level of an overhang reaches back on its own. A voxel
-that no part can hold still gets a part; the checks then report it as floating.
+The courses bond. Each level lays its parts along x or along y, alternating from level
+to level, so joints rarely line up above each other. Every part rests on at least one
+voxel of the level below, so an overhang takes a part that reaches back over what holds
+it. Overhangs, and the squares beside them, take plates, so each level of an overhang
+reaches back on its own. A voxel that no part can hold still gets a part; the checks
+then report it as floating.
 """
 
 from collections import defaultdict, deque
@@ -73,7 +75,7 @@ class Placement:
     """Minimum corner, in studs, studs and plates."""
 
     rotation: str
-    """``R0`` keeps the part's shorter side along x; ``R90`` lays its longer side along x."""
+    """``R0`` keeps the shorter side along x; ``R90`` lays the longer side along x."""
 
     color: int | str
 
@@ -81,12 +83,13 @@ class Placement:
 def plan_fill(
     voxels: Mapping[tuple[int, int, int], int | str], *, made_in: MadeIn | None = None
 ) -> list[Placement]:
-    """Return the bricks and plates that fill exactly the given voxels, bottom level first.
+    """Return the bricks and plates that fill exactly the voxels, bottom level first.
 
     Args:
-        voxels: The color of every voxel to fill, keyed ``(x, y, z)`` in studs, studs and plates.
-        made_in: Whether a part comes in a color; the fill then uses only parts that do, and a
-            1 x 1 part where none does. Every part is allowed when omitted.
+        voxels: The color of every voxel to fill, keyed ``(x, y, z)`` in studs, studs
+            and plates.
+        made_in: Whether a part comes in a color; the fill then uses only parts that do,
+            and a 1 x 1 part where none does. Every part is allowed when omitted.
 
     Examples:
         >>> wall = {(x, 0, z): "Red" for x in range(4) for z in range(3)}
@@ -143,11 +146,11 @@ class _Packer:
     parts: Mapping[tuple[int, int], str]
     along_x: bool
     below: set[Square]
-    """The squares the level below fills; on the ground, z = 0, every square is held."""
+    """The squares the level below fills; the ground, z = 0, holds every square."""
 
     made_in: MadeIn | None
     floating: bool = True
-    """Whether a square no part can hold still gets a 1 x 1 part; otherwise it stays free."""
+    """Whether a square no part can hold still gets a 1 x 1 part, or stays free."""
 
     placed: list[Placement] = field(default_factory=list)
     longest: int = field(init=False)
@@ -157,11 +160,11 @@ class _Packer:
         self.longest = max(long for _, long in self.parts)
 
     def pack(self) -> list[Placement]:
-        """Cover every square with the largest parts that fit and rest on the level below.
+        """Cover each square with the largest parts that fit and sit on the level below.
 
-        Squares that overhang go first: those with the fewest lines back to support, then the
-        farthest from it, since few parts can hold them. The rest follow in rows along the chosen
-        axis, each covered by a part whose corner is that square.
+        Squares that overhang go first: those with the fewest lines back to support,
+        then the farthest from it, since few parts can hold them. The rest follow in
+        rows along the chosen axis, each covered by a part whose corner is that square.
         """
         order = sorted(
             self.free, key=lambda square: square[::-1] if self.along_x else square
@@ -179,15 +182,16 @@ class _Packer:
                 and not self.cover(start, anywhere=False)
                 and self.floating
             ):
-                # No part both rests on the level below and comes in this color: a 1 x 1 part.
+                # No part both rests on the level below and comes in this color: a 1 x 1
+                # part.
                 self.take(start, 1, 1, (1, 1))
         return self.placed
 
     def reach(self) -> dict[Square, int]:
-        """How many squares each square lies from one the level below holds, through its color.
+        """How many squares each square lies from one the level below holds.
 
-        Squares that no path of their color joins to a held square are left out: no part can
-        hold them.
+        Each path runs through squares of one color. Squares that no path of their color
+        joins to a held square are left out: no part can hold them.
         """
         steps = {square: 0 for square in self.free if square in self.below}
         queue = deque(steps)
@@ -205,9 +209,10 @@ class _Packer:
     def cover(self, start: Square, *, anywhere: bool) -> bool:
         """Place the largest part over ``start`` that fits; return whether one did.
 
-        With ``anywhere``, the part may take any offset over ``start``, and gives way to the next
-        part that fits while it would strand an overhanging neighbor, leaving it no line back to
-        support. When every part that fits strands one, the part that strands the fewest is placed.
+        With ``anywhere``, the part may take any offset over ``start``, and gives way to
+        the next part that fits while it would strand an overhanging neighbor, leaving
+        it no line back to support. When every part that fits strands one, the part that
+        strands the fewest is placed.
         """
         color = self.free[start]
         best: tuple[int, tuple[Square, int, int, tuple[int, int]]] | None = None
@@ -235,14 +240,20 @@ class _Packer:
         return best is not None
 
     def fits(self, corner: Square, width: int, depth: int, color: int | str) -> bool:
-        """Whether a part there covers only free squares of one color, and rests on below."""
+        """Whether a part there covers only free squares of one color.
+
+        The part must also rest on the level below.
+        """
         span = _span(corner, width, depth)
         return all(self.free.get(square) == color for square in span) and (
             self.z == 0 or any(square in self.below for square in span)
         )
 
     def stranded(self, span: set[Square]) -> int:
-        """How many overhanging neighbors a part over ``span`` would leave with no line back."""
+        """How many overhanging neighbors a part over ``span`` would strand.
+
+        A stranded neighbor has no line back to support.
+        """
         border = {neighbor for square in span for neighbor in _neighbors(square)} - span
         return sum(
             square in self.free
@@ -255,8 +266,8 @@ class _Packer:
     def lines(self, square: Square, blocked: Container[Square] = frozenset()) -> int:
         """How many lines run from ``square`` to a held square, around ``blocked``.
 
-        A line is a row of free squares of one color, straight along x or y and shorter than the
-        longest part, that ends on a square the level below holds.
+        A line is a row of free squares of one color, straight along x or y and shorter
+        than the longest part, that ends on a square the level below holds.
         """
         color = self.free[square]
         count = 0
@@ -289,7 +300,7 @@ def _neighbors(square: Square) -> tuple[Square, ...]:
 
 
 def _span(corner: Square, width: int, depth: int) -> set[Square]:
-    """The squares of a footprint ``width`` by ``depth`` studs, from its minimum corner."""
+    """Squares of a footprint ``width`` by ``depth`` studs, from its minimum corner."""
     return {(corner[0] + i, corner[1] + j) for i in range(width) for j in range(depth)}
 
 
@@ -300,7 +311,10 @@ def _area(size: tuple[int, int]) -> tuple[int, int]:
 def _corners(
     start: Square, width: int, depth: int, *, anywhere: bool
 ) -> Iterator[Square]:
-    """Corners of the footprints that cover ``start``: only ``start`` itself, unless anywhere."""
+    """Corners of the footprints that cover ``start``.
+
+    ``start`` itself is the only corner, unless ``anywhere`` is true.
+    """
     if not anywhere:
         yield start
         return

@@ -13,7 +13,7 @@ from bricky.catalog.importing import import_catalog
 DOWNLOADS = Path(__file__).parent / "data" / "bricklink"
 
 
-def test_downloads_are_recognized_by_what_they_hold():
+def test_downloads_are_recognized_by_what_they_hold() -> None:
     downloads = read_downloads(DOWNLOADS)
     assert {kind: path.name for kind, path in downloads.files.items()} == {
         "categories": "categories.xml",
@@ -27,7 +27,7 @@ def test_downloads_are_recognized_by_what_they_hold():
     assert len(downloads.codes) == 7
 
 
-def test_an_import_keeps_every_part_and_shapes_what_it_can():
+def test_an_import_keeps_every_part_and_shapes_what_it_can() -> None:
     catalog_file, coverage = import_catalog(read_downloads(DOWNLOADS), None)
     parts = {part.id: part for part in catalog_file.parts}
     assert list(parts) == [
@@ -60,7 +60,7 @@ def test_an_import_keeps_every_part_and_shapes_what_it_can():
     assert catalog_file.source.startswith("BrickLink catalog downloads of ")
 
 
-def test_colors_come_with_their_bricklink_types():
+def test_colors_come_with_their_bricklink_types() -> None:
     catalog_file, coverage = import_catalog(read_downloads(DOWNLOADS), None)
     colors = {color.id: color for color in catalog_file.colors}
     assert list(colors) == [1, 5, 12, 86, 101, 115]
@@ -73,7 +73,7 @@ def test_colors_come_with_their_bricklink_types():
     assert color_type("", "Black") is ColorType.SOLID
 
 
-def test_an_imported_catalog_builds_and_searches(tmp_path):
+def test_an_imported_catalog_builds_and_searches(tmp_path: Path) -> None:
     catalog_file, _ = import_catalog(read_downloads(DOWNLOADS), None)
     path = tmp_path / "catalog.json"
     path.write_bytes(catalog_file.dump())
@@ -86,7 +86,7 @@ def test_an_imported_catalog_builds_and_searches(tmp_path):
     assert [p.id for p in catalog.search_parts("3068")] == ["3068b", "3068bpb0001"]
 
 
-def test_missing_and_broken_downloads_are_reported(tmp_path):
+def test_missing_and_broken_downloads_are_reported(tmp_path: Path) -> None:
     with pytest.raises(BrickyError, match="no such folder"):
         read_downloads(tmp_path / "nowhere")
     with pytest.raises(
@@ -102,7 +102,7 @@ def test_missing_and_broken_downloads_are_reported(tmp_path):
         read_downloads(tmp_path)
 
 
-def test_downloads_in_windows_encoding_are_read(tmp_path):
+def test_downloads_in_windows_encoding_are_read(tmp_path: Path) -> None:
     for name in ("Colors.xml", "Catalog Items - Parts.xml"):
         shutil.copy(DOWNLOADS / name, tmp_path / name)
     parts = (tmp_path / "Catalog Items - Parts.xml").read_text()

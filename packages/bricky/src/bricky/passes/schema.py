@@ -1,5 +1,5 @@
 # Copyright 2026 Maxence Faldor
-"""Schema: unknown parts and colors, parts below the ground plane, and colors never made."""
+"""Schema: unknown parts and colors, parts below the ground, and colors never made."""
 
 from collections import defaultdict
 from collections.abc import Iterator
@@ -10,44 +10,54 @@ from bricky.diagnostics import Code, Diagnostic, Region
 
 
 class SchemaPass:
-    """Report what the catalog cannot resolve, parts below the ground, and colors never made."""
+    """Report what the catalog lacks, parts below the ground, and colors never made."""
 
     name: ClassVar[str] = "schema"
     summary: ClassVar[str] = (
-        "Unknown parts and colors, parts below the ground plane, and colors a part never came in."
+        "Unknown parts and colors, parts below the ground plane, and colors a part "
+        "never came in."
     )
     codes: ClassVar[tuple[Code, ...]] = (
         Code(
             code="E101",
             title="Unknown part",
-            rule="The element's part id is not in the catalog, or the catalog lists the part "
-            "without a shape. The element then has no geometry, and no other pass sees it. "
-            "`bricky parts` searches the catalog.",
+            rule=(
+                "The element's part id is not in the catalog, or the catalog lists the "
+                "part without a shape. The element then has no geometry, and no other "
+                "pass sees it. `bricky parts` searches the catalog."
+            ),
         ),
         Code(
             code="E102",
             title="Unknown color",
-            rule="The element's color id is not in the catalog. `bricky colors` lists the "
-            "catalog's colors.",
+            rule=(
+                "The element's color id is not in the catalog. `bricky colors` lists "
+                "the catalog's colors."
+            ),
         ),
         Code(
             code="E103",
             title="Below the ground",
-            rule="The element's body reaches below the ground plane, z = 0. The ground plane is "
-            "the table the model stands on.",
+            rule=(
+                "The element's body reaches below the ground plane, z = 0. The ground "
+                "plane is the table the model stands on."
+            ),
         ),
         Code(
             code="W104",
             title="Color never made",
-            rule="The catalog lists the colors a part has come in, and the element's color is not "
-            "among them: the part and the color both exist, but never together. The pass reports "
-            "each part and color once, with every element that uses them. Parts the catalog lists "
-            "without colors are not checked.",
+            rule=(
+                "The catalog lists the colors a part has come in, and the element's "
+                "color is not among them: the part and the color both exist, but never "
+                "together. The pass reports each part and color once, with every "
+                "element that uses them. Parts the catalog lists without colors are "
+                "not checked."
+            ),
         ),
     )
 
     def run(self, context: Context) -> Iterator[Diagnostic]:
-        """Yield the unknown parts, then the unknown colors and the parts below the ground."""
+        """Yield unknown parts, then unknown colors and parts below the ground."""
         for unknown in context.world.unknown:
             entry = context.catalog.entry(unknown.part)
             what = (
@@ -68,7 +78,8 @@ class SchemaPass:
                     code="E102",
                     pass_name=self.name,
                     message=(
-                        f"{element.uid} uses color {element.color}, which is not in the catalog"
+                        f"{element.uid} uses color {element.color}, "
+                        "which is not in the catalog"
                     ),
                     elements=(element.uid,),
                 )

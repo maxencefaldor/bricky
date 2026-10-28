@@ -1,5 +1,7 @@
 # Copyright 2026 Maxence Faldor
 
+from pathlib import Path
+
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -24,7 +26,7 @@ def world_bounds(model: Model) -> list[Box]:
     return [p.bounds for p in build_world(model, default_catalog()).elements]
 
 
-def test_place_puts_the_rotated_corner_at_the_given_point():
+def test_place_puts_the_rotated_corner_at_the_given_point() -> None:
     builder = ModelBuilder()
     builder.place("3001", at=(0, 0, 0), color="Red")
     builder.place("3001", at=(5, 1, 3), rotation="R90", color="Red")
@@ -37,7 +39,7 @@ def test_place_puts_the_rotated_corner_at_the_given_point():
     assert reversed_ == Box(Vector(0, 120, 0), Vector(40, 200, 24))
 
 
-def test_builder_rejects_unknown_parts_and_colors():
+def test_builder_rejects_unknown_parts_and_colors() -> None:
     builder = ModelBuilder()
     with pytest.raises(ValueError, match="unknown part"):
         builder.place("99999", at=(0, 0, 0), color="Red")
@@ -47,7 +49,7 @@ def test_builder_rejects_unknown_parts_and_colors():
         builder.place("3001", at=(0.01, 0, 0), color="Red")
 
 
-def test_builder_generates_and_checks_ids():
+def test_builder_generates_and_checks_ids() -> None:
     builder = ModelBuilder()
     assert builder.place("3001", at=(0, 0, 0), color="Red") == "e1"
     assert builder.place("3001", at=(0, 0, 3), color="Red", id="top") == "top"
@@ -56,7 +58,7 @@ def test_builder_generates_and_checks_ids():
         builder.place("3001", at=(0, 0, 9), color="Red", id="top")
 
 
-def test_instances_unfold_with_hierarchical_ids():
+def test_instances_unfold_with_hierarchical_ids() -> None:
     builder = ModelBuilder()
     column = builder.component("column")
     column.place("3003", at=(0, 0, 0), color="Tan")
@@ -70,12 +72,12 @@ def test_instances_unfold_with_hierarchical_ids():
     assert world.elements[0].bounds.min == Vector(4 * STUD, 0, 0)
 
 
-def test_rotation_names_are_canonicalised():
+def test_rotation_names_are_canonicalised() -> None:
     element = Element(id="a", part="3001", color=5, rotation="R90")
     assert element.rotation == "+y-x"
 
 
-def test_models_reject_duplicate_ids_and_unknown_components():
+def test_models_reject_duplicate_ids_and_unknown_components() -> None:
     with pytest.raises(ValidationError, match="duplicate id"):
         Model(
             elements=(
@@ -87,7 +89,7 @@ def test_models_reject_duplicate_ids_and_unknown_components():
         Model(instances=(Instance(id="i", component="nope"),))
 
 
-def test_models_reject_component_cycles():
+def test_models_reject_component_cycles() -> None:
     loop = {
         "a": Component(instances=(Instance(id="x", component="b"),)),
         "b": Component(instances=(Instance(id="y", component="a"),)),
@@ -96,7 +98,7 @@ def test_models_reject_component_cycles():
         Model(components=loop)
 
 
-def test_files_round_trip(tmp_path):
+def test_files_round_trip(tmp_path: Path) -> None:
     builder = ModelBuilder("roundtrip")
     builder.component("c").place("3001", at=(0, 0, 0), color="Red")
     builder.instance("c", at=(0, 0, 0))
@@ -113,7 +115,9 @@ def test_files_round_trip(tmp_path):
     y=st.integers(-8, 30),
     z=st.integers(0, 30),
 )
-def test_instances_put_the_rotated_corner_at_the_given_point(rotation, x, y, z):
+def test_instances_put_the_rotated_corner_at_the_given_point(
+    rotation: str, x: int, y: int, z: int
+) -> None:
     builder = ModelBuilder()
     column = builder.component("column")
     column.place("3001", at=(0, 0, 0), color="Red")
@@ -123,7 +127,7 @@ def test_instances_put_the_rotated_corner_at_the_given_point(rotation, x, y, z):
     assert bounds.min == Vector(x * STUD, y * STUD, z * PLATE)
 
 
-def test_parts_and_components_turn_the_same_way():
+def test_parts_and_components_turn_the_same_way() -> None:
     one = ModelBuilder()
     one.place("3001", at=(3, 5, 0), rotation="R90", color="Red")
     two = ModelBuilder()
@@ -132,7 +136,7 @@ def test_parts_and_components_turn_the_same_way():
     assert world_bounds(one.build()) == world_bounds(two.build())
 
 
-def test_components_may_be_filled_after_their_instances_are_placed():
+def test_components_may_be_filled_after_their_instances_are_placed() -> None:
     builder = ModelBuilder()
     builder.instance("late", at=(2, 0, 0), rotation="R180")
     builder.component("late").place("3010", at=(0, 0, 0), color="Tan")
@@ -140,7 +144,7 @@ def test_components_may_be_filled_after_their_instances_are_placed():
     assert bounds.min == Vector(2 * STUD, 0, 0)
 
 
-def test_nested_components_follow_the_same_corner_rule():
+def test_nested_components_follow_the_same_corner_rule() -> None:
     builder = ModelBuilder()
     builder.component("brick").place("3001", at=(0, 0, 0), color="Red")
     pair = builder.component("pair")
@@ -153,7 +157,7 @@ def test_nested_components_follow_the_same_corner_rule():
     )
 
 
-def test_unknown_empty_and_cyclic_components_fail_when_built():
+def test_unknown_empty_and_cyclic_components_fail_when_built() -> None:
     unknown = ModelBuilder()
     unknown.instance("nope", at=(0, 0, 0))
     with pytest.raises(ValueError, match="unknown component 'nope'"):
@@ -170,7 +174,7 @@ def test_unknown_empty_and_cyclic_components_fail_when_built():
         cyclic.build()
 
 
-def test_invalid_names_are_rejected_without_using_up_the_id():
+def test_invalid_names_are_rejected_without_using_up_the_id() -> None:
     builder = ModelBuilder()
     with pytest.raises(ValueError, match="holds characters other than"):
         builder.place("3001", at=(0, 0, 0), color="Red", id="two words")

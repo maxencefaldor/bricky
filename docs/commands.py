@@ -1,9 +1,10 @@
 # Copyright 2026 Maxence Faldor
 """Write the command-line reference from the commands themselves.
 
-Run from the repository root: ``uv run python docs/commands.py``. Every option's flag, default and
-description come from the request models in :mod:`bricky.service`, the single definition the
-command line and the MCP server share, so the page matches the tools exactly.
+Run from the repository root: ``uv run python docs/commands.py``. Every option's flag,
+default and description come from the request models in :mod:`bricky.service`, the
+single definition the command line and the MCP server share, so the page matches the
+tools exactly.
 """
 
 import re
@@ -23,18 +24,20 @@ _URL: Final = re.compile(r"(https?://[^\s<>]+?)([.,;:]?(?:\s|$))")
 INTRODUCTION: Final = """\
 # Command line
 
-`bricky` builds, checks and draws models from the shell. Every command takes
-`--output-format json` to print its result as JSON for programs; the default, `text`, is for
-people and agents. Exit status 0 means success, 1 means the model has errors (or
-`catalog verify` found problems), and 2 means invalid arguments or a failed command.
+`bricky` builds, checks and draws models from the shell.
+Every command takes `--output-format json` to print its result as JSON for programs; \
+the default, `text`, is for people and agents.
+Exit status 0 means success, 1 means the model has errors (or `catalog verify` found \
+problems), and 2 means invalid arguments or a failed command.
 
-Each command's options come from a request model in `bricky.service`, which the
-[MCP server](../agents/mcp.md) shares, so a tool's arguments match its command's options.
+Each command's options come from a request model in `bricky.service`, which the \
+[MCP server](../agents/mcp.md) shares, so a tool's arguments match its command's \
+options.
 """
 
 
 def _positional(field: FieldInfo) -> bool:
-    """Whether the field is a positional argument, which pydantic-settings marks in metadata."""
+    """Whether pydantic-settings marks the field as a positional argument."""
     return any(
         getattr(item, "__name__", "") == "_CliPositionalArg" for item in field.metadata
     )

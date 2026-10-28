@@ -15,7 +15,7 @@ DATA = Path(__file__).parent / "data"
 LIBRARY = Library(DATA / "ldraw")
 
 
-def test_the_library_is_indexed_without_case_and_dated_by_its_newest_part():
+def test_the_library_is_indexed_without_case_and_dated_by_its_newest_part() -> None:
     assert "3004" in LIBRARY
     assert "3004P01" in LIBRARY
     assert "3004s01" not in LIBRARY  # a part of a part, not a part
@@ -26,7 +26,7 @@ def test_the_library_is_indexed_without_case_and_dated_by_its_newest_part():
         Library(DATA / "bricklink")
 
 
-def test_a_brick_becomes_a_box_with_studs_on_top_and_anti_studs_below():
+def test_a_brick_becomes_a_box_with_studs_on_top_and_anti_studs_below() -> None:
     shape = ldraw_shape(LIBRARY, "3004")
     assert shape.size == (40, 20, 24)  # LDraw's x stays x; its y, down, becomes z, up
     assert shape.boxes == ((0, 0, 0, 40, 20, 24),)  # the hollow underside is filled
@@ -38,7 +38,7 @@ def test_a_brick_becomes_a_box_with_studs_on_top_and_anti_studs_below():
     )  # moved: follows the reference
 
 
-def test_solid_undersides_have_no_anti_studs_and_openings_stay_open():
+def test_solid_undersides_have_no_anti_studs_and_openings_stay_open() -> None:
     baseplate = ldraw_shape(LIBRARY, "3867")
     assert (baseplate.size, len(baseplate.studs), baseplate.anti_studs) == (
         (40, 40, 4),
@@ -54,7 +54,7 @@ def test_solid_undersides_have_no_anti_studs_and_openings_stay_open():
     )
 
 
-def test_parts_that_cannot_be_converted_say_why():
+def test_parts_that_cannot_be_converted_say_why() -> None:
     with pytest.raises(BrickyError, match="encloses no volume"):
         ldraw_shape(LIBRARY, "990001")
     with pytest.raises(
@@ -63,7 +63,7 @@ def test_parts_that_cannot_be_converted_say_why():
         ldraw_shape(LIBRARY, "990002")
 
 
-def test_converted_shapes_build_parts_that_click_like_generated_ones():
+def test_converted_shapes_build_parts_that_click_like_generated_ones() -> None:
     catalog = Catalog(
         [{"id": "3004", "name": "Brick 1 x 2", "shape": ldraw_shape(LIBRARY, "3004")}]
     )
@@ -75,7 +75,7 @@ def test_converted_shapes_build_parts_that_click_like_generated_ones():
     assert part.note == "converted from LDraw 3004.dat, as it is oriented there"
 
 
-def test_an_import_from_ldraw_alone_names_parts_as_ldraw_does():
+def test_an_import_from_ldraw_alone_names_parts_as_ldraw_does() -> None:
     assert list(ldraw_parts(LIBRARY)) == [
         "3004",
         "3004p01",
@@ -119,8 +119,8 @@ def parts_download(parts: list[tuple[str, str]]) -> str:
 
 
 def test_an_import_from_both_shapes_by_name_then_by_ldraw_and_ldraw_wins_a_disagreement(
-    tmp_path,
-):
+    tmp_path: Path,
+) -> None:
     shutil.copy(DATA / "bricklink" / "Colors.xml", tmp_path / "Colors.xml")
     (tmp_path / "parts.xml").write_text(parts_download(BRICKLINK_PARTS))
     catalog_file, coverage = import_catalog(read_downloads(tmp_path), LIBRARY)
@@ -134,8 +134,9 @@ def test_an_import_from_both_shapes_by_name_then_by_ldraw_and_ldraw_wins_a_disag
     assert coverage.compared == 3
     assert coverage.disagreements == (
         (
-            "3867 Baseplate 16 x 16 takes LDraw's shape: its name gives 320 x 320 x 4 units, "
-            "256 studs, 0 anti-studs; LDraw gives 40 x 40 x 4 units, 4 studs, 0 anti-studs"
+            "3867 Baseplate 16 x 16 takes LDraw's shape: its name gives "
+            "320 x 320 x 4 units, 256 studs, 0 anti-studs; "
+            "LDraw gives 40 x 40 x 4 units, 4 studs, 0 anti-studs"
         ),
     )
     assert parts["3867"].shape is not None
@@ -148,8 +149,8 @@ def test_an_import_from_both_shapes_by_name_then_by_ldraw_and_ldraw_wins_a_disag
 
 
 def test_a_part_whose_ldraw_shape_only_lacks_anti_studs_keeps_its_name_s_shape(
-    tmp_path,
-):
+    tmp_path: Path,
+) -> None:
     shutil.copy(DATA / "bricklink" / "Colors.xml", tmp_path / "Colors.xml")
     (tmp_path / "parts.xml").write_text(parts_download([("3005", "Brick 1 x 1")]))
     catalog_file, coverage = import_catalog(read_downloads(tmp_path), LIBRARY)
@@ -160,7 +161,8 @@ def test_a_part_whose_ldraw_shape_only_lacks_anti_studs_keeps_its_name_s_shape(
     )  # LDraw's solid underside finds no room for a stud
     assert coverage.disagreements == (
         (
-            "3005 Brick 1 x 1 keeps its name's shape: its name gives 20 x 20 x 24 units, 1 stud, "
-            "1 anti-stud; LDraw gives 20 x 20 x 24 units, 1 stud, 0 anti-studs"
+            "3005 Brick 1 x 1 keeps its name's shape: its name gives "
+            "20 x 20 x 24 units, 1 stud, 1 anti-stud; "
+            "LDraw gives 20 x 20 x 24 units, 1 stud, 0 anti-studs"
         ),
     )

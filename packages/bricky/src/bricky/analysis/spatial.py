@@ -1,5 +1,5 @@
 # Copyright 2026 Maxence Faldor
-"""A uniform grid that answers "what might touch this box?" without comparing every pair."""
+"""A uniform grid that finds what might touch a box without comparing every pair."""
 
 from collections import defaultdict
 from collections.abc import Hashable, Iterator
@@ -10,9 +10,10 @@ from bricky.units import STUD
 
 
 class SpatialHash[K: Hashable]:
-    """A grid of cubic buckets that holds boxes, to find the boxes near a given one quickly."""
+    """A grid of cubic buckets holding boxes, to find boxes near a given one quickly."""
 
     def __init__(self, bucket: int = 2 * STUD) -> None:
+        """Bucket boxes into cubes ``bucket`` base units wide."""
         self._bucket = bucket
         self._buckets: defaultdict[tuple[int, int, int], list[K]] = defaultdict(list)
 

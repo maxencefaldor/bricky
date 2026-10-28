@@ -13,6 +13,7 @@ from bricky.catalog.models import (
     InvertedSlopeShape,
     JumperShape,
     RoundShape,
+    Shape,
     SideStudsShape,
     SlopeShape,
 )
@@ -69,9 +70,9 @@ SHAPED = {
     "Brick, Modified 1 x 4 with 4 Studs on 1 Side": SideStudsShape(
         family=Family.SIDE_STUDS, size=(4, 1), sides=("-y",)
     ),
-    "Plate, Modified 1 x 2 with 1 Stud with Groove and Bottom Stud Holder (Jumper)": JumperShape(
-        family=Family.JUMPER, size=(1, 2), center_anti_stud=True
-    ),
+    (
+        "Plate, Modified 1 x 2 with 1 Stud with Groove and Bottom Stud Holder (Jumper)"
+    ): JumperShape(family=Family.JUMPER, size=(1, 2), center_anti_stud=True),
     "Plate, Modified 2 x 2 with Groove and 1 Stud in Center (Jumper)": JumperShape(
         family=Family.JUMPER, size=(2, 2)
     ),
@@ -105,16 +106,16 @@ UNSHAPED = [
 
 
 @pytest.mark.parametrize(("name", "shape"), SHAPED.items())
-def test_names_that_follow_a_pattern_have_its_shape(name, shape):
+def test_names_that_follow_a_pattern_have_its_shape(name: str, shape: Shape) -> None:
     assert shape_from_name(name) == shape
 
 
 @pytest.mark.parametrize("name", UNSHAPED)
-def test_names_with_other_details_have_no_shape(name):
+def test_names_with_other_details_have_no_shape(name: str) -> None:
     assert shape_from_name(name) is None
 
 
-def test_heights_in_bricks_become_plates():
+def test_heights_in_bricks_become_plates() -> None:
     assert [
         height_in_plates(h, 3) for h in (None, "2", "2/3", "1 1/3", "1 2/3", "1/2")
     ] == [
@@ -127,12 +128,12 @@ def test_heights_in_bricks_become_plates():
     ]
 
 
-def test_extra_spaces_do_not_matter():
+def test_extra_spaces_do_not_matter() -> None:
     assert shape_from_name("Brick  2 x 4 ") == SHAPED["Brick 2 x 4"]
 
 
-def test_names_give_the_sample_shapes():
-    """The sample's shapes are typed by hand; each name that gives a shape gives the same one."""
+def test_names_give_the_sample_shapes() -> None:
+    """The sample's hand-typed shapes match every shape that their names give."""
     parts = tomllib.loads(SAMPLE_CATALOG.read_text())["parts"]
     entries = [CatalogPart.model_validate(part) for part in parts]
     named = {entry.id: shape_from_name(entry.name) for entry in entries}

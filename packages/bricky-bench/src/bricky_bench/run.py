@@ -1,12 +1,13 @@
 # Copyright 2026 Maxence Faldor
 """Run benchmark projects with Claude Code, then score what it built.
 
-Each run gets a fresh workspace in the system's temporary folder, outside the repository, so the
-agent cannot read the references. The workspace is a uv project that installs bricky from a wheel
-built for the run, with the build-model skill, the examples and the project's inputs. Claude Code
-runs there in print mode, within the project's turn and time budget. When Claude Code stops, the
-runner builds the agent's final script in the same workspace, exactly as the agent would, scores
-it, and keeps the workspace, the transcript and the score in the run folder.
+Each run gets a fresh workspace in the system's temporary folder, outside the
+repository, so the agent cannot read the references. The workspace is a uv project that
+installs bricky from a wheel built for the run, with the build-model skill, the examples
+and the project's inputs. Claude Code runs there in print mode, within the project's
+turn and time budget. When Claude Code stops, the runner builds the agent's final script
+in the same workspace, exactly as the agent would, scores it, and keeps the workspace,
+the transcript and the score in the run folder.
 """
 
 import asyncio
@@ -40,13 +41,16 @@ SKILL: Final = Path(".claude/skills/build-model")
 EXAMPLES: Final = Path("examples")
 """Example build scripts the skill points to, relative to the repository root."""
 
-FOOTER: Final = """
-
----
-Work in this folder.{inputs} Write your build script as `models/{slug}.py`: it defines `build()`,
-returning a `bricky.ModelBuilder`. Build it with `uv run bricky build models/{slug}.py` as often as
-you like. When you stop, the last version of that file is your answer.
-"""
+FOOTER: Final = (
+    "\n"
+    "\n"
+    "---\n"
+    "Work in this folder.{inputs} Write your build script as `models/{slug}.py`: "
+    "it defines `build()`,\n"
+    "returning a `bricky.ModelBuilder`. Build it with "
+    "`uv run bricky build models/{slug}.py` as often as\n"
+    "you like. When you stop, the last version of that file is your answer.\n"
+)
 
 _BUILD_MINUTES: Final = 10
 _STOP_GRACE_SECONDS: Final = 10
@@ -54,11 +58,11 @@ _PINNED_PACKAGES: Final = ("playwright", "pydantic", "pydantic-settings")
 _REPOSITORY_ONLY: Final = frozenset(
     {"VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONPATH", "UV_LOCKED", "UV_FROZEN"}
 )
-"""Environment variables that describe the repository's environment, not a workspace's."""
+"""Environment variables that describe the repository's setup, not a workspace's."""
 
 
 class Agent(BaseModel):
-    """How the runner starts the agent: Claude Code in print mode, unless told otherwise."""
+    """How the runner starts the agent: Claude Code in print mode by default."""
 
     command: tuple[str, ...] = Field(
         default=("claude",),
@@ -69,7 +73,8 @@ class Agent(BaseModel):
     )
     tools: str = Field(
         default="Read,Write,Edit,Glob,Grep,Bash(uv run *)",
-        description="Tools the agent may use without asking, as Claude Code's --allowedTools.",
+        description="Tools the agent may use without asking, as Claude Code's "
+        "--allowedTools.",
     )
 
     def argv(self, prompt: str, max_turns: int) -> list[str]:
@@ -100,7 +105,8 @@ class AgentRun(BaseModel):
     """What the agent's process did."""
 
     exit_code: int | None = Field(
-        description="Exit code; null when the runner stopped the agent at its time limit."
+        description="Exit code; null when the runner stopped the agent at its "
+        "time limit."
     )
     minutes: float
     turns: int | None = Field(
@@ -153,15 +159,18 @@ async def run_projects(  # noqa: PLR0913 - keyword-only options, one per concern
     jobs: int,
     session: Session,
 ) -> list[Record]:
-    """Run every project ``repeats`` times, at most ``jobs`` at once, and score each run.
+    """Run every project ``repeats`` times, at most ``jobs`` at once, scoring each run.
 
     Raises:
-        BrickyError: If the repository lacks the skill or the examples, a reference does not
-            build, or bricky's wheel fails to build.
+        BrickyError: If the repository lacks the skill or the examples, a reference does
+            not build, or bricky's wheel fails to build.
     """
     for needed in (SKILL, EXAMPLES):
         if not (repository / needed).is_dir():
-            message = f"{repository} has no {needed}; run bricky-bench from the bricky repository root"
+            message = (
+                f"{repository} has no {needed}; "
+                "run bricky-bench from the bricky repository root"
+            )
             raise BrickyError(message)
     references: dict[str, dict[VoxelKey, Voxel]] = {}
     for project in projects:
@@ -206,7 +215,10 @@ async def run_project(  # noqa: PLR0913 - keyword-only options, one per concern
     reference: dict[VoxelKey, Voxel] | None,
     session: Session,
 ) -> Record:
-    """Run one project once in a fresh workspace, score it, and keep the evidence in ``output``."""
+    """Run one project once in a fresh workspace, score it, and keep the evidence.
+
+    The evidence goes in ``output``.
+    """
     started = datetime.now(UTC)
     workspace = await asyncio.to_thread(_scratch_folder, f"bricky-{project.id}-")
     try:
@@ -244,7 +256,7 @@ async def run_project(  # noqa: PLR0913 - keyword-only options, one per concern
 
 
 def footer(project: Project) -> str:
-    """The instructions every prompt ends with: where to work and where the answer goes."""
+    """The prompt's closing instructions: where to work and where the answer goes."""
     files = project.input_files()
     inputs = f" The `inputs/` folder holds {_listing(files)}." if files else ""
     return FOOTER.format(inputs=inputs, slug=project.slug)
@@ -253,10 +265,11 @@ def footer(project: Project) -> str:
 def make_workspace(
     workspace: Path, project: Project, *, wheel: Path, repository: Path
 ) -> None:
-    """Lay out a workspace: a uv project using bricky's wheel, the skill, examples and inputs.
+    """Lay out a workspace: a uv project that uses bricky's wheel.
 
-    The workspace pins bricky's own dependencies to the runner's versions, so renders find the
-    same Playwright browser.
+    The workspace also holds the skill, the examples and the project's inputs. The
+    workspace pins bricky's own dependencies to the runner's versions, so renders find
+    the same Playwright browser.
     """
     dependencies = [
         f"bricky @ {wheel.as_uri()}",
@@ -362,7 +375,7 @@ async def score_workspace(
 
 
 def read_transcript(done: Completed) -> AgentRun:
-    """Read the agent's stream-json transcript: its result event, and its bricky builds."""
+    """Read the agent's stream-json transcript: its result event and bricky builds."""
     run = AgentRun(exit_code=done.code, minutes=round(done.seconds / 60, 2))
     for line in done.stdout.splitlines():
         try:
@@ -438,7 +451,7 @@ async def execute(
     seconds: float,
     environment: dict[str, str] | None = None,
 ) -> Completed:
-    """Run a command in ``folder`` to its end, or stop it after ``seconds``, and return its output.
+    """Run a command in ``folder`` for at most ``seconds`` and return its output.
 
     A cancelled caller stops the process before the cancellation goes on.
     """
@@ -505,7 +518,8 @@ async def _setup(workspace: Path) -> None:
 def _clean_environment() -> dict[str, str]:
     """The environment of this process, without the repository's virtual environment.
 
-    uv's lock settings go too: a workspace has its own project, which its first sync locks.
+    uv's lock settings go too: a workspace has its own project, which its first sync
+    locks.
     """
     executables = str(Path(sys.prefix) / "bin")
     environment = {

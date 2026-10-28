@@ -1,11 +1,12 @@
 # Copyright 2026 Maxence Faldor
 """Exact integer units for LEGO® System geometry.
 
-bricky measures every length in *base units* of 0.4 mm, the largest length that divides every
-System dimension exactly. Positions are therefore integers, and every check compares integers.
+bricky measures every length in *base units* of 0.4 mm, the largest length that divides
+every System dimension exactly. Positions are therefore integers, and every check
+compares integers.
 
-Agents work in studs (x and y) and plates (z), never in base units. The helpers below convert both
-ways and refuse values that land off the grid.
+Agents work in studs (x and y) and plates (z), never in base units. The helpers below
+convert both ways and refuse values that land off the grid.
 """
 
 from typing import Final

@@ -7,7 +7,7 @@ import pytest
 
 from bricky import BrickyError, Settings
 from bricky.runner import run
-from bricky.service import run_script
+from bricky.service import ScriptRun, run_script
 
 MODEL = """
 from bricky import ModelBuilder
@@ -26,12 +26,12 @@ def write(tmp_path: Path, text: str, name: str = "script.py") -> Path:
     return path
 
 
-def run_child(script: Path, timeout: float = 30, limit: int = 1000):
+def run_child(script: Path, timeout: float = 30, limit: int = 1000) -> ScriptRun:
     settings = Settings(build_timeout=timeout, output_limit=limit)
     return asyncio.run(run_script(script, settings))
 
 
-def test_run_returns_the_model_and_its_provenance(tmp_path):
+def test_run_returns_the_model_and_its_provenance(tmp_path: Path) -> None:
     result = run(write(tmp_path, MODEL))
     assert result.failure is None
     assert result.model is not None
@@ -41,7 +41,7 @@ def test_run_returns_the_model_and_its_provenance(tmp_path):
     assert source.site.line == 7
 
 
-def test_failures_name_the_script_lines_innermost_first(tmp_path):
+def test_failures_name_the_script_lines_innermost_first(tmp_path: Path) -> None:
     text = "def helper():\n    return 1 / 0\n\n\ndef build():\n    return helper()\n"
     failure = run(write(tmp_path, text)).failure
     assert failure is not None
@@ -50,7 +50,7 @@ def test_failures_name_the_script_lines_innermost_first(tmp_path):
     assert str(failure).endswith("called from " + str(failure.frames[1]))
 
 
-def test_errors_inside_bricky_point_at_the_calling_line(tmp_path):
+def test_errors_inside_bricky_point_at_the_calling_line(tmp_path: Path) -> None:
     text = MODEL.replace('color="Red"', 'color="Mauve"')
     failure = run(write(tmp_path, text)).failure
     assert failure is not None
@@ -59,7 +59,7 @@ def test_errors_inside_bricky_point_at_the_calling_line(tmp_path):
     assert "unknown color 'Mauve'" in failure.message
 
 
-def test_exits_and_missing_entry_points_are_failures(tmp_path):
+def test_exits_and_missing_entry_points_are_failures(tmp_path: Path) -> None:
     exited = run(write(tmp_path, "import sys\nsys.exit(3)\n")).failure
     assert exited is not None
     assert exited.error == "SystemExit"
@@ -69,15 +69,18 @@ def test_exits_and_missing_entry_points_are_failures(tmp_path):
     assert "must define build()" in missing.message
 
 
-def test_scripts_import_helpers_that_sit_beside_them(tmp_path):
+def test_scripts_import_helpers_that_sit_beside_them(tmp_path: Path) -> None:
     write(tmp_path, "COLOR = 'Blue'\n", "palette.py")
     text = "from palette import COLOR\n" + MODEL.replace('"Red"', "COLOR")
     result = run(write(tmp_path, text))
     assert result.failure is None
 
 
-def test_child_processes_capture_what_scripts_print(tmp_path):
-    noisy = "    print('to stdout')\n    import sys\n    print('to stderr', file=sys.stderr)\n"
+def test_child_processes_capture_what_scripts_print(tmp_path: Path) -> None:
+    noisy = (
+        "    print('to stdout')\n    import sys\n"
+        "    print('to stderr', file=sys.stderr)\n"
+    )
     text = MODEL.replace("    return builder", noisy + "    return builder")
     output = run_child(write(tmp_path, text)).output
     assert output.stdout == "to stdout\n"
@@ -85,7 +88,7 @@ def test_child_processes_capture_what_scripts_print(tmp_path):
     assert not output.truncated
 
 
-def test_child_output_is_cut_at_the_limit(tmp_path):
+def test_child_output_is_cut_at_the_limit(tmp_path: Path) -> None:
     text = MODEL.replace(
         "    return builder", "    print('x' * 5000)\n    return builder"
     )
@@ -94,13 +97,13 @@ def test_child_output_is_cut_at_the_limit(tmp_path):
     assert output.truncated
 
 
-def test_endless_scripts_are_stopped(tmp_path):
+def test_endless_scripts_are_stopped(tmp_path: Path) -> None:
     script = write(tmp_path, "def build():\n    while True:\n        pass\n")
     with pytest.raises(BrickyError, match="did not finish within 1 s"):
         run_child(script, timeout=1)
 
 
-def test_failures_come_back_with_what_the_script_printed(tmp_path):
+def test_failures_come_back_with_what_the_script_printed(tmp_path: Path) -> None:
     script = write(
         tmp_path, "def build():\n    print('working')\n    raise RuntimeError('boom')\n"
     )
@@ -111,7 +114,7 @@ def test_failures_come_back_with_what_the_script_printed(tmp_path):
     assert "script output:\n  working" in message
 
 
-def test_hard_crashes_are_reported(tmp_path):
+def test_hard_crashes_are_reported(tmp_path: Path) -> None:
     script = write(tmp_path, "import os\n\n\ndef build():\n    os._exit(7)\n")
     with pytest.raises(
         BrickyError, match="exited with code 7 before reporting a result"
@@ -119,10 +122,12 @@ def test_hard_crashes_are_reported(tmp_path):
         run_child(script)
 
 
-def test_results_cut_short_are_reported(tmp_path):
+def test_results_cut_short_are_reported(tmp_path: Path) -> None:
     text = (
         "import os\nimport sys\nfrom pathlib import Path\n\n\n"
-        "def build():\n    Path(sys.argv[2]).write_text('{\"model\": {')\n    os._exit(0)\n"
+        "def build():\n"
+        "    Path(sys.argv[2]).write_text('{\"model\": {')\n"
+        "    os._exit(0)\n"
     )
     with pytest.raises(
         BrickyError, match="exited with code 0 before reporting a result"
@@ -130,6 +135,6 @@ def test_results_cut_short_are_reported(tmp_path):
         run_child(write(tmp_path, text))
 
 
-def test_missing_scripts_are_reported(tmp_path):
+def test_missing_scripts_are_reported(tmp_path: Path) -> None:
     with pytest.raises(BrickyError, match="no such build script"):
         run_child(tmp_path / "nope.py")

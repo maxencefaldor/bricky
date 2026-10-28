@@ -3,7 +3,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from bricky import ModelBuilder, default_catalog, voxels
+from bricky import Model, ModelBuilder, default_catalog, voxels
 from bricky.analysis import Context
 from bricky.geometry import Box, Vector
 
@@ -18,7 +18,7 @@ PARTS = [
 ]  # bricks, plates, tiles
 
 
-def test_a_brick_fills_its_footprint_three_plates_high():
+def test_a_brick_fills_its_footprint_three_plates_high() -> None:
     builder = ModelBuilder("one")
     builder.place("3001", at=(2, 3, 6), color="Red")  # Brick 2 x 4
     filled = voxels(builder.build())
@@ -29,7 +29,7 @@ def test_a_brick_fills_its_footprint_three_plates_high():
     assert {voxel.color for voxel in filled.values()} == {5}
 
 
-def test_rotated_parts_fill_their_rotated_footprint():
+def test_rotated_parts_fill_their_rotated_footprint() -> None:
     builder = ModelBuilder("rotated")
     builder.place(
         "3020", at=(0, 0, 0), rotation="R90", color="Blue"
@@ -39,13 +39,13 @@ def test_rotated_parts_fill_their_rotated_footprint():
     }
 
 
-def test_a_voxel_belongs_to_the_part_holding_its_center():
+def test_a_voxel_belongs_to_the_part_holding_its_center() -> None:
     builder = ModelBuilder("offset")
     builder.place("3024", at=(0.5, 0, 0), color="Red")  # Plate 1 x 1, half a stud east
     assert set(voxels(builder.build())) == {(0, 0, 0)}
 
 
-def test_overlapping_parts_leave_a_voxel_to_the_first():
+def test_overlapping_parts_leave_a_voxel_to_the_first() -> None:
     builder = ModelBuilder("clash")
     builder.place("3005", at=(0, 0, 0), color="Red", id="first")
     builder.place("3005", at=(0, 0, 1), color="Blue", id="second")
@@ -58,7 +58,7 @@ def test_overlapping_parts_leave_a_voxel_to_the_first():
     ]
 
 
-def test_studs_fill_no_voxel_and_the_context_agrees():
+def test_studs_fill_no_voxel_and_the_context_agrees() -> None:
     builder = ModelBuilder("stack")
     builder.place("3022", at=(0, 0, 0), color="Red")
     builder.place("3022", at=(0, 0, 1), color="Red")
@@ -66,6 +66,9 @@ def test_studs_fill_no_voxel_and_the_context_agrees():
     assert len(voxels(model)) == 2 * 2 * 2
     assert Context(model, default_catalog()).voxels == voxels(model)
 
+
+type Placement = tuple[str, int, int, int, str]
+"""A part id, its corner x, y and z, and its rotation."""
 
 placements = st.tuples(
     st.sampled_from(PARTS),
@@ -79,8 +82,10 @@ placements = st.tuples(
 @given(
     st.lists(placements, min_size=1, max_size=6), st.integers(-5, 5), st.integers(-5, 5)
 )
-def test_moving_a_model_moves_its_voxels(parts, dx, dy):
-    def model(shift_x: int, shift_y: int):
+def test_moving_a_model_moves_its_voxels(
+    parts: list[Placement], east: int, north: int
+) -> None:
+    def model(shift_x: int, shift_y: int) -> Model:
         builder = ModelBuilder("moved")
         for part, x, y, z, rotation in parts:
             builder.place(
@@ -89,12 +94,12 @@ def test_moving_a_model_moves_its_voxels(parts, dx, dy):
         return builder.build()
 
     before = voxels(model(0, 0))
-    after = voxels(model(dx, dy))
-    assert set(after) == {(x + dx, y + dy, z) for x, y, z in before}
+    after = voxels(model(east, north))
+    assert set(after) == {(x + east, y + north, z) for x, y, z in before}
 
 
 @given(placements)
-def test_a_grid_aligned_part_fills_its_volume(placement):
+def test_a_grid_aligned_part_fills_its_volume(placement: Placement) -> None:
     part_id, x, y, z, rotation = placement
     builder = ModelBuilder("single")
     builder.place(part_id, at=(x, y, z), rotation=rotation, color="Red")

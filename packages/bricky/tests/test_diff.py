@@ -25,7 +25,7 @@ def row(*, first: str | None = None) -> ModelBuilder:
     return builder
 
 
-def test_renumbered_elements_are_unchanged():
+def test_renumbered_elements_are_unchanged() -> None:
     result = diff(row(), row(first="3005"))  # one brick placed first renumbers the rest
     assert result.added == ("e1",)
     assert result.removed == ()
@@ -34,7 +34,7 @@ def test_renumbered_elements_are_unchanged():
     assert (result.filled, result.emptied, result.recolored) == (3, 0, 0)
 
 
-def test_an_element_moved_or_recolored_under_its_id_has_changed():
+def test_an_element_moved_or_recolored_under_its_id_has_changed() -> None:
     before, after = ModelBuilder("m"), ModelBuilder("m")
     before.place("3001", at=(0, 0, 0), color="Red", id="base")
     before.place("3022", at=(0, 0, 3), color="Tan", id="cap")
@@ -47,7 +47,7 @@ def test_an_element_moved_or_recolored_under_its_id_has_changed():
     assert (result.filled, result.emptied) == (4, 4)
 
 
-def test_another_part_under_the_same_id_is_added_and_removed():
+def test_another_part_under_the_same_id_is_added_and_removed() -> None:
     before, after = ModelBuilder("m"), ModelBuilder("m")
     before.place("3001", at=(0, 0, 0), color="Red", id="base")
     after.place(
@@ -58,7 +58,7 @@ def test_another_part_under_the_same_id_is_added_and_removed():
     assert (result.filled, result.emptied, result.recolored) == (0, 2 * 4 * 2, 0)
 
 
-def test_a_part_turned_onto_itself_is_unchanged_and_one_turned_round_is_not():
+def test_a_part_turned_onto_itself_is_unchanged_and_one_turned_round_is_not() -> None:
     before, after = ModelBuilder("m"), ModelBuilder("m")
     before.place("3003", at=(0, 0, 0), color="Red", id="square")  # Brick 2 x 2
     before.place("3040", at=(4, 0, 0), color="Red", id="slope")  # Slope 45 2 x 1
@@ -79,7 +79,11 @@ placements = st.tuples(
 )
 
 
-def build(name: str, parts: list[tuple[str, int, int, int, str, str]]) -> ModelBuilder:
+type Placement = tuple[str, int, int, int, str, str]
+"""A part id, its corner x, y and z, its rotation and its color."""
+
+
+def build(name: str, parts: list[Placement]) -> ModelBuilder:
     builder = ModelBuilder(name)
     for part, x, y, z, rotation, color in parts:
         builder.place(part, at=(x, y, z), rotation=rotation, color=color)
@@ -87,14 +91,16 @@ def build(name: str, parts: list[tuple[str, int, int, int, str, str]]) -> ModelB
 
 
 @given(st.lists(placements, max_size=8))
-def test_a_model_has_not_changed_since_itself(parts):
+def test_a_model_has_not_changed_since_itself(parts: list[Placement]) -> None:
     result = diff(build("a", parts), build("b", parts))
     assert result.unchanged == len(parts)
     assert result == WorldDiff((), (), (), len(parts), 0, 0, 0)
 
 
 @given(st.lists(placements, max_size=8), st.lists(placements, max_size=8))
-def test_comparing_the_other_way_swaps_what_came_and_went(first, second):
+def test_comparing_the_other_way_swaps_what_came_and_went(
+    first: list[Placement], second: list[Placement]
+) -> None:
     forward = diff(build("a", first), build("b", second))
     backward = diff(build("b", second), build("a", first))
     assert forward.unchanged == backward.unchanged

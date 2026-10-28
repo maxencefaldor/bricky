@@ -1,7 +1,7 @@
 # The K6 telephone kiosk
 
 - Designed by Sir Giles Gilbert Scott in 1935.
-    Cast iron, painted red, square in plan.
+  Cast iron, painted red, square in plan.
 - About 8 feet (2.4 m) tall and 3 feet (0.9 m) square.
 - A shallow domed roof sits on the arched heads of the four sides.
 - At the top of every side, a white panel reads TELEPHONE, with a crown in relief above it.

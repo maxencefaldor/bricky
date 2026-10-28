@@ -2,8 +2,9 @@
 """Reading and writing model files and their source maps.
 
 A model file (``name.bricky.json``) holds the model alone. Its source map
-(``name.bricky.map.json``) records the build-script lines that placed each element and the
-SHA-256 of the model file it describes, so bricky detects a stale map and ignores it.
+(``name.bricky.map.json``) records the build-script lines that placed each element and
+the SHA-256 of the model file it describes, so bricky detects a stale map and ignores
+it.
 """
 
 from pathlib import Path
@@ -23,7 +24,10 @@ SOURCE_MAP_SUFFIX: Final = ".bricky.map.json"
 
 
 def model_stem(path: Path) -> str:
-    """Return a model file's name without its suffix: ``tower.bricky.json`` gives ``tower``."""
+    """Return a model file's name without its suffix.
+
+    The name ``tower.bricky.json`` gives ``tower``.
+    """
     name = path.name
     return name.removesuffix(SUFFIX) if name.endswith(SUFFIX) else path.stem
 
@@ -36,7 +40,8 @@ def source_map_path(model_path: Path) -> Path:
 def write_file(path: Path, data: bytes) -> Path:
     """Write an output file, creating its folder if needed, and return its path.
 
-    bricky writes every file through this function: models, source maps, pictures and viewers.
+    bricky writes every file through this function: models, source maps, pictures and
+    viewers.
 
     Raises:
         BrickyError: If the file cannot be written.
@@ -102,8 +107,8 @@ def save_source_map(provenance: Provenance, *, script: Path, model_path: Path) -
 def load_source_map(model_path: Path) -> Provenance | None:
     """Return a model file's provenance, or ``None`` if it has no current source map.
 
-    The function ignores a map that is missing, unreadable or written for other model bytes, since
-    provenance only adds detail to a report.
+    The function ignores a map that is missing, unreadable or written for other model
+    bytes, since provenance only adds detail to a report.
     """
     path = source_map_path(model_path)
     try:

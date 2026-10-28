@@ -1,8 +1,9 @@
 # Copyright 2026 Maxence Faldor
 """Draw scenes with three.js in headless Chromium, through Playwright's asyncio API.
 
-The renderer serves its page and the vendored three.js from package data on a private origin and
-refuses every other request, so renders work offline and never touch the network.
+The renderer serves its page and the vendored three.js from package data on a private
+origin and refuses every other request, so renders work offline and never touch the
+network.
 """
 
 import asyncio
@@ -19,7 +20,7 @@ from bricky.errors import BrickyError
 from bricky.render.scene import Scene, View
 
 ORIGIN: Final = "https://bricky.invalid/"
-"""The private origin the renderer serves its page from; the ``.invalid`` domain never resolves."""
+"""The private origin of the renderer's page; the ``.invalid`` domain never resolves."""
 
 _TYPES: Final = {
     ".html": "text/html; charset=utf-8",
@@ -31,16 +32,18 @@ _LAUNCH_ARGUMENTS: Final = ("--enable-unsafe-swiftshader",)
 class Renderer:
     """Draws scenes with three.js in headless Chromium.
 
-    Launching the browser and compiling shaders take the most time, so a renderer keeps one page
-    open for every render. A renderer starts once and serves many renders, as an async context
-    manager or through :meth:`start` and :meth:`close`. Renders on one renderer run one at a time.
+    Launching the browser and compiling shaders take the most time, so a renderer keeps
+    one page open for every render. A renderer starts once and serves many renders, as
+    an async context manager or through :meth:`start` and :meth:`close`. Renders on one
+    renderer run one at a time.
     """
 
     def __init__(self, browser: Path | None = None) -> None:
         """Create a renderer.
 
         Args:
-            browser: The Chromium executable to use; Playwright's own browser when ``None``.
+            browser: The Chromium executable to use; Playwright's own browser when
+                ``None``.
         """
         self._executable = browser
         self._playwright: Playwright | None = None
@@ -50,10 +53,12 @@ class Renderer:
         self._lock = asyncio.Lock()
 
     async def __aenter__(self) -> Self:
+        """Start the browser."""
         await self.start()
         return self
 
     async def __aexit__(self, *_: object) -> None:
+        """Close the browser."""
         await self.close()
 
     async def start(self) -> None:
@@ -105,7 +110,10 @@ class Renderer:
                 )
                 for view in views:
                     await page.evaluate(
-                        "([view, width, height]) => window.bricky.draw(view, width, height)",
+                        (
+                            "([view, width, height]) => "
+                            "window.bricky.draw(view, width, height)"
+                        ),
                         [view.value, width, height],
                     )
                     images.append(await page.locator("#sheet").screenshot(type="png"))
@@ -178,10 +186,14 @@ def _asset(name: str) -> bytes | None:
 def _launch_failure(error: PlaywrightError, executable: Path | None) -> str:
     first = str(error).strip().splitlines()[0]
     hint = (
-        "Point BRICKY_RENDER_BROWSER at a Chromium executable, or unset it to use Playwright's "
-        "own browser."
+        (
+            "Point BRICKY_RENDER_BROWSER at a Chromium executable, "
+            "or unset it to use Playwright's own browser."
+        )
         if executable is not None
-        else "Install Playwright's browser with `uv run playwright install chromium`, or point "
-        "BRICKY_RENDER_BROWSER at a Chromium executable."
+        else (
+            "Install Playwright's browser with `uv run playwright install chromium`, "
+            "or point BRICKY_RENDER_BROWSER at a Chromium executable."
+        )
     )
     return f"cannot start Chromium for renders: {first}. {hint}"

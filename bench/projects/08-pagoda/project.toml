@@ -1,9 +1,9 @@
-title = "A five-storey pagoda"
+title = "A five-story pagoda"
 difficulty = 8
 max_turns = 120
 minutes = 60
 prompt = """
-Build the five-storey pagoda of Tō-ji in Kyoto at about 1:150 scale, so roughly 115 plates tall.
-`inputs/notes.md` describes the real one. Give each storey its own wide roof, shrinking toward the
+Build the five-story pagoda of Tō-ji in Kyoto at about 1:150 scale, so roughly 115 plates tall.
+`inputs/notes.md` describes the real one. Give each story its own wide roof, shrinking toward the
 top, and crown it with its tall finial.
 """

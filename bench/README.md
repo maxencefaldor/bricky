@@ -13,7 +13,7 @@ Seven have a reference model the agent never sees, and are scored against it; th
 | 5 | A toadstool from its layers | A plan of every plate level | Against a reference |
 | 6 | A lighthouse from one picture | One picture, no measurements | Against a reference |
 | 7 | A red telephone box | Notes on the K6 kiosk | Judged |
-| 8 | A five-storey pagoda | Notes on Tō-ji's pagoda | Judged |
+| 8 | A five-story pagoda | Notes on Tō-ji's pagoda | Judged |
 | 9 | A castle from its plans | Plans with rulers, 493 elements | Against a reference |
 | 10 | Notre-Dame de Paris | Notes on the cathedral | Judged |
 

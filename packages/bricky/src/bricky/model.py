@@ -1,10 +1,11 @@
 # Copyright 2026 Maxence Faldor
 """The canonical model format: what a build is, stored once.
 
-A model is a small tree: top-level elements and instances, plus the named components that
-instances place. The model refers to catalog parts and colors by id and never copies their data,
-so analyses derive everything else, such as world geometry and connections. Positions are in
-0.4 mm base units, and rotations use the grid rotation names of :mod:`bricky.geometry`.
+A model is a small tree: top-level elements and instances, plus the named components
+that instances place. The model refers to catalog parts and colors by id and never
+copies their data, so analyses derive everything else, such as world geometry and
+connections. Positions are in 0.4 mm base units, and rotations use the grid rotation
+names of :mod:`bricky.geometry`.
 """
 
 from collections.abc import Mapping, Sequence
@@ -27,7 +28,8 @@ type RotationName = Annotated[
     str,
     AfterValidator(_canonical_rotation),
     Field(
-        description="Grid rotation, such as '+x+y' (the identity), '+y-x' or the alias 'R90'."
+        description="Grid rotation, such as '+x+y' (the identity), '+y-x' "
+        "or the alias 'R90'."
     ),
 ]
 type Identifier = Annotated[

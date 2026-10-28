@@ -1,8 +1,9 @@
 # Copyright 2026 Maxence Faldor
-"""Catalog data types: catalog parts and their shapes, generated parts, connectors and colors.
+"""Catalog data types: catalog parts, shapes, generated parts, connectors and colors.
 
-A catalog part pairs BrickLink's facts about a part (its id, name, category and the colors it comes
-in) with the shape bricky generates its geometry from, when bricky has one.
+A catalog part pairs BrickLink's facts about a part (its id, name, category and the
+colors it comes in) with the shape bricky generates its geometry from, when bricky has
+one.
 """
 
 from dataclasses import dataclass
@@ -67,7 +68,7 @@ class Family(StrEnum):
     JUMPER = "jumper"
     ARCH = "arch"
     BOXES = "boxes"
-    """Any part, with its body as boxes and its connectors one by one, as converted from LDraw."""
+    """Any part, as converted from LDraw: body as boxes, connectors one by one."""
 
 
 type Side = Literal["-x", "+x", "-y", "+y"]
@@ -85,7 +86,7 @@ class _Shape(BaseModel):
 
 
 class BlockShape(_Shape):
-    """A brick, plate or tile: a box with a stud at every position on top, except on a tile."""
+    """A brick, plate or tile: a box with studs all over its top, except on a tile."""
 
     family: Literal[Family.BRICK, Family.PLATE, Family.TILE]
     height: int | None = Field(
@@ -102,7 +103,7 @@ class BaseplateShape(_Shape):
 
 
 class SlopeShape(_Shape):
-    """A slope falling toward the front (local -y), with studs on its flat top at the back."""
+    """A slope falling to the front (local -y), with studs on the flat top behind it."""
 
     family: Literal[Family.SLOPE]
     height: int = Field(default=3, ge=1, description="Plates tall.")
@@ -113,7 +114,7 @@ class SlopeShape(_Shape):
 
 
 class InvertedSlopeShape(_Shape):
-    """A slope underneath, rising toward the front (local -y), with studs all over its top."""
+    """A slope underneath, rising to the front (local -y), below a top full of studs."""
 
     family: Literal[Family.INVERTED_SLOPE]
     height: int = Field(default=3, ge=1, description="Plates tall.")
@@ -166,7 +167,7 @@ class JumperShape(_Shape):
 
 
 class ArchShape(_Shape):
-    """A one-stud-wide arch along local y: two legs and a curved opening between them."""
+    """A one-stud-wide arch along local y: two legs, a curved opening between them."""
 
     family: Literal[Family.ARCH]
     height: int = Field(ge=2, description="Plates tall.")
@@ -178,7 +179,10 @@ class ArchShape(_Shape):
     def _legs(self) -> Self:
         legs = self.size[1] - self.span
         if legs < 2 or legs % 2:  # noqa: PLR2004 - one whole-stud leg at each end
-            message = f"an arch {self.size[1]} studs long cannot span {self.span}: the legs must be equal"
+            message = (
+                f"an arch {self.size[1]} studs long cannot span {self.span}: "
+                "the legs must be equal"
+            )
             raise ValueError(message)
         return self
 
@@ -190,7 +194,8 @@ type Corners = tuple[int, int, int, int, int, int]
 class BoxesShape(BaseModel):
     """Any part, given explicitly: its body as boxes, its studs and its anti-studs.
 
-    Coordinates are base units in the part's frame, with the part's minimum corner at the origin.
+    Coordinates are base units in the part's frame, with the part's minimum corner at
+    the origin.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -214,8 +219,10 @@ class BoxesShape(BaseModel):
     )
     rotation: Literal["R0", "R90", "R180", "R270"] = Field(
         default="R0",
-        description="A rotation about the vertical axis that turns the source's orientation into "
-        "the one the part's name describes, where the import found one.",
+        description=(
+            "A rotation about the vertical axis that turns the source's orientation "
+            "into the one the part's name describes, where the import found one."
+        ),
     )
 
     @model_validator(mode="after")
@@ -242,11 +249,11 @@ type Shape = Annotated[
     | BoxesShape,
     Field(discriminator="family"),
 ]
-"""How bricky generates a part's geometry: its family and the numbers the family needs."""
+"""A part's family and the numbers the family needs to generate its geometry."""
 
 
 class CatalogPart(BaseModel):
-    """A part as the catalog lists it: BrickLink's facts about it, and bricky's shape for it."""
+    """A part as the catalog lists it: BrickLink's facts, and bricky's shape for it."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -260,16 +267,22 @@ class CatalogPart(BaseModel):
     )
     colors: tuple[int, ...] = Field(
         default=(),
-        description="BrickLink ids of the colors the part comes in, when the source lists them.",
+        description=(
+            "BrickLink ids of the colors the part comes in, when the source lists them."
+        ),
     )
     shape: Shape | None = Field(
         default=None,
-        description="The shape bricky generates the part's geometry from; null when bricky has "
-        "none, or when the part takes its base's shape.",
+        description=(
+            "The shape bricky generates the part's geometry from; null when bricky "
+            "has none, or when the part takes its base's shape."
+        ),
     )
     base: str | None = Field(
         default=None,
-        description="For a printed part, the id of the part it is printed on, its base.",
+        description=(
+            "For a printed part, the id of the part it is printed on, its base."
+        ),
     )
 
 
@@ -307,9 +320,9 @@ class Color(BaseModel):
 class Part:
     """A catalog part with its geometry in its local frame.
 
-    The local frame puts the bounding box's minimum corner at the origin, with x along the part's
-    width, y along its length and z up. The body is a union of solids. Studs are connectors and
-    stand outside the bounding box.
+    The local frame puts the bounding box's minimum corner at the origin, with x along
+    the part's width, y along its length and z up. The body is a union of solids. Studs
+    are connectors and stand outside the bounding box.
     """
 
     id: str

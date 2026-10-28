@@ -41,7 +41,7 @@ class _Selection(BaseModel):
 
 
 class ListCommand(_Selection):
-    """List the projects: difficulty, title, whether a reference scores them, and inputs."""
+    """List projects: difficulty, title, whether a reference scores them, and inputs."""
 
     def cli_cmd(self) -> None:
         """Run the command."""
@@ -49,13 +49,14 @@ class ListCommand(_Selection):
             scored = "scored" if project.reference is not None else "judged"
             inputs = ", ".join(project.input_files()) or "prompt only"
             print(
-                f"{project.id}  [{project.spec.difficulty}] {project.spec.title} ({scored})"
+                f"{project.id}  [{project.spec.difficulty}] "
+                f"{project.spec.title} ({scored})"
             )
             print(f"    inputs: {inputs}")
 
 
 class PrepareCommand(_Selection):
-    """Write the inputs each project generates from its reference: pictures and voxel plans."""
+    """Write the pictures and voxel plans each project generates from its reference."""
 
     async def cli_cmd(self) -> None:
         """Run the command."""
@@ -67,7 +68,7 @@ class PrepareCommand(_Selection):
 
 
 class RunCommand(_Selection):
-    """Run projects with Claude Code, score what it builds, and keep everything in a run folder."""
+    """Run projects with Claude Code, score its builds, and keep all in a run folder."""
 
     repeats: int = Field(default=1, ge=1, description="Runs of each project.")
     jobs: int = Field(default=1, ge=1, description="Runs at the same time.")

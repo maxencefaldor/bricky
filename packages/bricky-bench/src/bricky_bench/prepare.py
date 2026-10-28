@@ -1,8 +1,9 @@
 # Copyright 2026 Maxence Faldor
 """Write a project's generated inputs from its reference: pictures and voxel plans.
 
-Generated inputs are committed with the project, so every run of the benchmark gives the agent the
-same files. ``bricky-bench prepare`` writes them again after a reference changes.
+Generated inputs are committed with the project, so every run of the benchmark gives the
+agent the same files. ``bricky-bench prepare`` writes them again after a reference
+changes.
 """
 
 import asyncio
@@ -26,11 +27,11 @@ EMPTY: Final = "."
 
 
 async def prepare(project: Project, session: Session) -> list[Path]:
-    """Build a project's reference and write every input its project file lists to generate.
+    """Build the reference and write every input the project file lists to generate.
 
     Raises:
-        BrickyError: If the project generates inputs but has no reference, the reference does not
-            build, or a picture cannot be drawn.
+        BrickyError: If the project generates inputs but has no reference, the reference
+            does not build, or a picture cannot be drawn.
     """
     if not project.spec.generate:
         return []
@@ -77,8 +78,9 @@ def layers_text(
 ) -> str:
     """Describe a model's voxels as text: a color legend, then one plan per plate level.
 
-    Every plan covers the same x and y range, the model's own, so plans line up when read one
-    after another. Rows run from north (top) to south, columns from west (left) to east.
+    Every plan covers the same x and y range, the model's own, so plans line up when
+    read one after another. Rows run from north (top) to south, columns from west (left)
+    to east.
 
     Raises:
         BrickyError: If the model fills no voxel.
@@ -96,11 +98,23 @@ def layers_text(
     symbols = dict(zip(colors, _symbols(names), strict=True))
 
     lines = [
-        f"{model.name}: the voxels it fills, one plate level at a time from the ground up.",
+        (
+            f"{model.name}: the voxels it fills, one plate level at a time "
+            "from the ground up."
+        ),
         "",
-        "A voxel is 1 x 1 stud and 1 plate tall; z counts plates, so a brick fills three levels.",
-        "Each level is a plan seen from above, north up: x grows to the right (east) and y grows",
-        "upward (north), both in studs. '.' is an empty voxel; every other character is a color:",
+        (
+            "A voxel is 1 x 1 stud and 1 plate tall; z counts plates, "
+            "so a brick fills three levels."
+        ),
+        (
+            "Each level is a plan seen from above, north up: "
+            "x grows to the right (east) and y grows"
+        ),
+        (
+            "upward (north), both in studs. '.' is an empty voxel; "
+            "every other character is a color:"
+        ),
         "",
         *(
             f"  {symbols[color]}  {name}"
@@ -124,7 +138,7 @@ def _plan(
     xs: Sequence[int],
     ys: Sequence[int],
 ) -> list[str]:
-    """Draw one plate level as rows of symbols, north first, under a ruler of x values."""
+    """Draw a plate level as rows of symbols, north first, under a ruler of x values."""
     west, east, south, north = min(xs), max(xs), min(ys), max(ys)
     label_width = max(len(str(south)), len(str(north)), 3)
     columns = range(west, east + 1)
@@ -151,7 +165,7 @@ def _first_seen(
     y_range: tuple[int, int],
     levels: Iterable[int],
 ) -> list[int]:
-    """Color ids in reading order: level by level, rows north to south, columns west to east."""
+    """Color ids in reading order: level by level, north to south, then west to east."""
     (west, east), (south, north) = x_range, y_range
     seen: dict[int, None] = {}
     for z in levels:
@@ -168,7 +182,7 @@ def _color_name(catalog: Catalog, color_id: int) -> str:
 
 
 def _symbols(names: Sequence[str]) -> list[str]:
-    """One character per color: an initial when free, else another letter of the name."""
+    """One character per color: an initial if free, else another letter of the name."""
     pool = string.ascii_uppercase + string.ascii_lowercase + string.digits
     used: set[str] = set()
     symbols = []

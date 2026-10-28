@@ -12,7 +12,7 @@ def wall(builder: ModelBuilder, x: int, z: int) -> None:
     builder.place("3001", at=(x, 0, z), color="Red")
 
 
-def test_every_pass_documents_its_codes_with_a_title_and_a_rule():
+def test_every_pass_documents_its_codes_with_a_title_and_a_rule() -> None:
     codes = installed_codes()
     assert {"E101", "E102", "E103", "E201", "E202", "E301"} <= set(codes)
     for name, code in codes.values():
@@ -21,7 +21,7 @@ def test_every_pass_documents_its_codes_with_a_title_and_a_rule():
         assert len(code.rule) > 40
 
 
-def test_passes_only_emit_codes_they_document():
+def test_passes_only_emit_codes_they_document() -> None:
     for pass_type in installed_passes().values():
         documented = {code.code for code in pass_type.codes}
         tree = ast.parse(inspect.getsource(pass_type))
@@ -35,11 +35,11 @@ def test_passes_only_emit_codes_they_document():
         assert emitted <= documented, pass_type.name
 
 
-def test_diagnostics_carry_facts_and_no_advice():
+def test_diagnostics_carry_facts_and_no_advice() -> None:
     assert "help" not in Diagnostic.model_fields
 
 
-def test_reports_describe_each_element_and_count_script_lines():
+def test_reports_describe_each_element_and_count_script_lines() -> None:
     builder = ModelBuilder("m")
     wall(builder, 0, 0)
     wall(builder, 1, 0)
@@ -60,7 +60,7 @@ def test_reports_describe_each_element_and_count_script_lines():
     assert ": 2 diagnostics" in text
 
 
-def test_reports_without_provenance_still_name_parts_and_colors():
+def test_reports_without_provenance_still_name_parts_and_colors() -> None:
     builder = ModelBuilder("m")
     builder.place("3022", at=(0, 0, 5), color="Tan", id="floating")
     report = check_model(builder.build(), settings=Settings())
@@ -70,7 +70,7 @@ def test_reports_without_provenance_still_name_parts_and_colors():
     assert "by source line" not in text
 
 
-def test_long_element_lists_are_cut_in_text_but_complete_in_data():
+def test_long_element_lists_are_cut_in_text_but_complete_in_data() -> None:
     builder = ModelBuilder("m")
     for z in range(5, 30, 3):
         builder.place("3003", at=(0, 0, z), color="Red")

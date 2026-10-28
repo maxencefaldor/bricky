@@ -1,7 +1,5 @@
 # bricky
 
-[![CI](https://github.com/maxencefaldor/bricky/actions/workflows/ci.yml/badge.svg)](https://github.com/maxencefaldor/bricky/actions/workflows/ci.yml) [![Docs](https://img.shields.io/badge/docs-maxencefaldor.github.io%2Fbricky-e3000b)](https://maxencefaldor.github.io/bricky/) [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-
 A compiler-style toolkit that lets AI agents design buildable LEGO® models.
 
 An agent writes a model as a Python build script.
@@ -33,7 +31,9 @@ from bricky import ModelBuilder
 def build() -> ModelBuilder:
     builder = ModelBuilder("wall")
     builder.place("3001", at=(0, 0, 0), color="Red")  # Brick 2 x 4
-    builder.place("3001", at=(0, 2, 3), rotation="R90", color="Red")  # rotated a quarter turn
+    builder.place(
+        "3001", at=(0, 2, 3), rotation="R90", color="Red"
+    )  # rotated a quarter turn
     return builder
 ```
 
@@ -69,7 +69,7 @@ The picture marks the same elements, so the agent sees where they are:
 - **Three front ends, one definition.**
   The `bricky` command line, an MCP server, and a skill for Claude Code, all from the same request models.
 - **A benchmark.**
-    Ten projects, from a brick wall to Notre-Dame de Paris, scored voxel by voxel.
+  Ten projects, from a brick wall to Notre-Dame de Paris, scored voxel by voxel.
 
 ![The cottage example: slopes, an arch, round parts, a tile on a side stud and a jumper](docs/images/cottage.png)
 

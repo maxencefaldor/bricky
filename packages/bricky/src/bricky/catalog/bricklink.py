@@ -1,5 +1,5 @@
 # Copyright 2026 Maxence Faldor
-"""Import BrickLink's catalog: every part and every color, from BrickLink's own downloads.
+"""Import BrickLink's catalog: every part and color, from BrickLink's own downloads.
 
 BrickLink, the LEGO Group's marketplace, publishes its whole catalog as XML files at
 https://www.bricklink.com/catalogDownload.asp, for signed-in members:
@@ -9,10 +9,11 @@ https://www.bricklink.com/catalogDownload.asp, for signed-in members:
 - **Categories**: every category's id and name.
 - **Codes**: the colors each part comes in, with the LEGO Group's number for each.
 
-:func:`read_downloads` finds these files in a folder by their contents, whatever their names.
-:func:`bricklink_parts` converts them into catalog colors and parts, and gives each part the shape
-its name describes, when bricky has a family for it (see :mod:`bricky.catalog.names`).
-:mod:`bricky.catalog.importing` combines them with shapes from LDraw.
+:func:`read_downloads` finds these files in a folder by their contents, whatever their
+names. :func:`bricklink_parts` converts them into catalog colors and parts, and gives
+each part the shape its name describes, when bricky has a family for it (see
+:mod:`bricky.catalog.names`). :mod:`bricky.catalog.importing` combines them with shapes
+from LDraw.
 """
 
 import html
@@ -85,11 +86,11 @@ _KINDS: Final = ("colors", "categories", _PARTS, "codes")
 
 
 def read_downloads(folder: Path) -> Downloads:
-    """Read BrickLink's catalog downloads from a folder, recognizing each file by its contents.
+    """Read BrickLink's downloads from a folder, recognizing each file by its contents.
 
     Raises:
-        BrickyError: If the folder is missing, a file is not valid XML, two files hold the same
-            download, or the folder lacks the Parts or the Colors download.
+        BrickyError: If the folder is missing, a file is not valid XML, two files hold
+            the same download, or the folder lacks the Parts or the Colors download.
     """
     if not folder.is_dir():
         message = f"no such folder: {folder}"
@@ -155,17 +156,20 @@ def read_downloads(folder: Path) -> Downloads:
             files={kind: path for kind, (path, _) in found.items()},
         )
     except (KeyError, ValueError) as error:
-        message = f"a BrickLink download in {folder} lacks a field or has an invalid value: {error}"
+        message = (
+            f"a BrickLink download in {folder} lacks a field "
+            f"or has an invalid value: {error}"
+        )
         raise BrickyError(message) from None
 
 
 def bricklink_parts(
     downloads: Downloads,
 ) -> tuple[list[Color], tuple[str, ...], dict[str, CatalogPart]]:
-    """Return BrickLink's colors, the colors left out with their reasons, and its parts by id.
+    """Return BrickLink's colors, the colors left out with reasons, and its parts by id.
 
-    Each part gets the shape its name describes, if any, and the colors the Codes download lists
-    for it. Parts keep BrickLink's order, and colors are sorted by id.
+    Each part gets the shape its name describes, if any, and the colors the Codes
+    download lists for it. Parts keep BrickLink's order, and colors are sorted by id.
     """
     colors, skipped = _colors(downloads.colors)
     color_ids = {color.name.casefold(): color.id for color in colors}
@@ -189,7 +193,7 @@ def bricklink_parts(
 
 
 def downloaded(downloads: Downloads) -> str:
-    """Return the date of the downloads, from the newest file, such as ``2026-10-28``."""
+    """Return the downloads' date, from the newest file, such as ``2026-10-28``."""
     newest = max(path.stat().st_mtime for path in downloads.files.values())
     return datetime.fromtimestamp(newest, UTC).date().isoformat()
 
@@ -197,8 +201,8 @@ def downloaded(downloads: Downloads) -> str:
 def color_type(bricklink_type: str, name: str) -> ColorType:
     """Map a BrickLink color type to bricky's, reading transparency from the name too.
 
-    BrickLink gives some see-through colors another type, such as "Glitter Trans-Clear", so a name
-    containing "Trans-" counts as transparent whatever its type.
+    BrickLink gives some see-through colors another type, such as "Glitter Trans-Clear",
+    so a name containing "Trans-" counts as transparent whatever its type.
     """
     if "transparent" in bricklink_type.casefold() or re.search(r"(^|\s)Trans-", name):
         return ColorType.TRANSPARENT

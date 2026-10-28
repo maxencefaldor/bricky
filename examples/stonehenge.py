@@ -3,9 +3,10 @@
 
 Prompt: "Build Stonehenge as it stands today."
 
-Model north (+y) is the solstice axis, which runs northeast in reality. The horseshoe opens toward
-+y and the Heel Stone sits near the north edge of the base. Stone numbers follow the usual scheme:
-sarsen uprights 1-30 clockwise from the entrance, trilithon uprights 51-60.
+Model north (+y) is the solstice axis, which runs northeast in reality. The horseshoe
+opens toward +y and the Heel Stone sits near the north edge of the base. Stone numbers
+follow the usual scheme: sarsen uprights 1-30 clockwise from the entrance, trilithon
+uprights 51-60.
 """
 
 import itertools
@@ -55,7 +56,10 @@ def snap(value: float) -> int:
 
 
 def angle(stone: int) -> float:
-    """Angle of a sarsen stone, in radians counterclockwise from +x; stone 1 is just east of +y."""
+    """Angle of a sarsen stone, in radians counterclockwise from +x.
+
+    Stone 1 stands just east of +y.
+    """
     return math.radians(90 - 12 * (stone - 0.5))
 
 
@@ -66,7 +70,7 @@ def base(builder: ModelBuilder) -> None:
             builder.place("3034", at=(x, y, 0), color="Green", id=f"grass.{x}.{y}")
 
 
-def sarsen_cells(stone: int, along_y: bool) -> list[Cell]:
+def sarsen_cells(stone: int, *, along_y: bool) -> list[Cell]:
     """The two cells of a standing sarsen, a 1 x 2 brick on the circle."""
     direction = angle(stone)
     center_x = CENTER_X + SARSEN_RADIUS * math.cos(direction)
@@ -79,7 +83,7 @@ def sarsen_cells(stone: int, along_y: bool) -> list[Cell]:
 
 
 def lintel_box(first: list[Cell], second: list[Cell]) -> PlateBox | None:
-    """The smallest plate box joining the nearest top studs of two uprights, if a plate fits."""
+    """The smallest plate box joining two uprights' nearest top studs, if one fits."""
     near_first, near_second = min(
         ((one, other) for one in first for other in second),
         key=lambda pair: (
@@ -107,8 +111,8 @@ def box_cells(box: PlateBox) -> set[Cell]:
 def orientations() -> dict[int, bool]:
     """Choose each standing stone's orientation: whether its long side runs along y.
 
-    Stones face along the circle's tangent, except for the fewest flips that let every lintel fit
-    without two lintels sharing a stud.
+    Stones face along the circle's tangent, except for the fewest flips that let every
+    lintel fit without two lintels sharing a stud.
     """
     tangent = {
         stone: abs(math.cos(angle(stone))) > abs(math.sin(angle(stone)))
@@ -122,7 +126,8 @@ def orientations() -> dict[int, bool]:
             trial[stone] ^= flip
         boxes = [
             lintel_box(
-                sarsen_cells(first, trial[first]), sarsen_cells(second, trial[second])
+                sarsen_cells(first, along_y=trial[first]),
+                sarsen_cells(second, along_y=trial[second]),
             )
             for first, second in LINTELS
         ]
@@ -144,7 +149,7 @@ def sarsen_circle(builder: ModelBuilder) -> None:
     along_y = orientations()
     tops = {}
     for stone in sorted(STANDING):
-        cells = sarsen_cells(stone, along_y[stone])
+        cells = sarsen_cells(stone, along_y=along_y[stone])
         x, y = cells[0]
         bricks = 2 if stone in SHORT else UPRIGHT_BRICKS
         for level in range(bricks):
@@ -218,7 +223,7 @@ def trilithon(builder: ModelBuilder) -> None:
 
 
 def upright(
-    builder: ModelBuilder, name: str, corner: Cell, along_y: bool, bricks: int
+    builder: ModelBuilder, name: str, corner: Cell, *, along_y: bool, bricks: int
 ) -> None:
     """A standing stone of 1 x 2 bricks, ``bricks`` tall."""
     for level in range(bricks):
@@ -234,14 +239,16 @@ def upright(
 def horseshoe(builder: ModelBuilder) -> None:
     """The trilithon horseshoe, with its fallen stones and the Altar Stone."""
     trilithon(builder)
-    # Trilithons stand along y on the sides of the horseshoe, so their instances rotate by R90.
+    # Trilithons stand along y on the sides of the horseshoe, so their instances rotate
+    # by R90.
     builder.instance("trilithon", at=(27, 21, GROUND), rotation="R90", id="tri51-52")
     builder.instance("trilithon", at=(26, 13, GROUND), rotation="R90", id="tri53-54")
     builder.instance("trilithon", at=(13, 13, GROUND), rotation="R90", id="tri57-58")
     upright(builder, "stone60", (12, 25), along_y=True, bricks=5)
     builder.place("2456", at=(15, 24, GROUND), color=SARSEN, id="fallen59")
     builder.place("3009", at=(10, 15, GROUND), color=SARSEN, id="lintel160")
-    # The Great Trilithon: 56 stands; 55 fell in two across the Altar Stone, with lintel 156.
+    # The Great Trilithon: 56 stands; 55 fell in two across the Altar Stone, with lintel
+    # 156.
     upright(builder, "stone56", (17, 12), along_y=False, bricks=6)
     builder.place(
         "3710", at=(18, 16, GROUND), rotation="R90", color=BLUESTONE, id="altar"

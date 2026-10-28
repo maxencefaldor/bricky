@@ -1,11 +1,11 @@
 # Copyright 2026 Maxence Faldor
 """Run one build script in a process of its own.
 
-The service starts ``python -P -m bricky.runner SCRIPT RESULT`` for every build. The script's
-prints, crashes, exits and endless loops therefore stay out of the command line and the MCP server,
-whose standard output may be a protocol channel. The runner writes a :class:`RunResult` as JSON to
-``RESULT``. The script prints to the runner's own standard streams, which the service captures and
-returns.
+The service starts ``python -P -m bricky.runner SCRIPT RESULT`` for every build. The
+script's prints, crashes, exits and endless loops therefore stay out of the command line
+and the MCP server, whose standard output may be a protocol channel. The runner writes a
+:class:`RunResult` as JSON to ``RESULT``. The script prints to the runner's own standard
+streams, which the service captures and returns.
 """
 
 import runpy
@@ -14,6 +14,7 @@ import traceback
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import override
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -33,7 +34,9 @@ class Failure(BaseModel):
         default=(), description="Script frames of the traceback, innermost first."
     )
 
+    @override
     def __str__(self) -> str:
+        """The error and its message, then the script frames that raised it."""
         head = f"{self.error}: {self.message}" if self.message else self.error
         if not self.frames:
             return head
@@ -52,8 +55,8 @@ class RunResult(BaseModel):
 def run(script: Path) -> RunResult:
     """Run a build script in this process and return its model, provenance or failure.
 
-    The script's directory comes first on the import path while the script runs, so the script
-    can import helper modules beside it, as under ``python script.py``.
+    The script's directory comes first on the import path while the script runs, so the
+    script can import helper modules beside it, as under ``python script.py``.
     """
     root = Path.cwd()
     try:

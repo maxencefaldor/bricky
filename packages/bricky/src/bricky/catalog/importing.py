@@ -1,24 +1,27 @@
 # Copyright 2026 Maxence Faldor
-"""Build a catalog from its sources: BrickLink for what exists, names and LDraw for shapes.
+"""Build a catalog: BrickLink for what exists, names and LDraw for shapes.
 
 Each source supplies what it knows best:
 
 - **BrickLink**, the LEGO Group's marketplace, lists every part and color: ids, names,
   categories, and the colors each part comes in (:mod:`bricky.catalog.bricklink`).
-- **Names**: a part whose official name follows a pattern, such as "Slope 45 2 x 4", gets that
-  family's shape, exact and oriented by bricky's conventions (:mod:`bricky.catalog.names`).
+- **Names**: a part whose official name follows a pattern, such as "Slope 45 2 x 4",
+  gets that family's shape, exact and oriented by bricky's conventions
+  (:mod:`bricky.catalog.names`).
 - **Printed parts** take the shape of the part they are printed on.
-- **LDraw**, the LDraw.org Parts Library, gives every other part its shape, converted into boxes
-  and connectors (:mod:`bricky.catalog.ldraw`).
+- **LDraw**, the LDraw.org Parts Library, gives every other part its shape, converted
+  into boxes and connectors (:mod:`bricky.catalog.ldraw`).
 
-An import without BrickLink's downloads takes the parts from LDraw alone, with LDraw's names, and
-the colors from the sample catalog. The import compares the two shapes of a part that has both a
-shape from its name and an LDraw file. The two agree for almost every part, which checks both.
+An import without BrickLink's downloads takes the parts from LDraw alone, with LDraw's
+names, and the colors from the sample catalog. The import compares the two shapes of a
+part that has both a shape from its name and an LDraw file. The two agree for almost
+every part, which checks both.
 
-The import reports every disagreement. Where LDraw's shape only lacks anti-studs that the name
-gives, the part keeps its name's shape: the conversion finds anti-studs by the room under a body
-on a 0.8 mm grid, which misses sockets under thin and curved bodies. Any other disagreement means
-the name hides a detail that changes the part, so the part takes LDraw's shape.
+The import reports every disagreement. Where LDraw's shape only lacks anti-studs that
+the name gives, the part keeps its name's shape: the conversion finds anti-studs by the
+room under a body on a 0.8 mm grid, which misses sockets under thin and curved bodies.
+Any other disagreement means the name hides a detail that changes the part, so the part
+takes LDraw's shape.
 """
 
 import re
@@ -45,11 +48,14 @@ from bricky.errors import BrickyError
 from bricky.geometry import ALIASES, Box, Pose, Rotation, Vector
 
 _PRINTED: Final = re.compile(r"p[a-z]{0,3}\d")
-"""The suffix of a printed part's id after its base part's id: p, up to three letters, a digit."""
+"""The suffix of a printed part's id after its base part's id.
+
+The suffix is p, then up to three letters, then a digit.
+"""
 
 
 class Coverage(BaseModel):
-    """What an import found: parts and colors, the source of each part's shape, and the checks."""
+    """What an import found: parts and colors, each shape's source, and the checks."""
 
     sources: tuple[str, ...] = Field(
         description="The sources read, with their dates or releases."
@@ -57,7 +63,8 @@ class Coverage(BaseModel):
     parts: int = Field(description="Parts imported.")
     shaped: int = Field(description="Parts with a shape, which can be placed.")
     by_source: dict[str, int] = Field(
-        description="Shaped parts by the source of their shape: 'name', 'printed' or 'LDraw'."
+        description="Shaped parts by the source of their shape: 'name', 'printed' "
+        "or 'LDraw'."
     )
     by_family: dict[str, int] = Field(description="Shaped parts by family.")
     unshaped_by_category: dict[str, int] = Field(
@@ -66,11 +73,13 @@ class Coverage(BaseModel):
     colors: int = Field(description="Colors imported.")
     skipped_colors: tuple[str, ...] = Field(
         default=(),
-        description="Colors left out, each with its reason: no RGB value, or a repeated name.",
+        description="Colors left out, each with its reason: "
+        "no RGB value, or a repeated name.",
     )
     ldraw_failures: dict[str, int] = Field(
         default_factory=dict,
-        description="LDraw files the import failed to convert, counted by reason, most first.",
+        description="LDraw files the import failed to convert, "
+        "counted by reason, most first.",
     )
     compared: int = Field(
         default=0,
@@ -78,18 +87,21 @@ class Coverage(BaseModel):
     )
     disagreements: tuple[str, ...] = Field(
         default=(),
-        description="Parts whose name and LDraw file disagree, which shape each keeps, and how.",
+        description="Parts whose name and LDraw file disagree, "
+        "which shape each keeps, and how.",
     )
 
 
 type Progress = Callable[[int, int], None]
-"""A callback that receives the count of the part being shaped and the total number of parts."""
+"""A callback given the count of the part being shaped and the total number of parts."""
 
 
 def import_catalog(
     bricklink: Downloads | None, ldraw: Library | None, progress: Progress | None = None
 ) -> tuple[CatalogFile, Coverage]:
-    """Build a catalog file and its coverage from BrickLink's downloads, an LDraw library, or both.
+    """Build a catalog file and its coverage.
+
+    The import reads BrickLink's downloads, an LDraw library, or both.
 
     Raises:
         BrickyError: If neither source is given.
@@ -131,7 +143,11 @@ class _Shaping:
     def shape(
         self, entries: dict[str, CatalogPart], key: str, ldraw: Library | None
     ) -> None:
-        """Record the source of a part's shape, converting its LDraw file to shape or check it."""
+        """Record the source of a part's shape.
+
+        The part's converted LDraw file gives the part its shape, or checks the shape
+        its name gives.
+        """
         entry = entries[key]
         if entry.base is not None:
             self.origin[key] = "printed"
@@ -200,11 +216,12 @@ class _Shaping:
 
 
 def _name_printed_parts(entries: dict[str, CatalogPart], ldraw: Library | None) -> None:
-    """Set each printed part's base to the part it is printed on, so it takes that part's shape.
+    """Set each printed part's base to the part it is printed on, whose shape it takes.
 
     A printed part's id is its base part's id followed by p, letters and digits, such as
-    3068bpb0001 for a print on 3068b, and its name starts with the base part's name. Both must
-    hold. The base part must itself be unprinted and have a shape, from its name or from LDraw.
+    3068bpb0001 for a print on 3068b, and its name starts with the base part's name.
+    Both must hold. The base part must itself be unprinted and have a shape, from its
+    name or from LDraw.
     """
     for key, entry in entries.items():
         if entry.shape is not None:
@@ -218,14 +235,14 @@ def _name_printed_parts(entries: dict[str, CatalogPart], ldraw: Library | None) 
             ):
                 continue
             if base.shape is not None or (
-                ldraw is not None and _ldraw_number(ldraw, base)
+                ldraw is not None and _ldraw_number(ldraw, base) is not None
             ):
                 entries[key] = entry.model_copy(update={"base": base.id})
                 break
 
 
 def _ldraw_number(library: Library, entry: CatalogPart) -> str | None:
-    """Return a catalog part's LDraw number: its own id, else the first alternate id LDraw has."""
+    """A part's LDraw number: its own id, else the first alternate id LDraw has."""
     for number in (entry.id, *entry.alternates):
         if number in library:
             return number
@@ -233,10 +250,11 @@ def _ldraw_number(library: Library, entry: CatalogPart) -> str | None:
 
 
 def _difference(named: Part, from_ldraw: Part) -> str:
-    """Describe how a part built from its name and from LDraw differ; empty when they agree.
+    """How a part built from its name and from LDraw differ; empty when they agree.
 
-    LDraw orients parts its own way, so the two agree when a rotation about the vertical axis
-    brings LDraw's onto the name's: the same size, and studs and anti-studs in the same places.
+    LDraw orients parts its own way, so the two agree when a rotation about the vertical
+    axis brings LDraw's onto the name's: the same size, and studs and anti-studs in the
+    same places.
     """
     if any(
         _placed(from_ldraw, rotation) == _placed(named, "R0") for rotation in ALIASES
@@ -244,11 +262,14 @@ def _difference(named: Part, from_ldraw: Part) -> str:
         return ""
     facts = [_facts(named), _facts(from_ldraw)]
     where = " in other places" if facts[0] == facts[1] else ""
-    return f"its name gives {_describe(facts[0])}; LDraw gives {_describe(facts[1])}{where}"
+    return (
+        f"its name gives {_describe(facts[0])}; "
+        f"LDraw gives {_describe(facts[1])}{where}"
+    )
 
 
 def _lacks_anti_studs(named: Part, from_ldraw: Part) -> bool:
-    """Whether LDraw's part, in some rotation, is the name's with only some anti-studs missing."""
+    """Whether a rotation of LDraw's part is the name's with only anti-studs missing."""
     size, connectors = _placed(named, "R0")
     return any(
         rotated_size == size
@@ -263,7 +284,7 @@ def _lacks_anti_studs(named: Part, from_ldraw: Part) -> bool:
 
 
 def _closest_rotation(named: Part, from_ldraw: Part) -> str:
-    """The rotation of LDraw's part that best matches the name's: its size, then connectors."""
+    """The rotation of LDraw's part closest to the name's: its size, then connectors."""
     target_size, target_connectors = _placed(named, "R0")
 
     def closeness(rotation: str) -> tuple[bool, int]:
@@ -274,7 +295,7 @@ def _closest_rotation(named: Part, from_ldraw: Part) -> str:
 
 
 def _placed(part: Part, rotation: str) -> tuple[Vector, frozenset[Connector]]:
-    """A part's size and connectors after a rotation, with its minimum corner at the origin."""
+    """A rotated part's size and connectors, with its minimum corner at the origin."""
     rotated = Box(Vector(0, 0, 0), part.size).transformed(
         Pose(Rotation.parse(rotation))
     )

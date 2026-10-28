@@ -26,15 +26,16 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
 
     Args:
         model: The model to check.
-        profile: Profile to run; the configured profile, normally ``digital``, by default.
-        passes: Pass names to run instead of a profile. The report lists the names that are not
-            installed.
-        max_diagnostics: Maximum number of diagnostics in the report; the error and warning
-            counts cover every diagnostic found.
-        provenance: Where the build script placed each element, so the report names script
-            lines; see :meth:`bricky.ModelBuilder.provenance`.
-        catalog: Catalog to resolve parts and colors against; :func:`bricky.default_catalog` by
+        profile: Profile to run; the configured profile, normally ``digital``, by
             default.
+        passes: Pass names to run instead of a profile. The report lists the names that
+            are not installed.
+        max_diagnostics: Maximum number of diagnostics in the report; the error and
+            warning counts cover every diagnostic found.
+        provenance: Where the build script placed each element, so the report names
+            script lines; see :meth:`bricky.ModelBuilder.provenance`.
+        catalog: Catalog to resolve parts and colors against;
+            :func:`bricky.default_catalog` by default.
         settings: Settings to read profiles from; read from the environment and
             ``pyproject.toml`` by default.
 
@@ -66,7 +67,7 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
 def _describe(
     context: Context, uids: set[str], provenance: Provenance | None
 ) -> dict[str, ElementInfo]:
-    """Describe the named elements: part, color and the script lines that placed each."""
+    """Describe each named element: part, color and the script lines that placed it."""
     catalog = context.catalog
     found: dict[str, ElementInfo] = {}
     for element in context.world.elements:

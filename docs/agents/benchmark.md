@@ -13,7 +13,7 @@ Seven have a reference model the agent never sees and are scored against it; the
 | 5 | A toadstool from its layers | A plan of every plate level | Against a reference |
 | 6 | A lighthouse from one picture | One picture, no measurements | Against a reference |
 | 7 | A red telephone box | Notes on the K6 kiosk | Judged |
-| 8 | A five-storey pagoda | Notes on Tō-ji's pagoda | Judged |
+| 8 | A five-story pagoda | Notes on Tō-ji's pagoda | Judged |
 | 9 | A castle from its plans | Plans with rulers, 493 elements | Against a reference |
 | 10 | Notre-Dame de Paris | Notes on the cathedral | Judged |
 
@@ -84,9 +84,12 @@ Every model builds with no errors and no warnings.
 | 5 | A toadstool from its layers | 64 | 1.00 | 1.00 |
 | 6 | A lighthouse from one picture | 88 | 0.93 | 0.91 |
 | 7 | A red telephone box | 321 | judged | judged |
-| 8 | A five-storey pagoda | 596 | judged | judged |
+| 8 | A five-story pagoda | 596 | judged | judged |
 | 9 | A castle from its plans | 401 | 1.00 | 1.00 |
 | 10 | Notre-Dame de Paris | 1,872 | judged | judged |
 
 The projects with exact plans, 1 to 5 and 9, reach a perfect score in one to four builds, so they measure whether an agent can use bricky at all.
 The open briefs set the difficulty: the agents rated the lighthouse, the telephone box and the pagoda 3 out of 5, and Notre-Dame 4, for its roofs meeting at the crossing, its rose windows on side studs, and walls that pack around openings without floating parts.
+
+Since these runs, bricky has moved the studs on the sides of bricks to where the real parts have them: half a stud below the top, where they stood half a brick up before.
+Under the current version, the telephone box reports 18 errors and Notre-Dame 9, all where a part hangs on a side stud a quarter plate off.

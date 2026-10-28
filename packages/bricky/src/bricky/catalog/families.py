@@ -1,12 +1,14 @@
 # Copyright 2026 Maxence Faldor
 """The families: generators that convert a part's shape into its solids and connectors.
 
-A shape holds a few numbers from the catalog, and its family converts them into geometry, so many
-parts share one tested definition. Every generator works in exact base units (see
-:mod:`bricky.units`) and puts the minimum corner of the part's bounding box at the origin.
+A shape holds a few numbers from the catalog, and its family converts them into
+geometry, so many parts share one tested definition. Every generator works in exact base
+units (see :mod:`bricky.units`) and puts the minimum corner of the part's bounding box
+at the origin.
 
-A body that is not a box is a union of convex solids with integer corners. A few flat facets draw
-each curved surface, with their corners on the grid: close to the real part, and exact.
+A body that is not a box is a union of convex solids with integer corners. A few flat
+facets draw each curved surface, with their corners on the grid: close to the real part,
+and exact.
 """
 
 from collections.abc import Iterable, Sequence
@@ -63,17 +65,20 @@ _ROUND_SIDES: Final = 16
 _CURVE_STEPS: Final = 6
 
 type Profile = list[tuple[int, int]]
-"""A polygon in a plane, counter-clockwise, as (a, b) pairs: see :meth:`Convex.prism`."""
+"""A polygon in a plane, counterclockwise, as (a, b) pairs: see :meth:`Convex.prism`."""
 
 
 def build_part(entry: CatalogPart, shape: Shape) -> Part:
-    """Generate a catalog part's solids and connectors from a shape: its own, or its base's."""
+    """Generate a catalog part's solids and connectors from its shape or its base's."""
     solids, connectors, note = _geometry(shape)
     bounds = Box.bounding(solid.bounds for solid in solids)
     if isinstance(shape, BoxesShape):
         bounds = Box(ORIGIN, Vector(*shape.size)).transformed(_upright(shape))
     elif bounds.min != ORIGIN:  # pragma: no cover - every family builds from the origin
-        message = f"part {entry.id}: its bounding box starts at {bounds.min}, not at the origin"
+        message = (
+            f"part {entry.id}: its bounding box starts at {bounds.min}, "
+            "not at the origin"
+        )
         raise ValueError(message)
     return Part(
         id=entry.id,
@@ -140,7 +145,10 @@ def _anti_studs(positions: Iterable[tuple[int, int]]) -> list[Connector]:
 
 
 def _block(shape: BlockShape) -> Geometry:
-    """A box with anti-studs under every stud position, and studs on top except on a tile."""
+    """A box with an anti-stud under every stud position, and studs on top.
+
+    A tile leaves out the studs on top.
+    """
     width, length = shape.size
     height = (shape.height or BLOCK_HEIGHTS[Family(shape.family)]) * PLATE
     grid = _positions(width, length)
@@ -159,7 +167,7 @@ def _baseplate(shape: BaseplateShape) -> Geometry:
 
 
 def _slope(shape: SlopeShape) -> Geometry:
-    """A slope falling from its flat top at the back to a low lip at the front (y = 0)."""
+    """A slope falling from its flat top at the back to a low front lip (y = 0)."""
     width, length = shape.size
     run = min(shape.run, length)
     height = shape.height * PLATE
@@ -177,7 +185,7 @@ def _slope(shape: SlopeShape) -> Geometry:
 
 
 def _inverted_slope(shape: InvertedSlopeShape) -> Geometry:
-    """A slope underneath: a flat bottom at the back, the underside rising to the front (y = 0)."""
+    """A slope underneath: flat at the back, the bottom rising to the front (y = 0)."""
     width, length = shape.size
     run = min(shape.run, length - 1)
     height = shape.height * PLATE
@@ -195,11 +203,11 @@ def _inverted_slope(shape: InvertedSlopeShape) -> Geometry:
 
 
 def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
-    """A smooth top curving down from the back to a low lip at the front (y = 0), without studs.
+    """A smooth, studless top curving down from the back to a low front lip (y = 0).
 
-    The curve is a quarter ellipse, flat at the back and steep at the front, drawn as a few facets
-    with corners on whole base units. The underside is hollow, so every row has an anti-stud: a
-    curved slope sits flat on studs.
+    The curve is a quarter ellipse, flat at the back and steep at the front, drawn as a
+    few facets with corners on whole base units. The underside is hollow, so every row
+    has an anti-stud: a curved slope sits flat on studs.
     """
     width, length = shape.size
     height = shape.height * PLATE
@@ -216,7 +224,7 @@ def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
 
 
 def _round(shape: RoundShape) -> Geometry:
-    """A cylinder filling a square footprint, drawn as a near-regular polygon on the grid."""
+    """A cylinder filling a square footprint, as a near-regular polygon on the grid."""
     width, length = shape.size
     radius = width * STUD // 2
     height = shape.height * PLATE
@@ -234,11 +242,11 @@ def _round(shape: RoundShape) -> Geometry:
 
 
 def _side_studs(shape: SideStudsShape) -> Geometry:
-    """A brick with studs on top, anti-studs underneath, and studs on the faces its shape names.
+    """A brick with studs on top, anti-studs underneath, and studs on the named faces.
 
-    Side studs sit half a stud below the top, one per stud position along the face, so a plate
-    rotated on its side to grip them lines up with the stud grid along the face and ends flush with
-    the brick's top.
+    Side studs sit half a stud below the top, one per stud position along the face, so a
+    plate rotated on its side to grip them lines up with the stud grid along the face
+    and ends flush with the brick's top.
     """
     width, length = shape.size
     height = shape.height * PLATE
@@ -263,7 +271,7 @@ def _side_studs(shape: SideStudsShape) -> Geometry:
 
 
 def _jumper(shape: JumperShape) -> Geometry:
-    """A plate with one stud in the middle of its top, half a stud off the grid on a 1 x 2."""
+    """A plate with one stud centered on top, half a stud off the grid on a 1 x 2."""
     width, length = shape.size
     center = (width * STUD // 2, length * STUD // 2)
     anti_studs = _positions(width, length)
@@ -274,10 +282,10 @@ def _jumper(shape: JumperShape) -> Geometry:
 
 
 def _arch(shape: ArchShape) -> Geometry:
-    """An arch along y: a leg at each end and an opening under a half-ellipse between them.
+    """An arch along y: a leg at each end and a half-ellipse opening between them.
 
-    The opening rises to one plate below the top. Convex slices, one per facet of the curve, form
-    the body over it.
+    The opening rises to one plate below the top. Convex slices, one per facet of the
+    curve, form the body over it.
     """
     width, length = shape.size
     height = shape.height * PLATE
@@ -297,9 +305,8 @@ def _arch(shape: ArchShape) -> Geometry:
         Box(Vector(0, end, 0), Vector(thickness, length * STUD, height)),
     ]
     for (y0, z0), (y1, z1) in pairwise(curve):
-        if (
-            y0 == y1
-        ):  # a vertical facet beside a leg: no body lies between it and the leg
+        # A vertical facet beside a leg has no body between it and the leg.
+        if y0 == y1:
             continue
         slice_ = [(y0, z0), (y1, z1), (y1, height), (y0, height)]
         solids.append(Convex.prism(slice_, "x", 0, thickness))
@@ -310,7 +317,10 @@ def _arch(shape: ArchShape) -> Geometry:
 
 
 def _boxes(shape: BoxesShape) -> Geometry:
-    """A body of boxes, with studs and anti-studs where the shape lists them, rotated as named."""
+    """A body of boxes, with studs and anti-studs where the shape lists them.
+
+    The geometry takes the rotation that the shape names.
+    """
     pose = _upright(shape)
     solids = [
         Box(Vector(x0, y0, z0), Vector(x1, y1, z1)).transformed(pose)
@@ -336,14 +346,14 @@ def _boxes(shape: BoxesShape) -> Geometry:
 
 
 def _upright(shape: BoxesShape) -> Pose:
-    """The pose that applies a converted shape's rotation and keeps its corner at the origin."""
+    """The pose that rotates a converted shape and keeps its corner at the origin."""
     rotation = Rotation.parse(shape.rotation)
     rotated = Box(ORIGIN, Vector(*shape.size)).transformed(Pose(rotation))
     return Pose(rotation, -rotated.min)
 
 
 def _distinct(points: Sequence[tuple[int, int]]) -> Profile:
-    """Drop each point that repeats the one before it, and a last point that repeats the first.
+    """Drop each point equal to the one before it, and a last point equal to the first.
 
     Rounding to the grid can make neighboring points equal.
     """

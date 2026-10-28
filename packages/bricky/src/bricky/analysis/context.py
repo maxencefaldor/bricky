@@ -17,9 +17,10 @@ from bricky.model import Model
 
 
 class Context:
-    """One model under check, with analyses that every pass shares, each computed on first use."""
+    """One model under check, with analyses all passes share, computed on first use."""
 
     def __init__(self, model: Model, catalog: Catalog) -> None:
+        """Hold a model and its catalog; derived data comes on first use."""
         self.model = model
         self.catalog = catalog
 

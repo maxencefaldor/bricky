@@ -1,6 +1,8 @@
 # Copyright 2026 Maxence Faldor
 
 import re
+from collections.abc import Mapping
+from pathlib import Path
 
 import pytest
 
@@ -24,7 +26,7 @@ from bricky.settings import Settings
 from bricky.units import BRICK, PLATE, STUD
 
 
-def test_the_sample_catalog_is_used_here_and_covers_every_family():
+def test_the_sample_catalog_is_used_here_and_covers_every_family() -> None:
     assert catalog_path() == SAMPLE_CATALOG
     catalog = default_catalog()
     assert len(catalog.parts) > 100
@@ -32,7 +34,7 @@ def test_the_sample_catalog_is_used_here_and_covers_every_family():
     assert catalog.source.startswith("sample: BrickLink catalog downloads of ")
 
 
-def test_brick_geometry():
+def test_brick_geometry() -> None:
     brick = default_catalog().part("3001")
     assert brick is not None
     assert brick.name == "Brick 2 x 4"
@@ -46,7 +48,7 @@ def test_brick_geometry():
     assert all(c.normal == DOWN and c.position.z == 0 for c in anti_studs)
 
 
-def test_tiles_have_anti_studs_but_no_studs():
+def test_tiles_have_anti_studs_but_no_studs() -> None:
     tile = default_catalog().part("3068b")
     assert tile is not None
     assert tile.size.z == PLATE
@@ -54,7 +56,7 @@ def test_tiles_have_anti_studs_but_no_studs():
     assert len(tile.connectors) == 4
 
 
-def test_colors_resolve_by_name_or_id():
+def test_colors_resolve_by_name_or_id() -> None:
     catalog = default_catalog()
     assert catalog.resolve_color("light bluish gray").id == 86
     assert catalog.resolve_color(5).name == "Red"
@@ -63,7 +65,7 @@ def test_colors_resolve_by_name_or_id():
         catalog.resolve_color("Chartreuse Sparkle")
 
 
-def test_every_color_has_a_display_color_and_a_unique_id_and_name():
+def test_every_color_has_a_display_color_and_a_unique_id_and_name() -> None:
     colors = default_catalog().colors
     assert all(re.fullmatch(r"#[0-9A-F]{6}", c.rgb) for c in colors)
     assert len({c.id for c in colors}) == len(colors)
@@ -72,7 +74,7 @@ def test_every_color_has_a_display_color_and_a_unique_id_and_name():
     assert transparent == {c.name for c in colors if c.name.startswith("Trans-")}
 
 
-def test_color_search_matches_ids_names_and_types():
+def test_color_search_matches_ids_names_and_types() -> None:
     catalog = default_catalog()
     assert [c.id for c in catalog.search_colors("pearl gold")] == [115]
     assert {c.name for c in catalog.search_colors("bluish")} == {
@@ -84,7 +86,7 @@ def test_color_search_matches_ids_names_and_types():
     )
 
 
-def test_search_matches_every_word_and_both_size_spellings():
+def test_search_matches_every_word_and_both_size_spellings() -> None:
     catalog = default_catalog()
     assert [p.id for p in catalog.search_parts("brick 2x2")] == [
         "3003",
@@ -116,7 +118,7 @@ def test_search_matches_every_word_and_both_size_spellings():
     ]
 
 
-def test_find_by_family_and_footprint_in_either_order():
+def test_find_by_family_and_footprint_in_either_order() -> None:
     catalog = default_catalog()
     assert [p.id for p in catalog.find(family=Family.PLATE, size=(6, 1))] == ["3666"]
     assert [p.id for p in catalog.find(family=Family.BRICK, size=(2, 2))] == [
@@ -145,14 +147,14 @@ TECHNIC = {
 }
 
 
-def catalog_of(*parts: dict) -> Catalog:
+def catalog_of(*parts: Mapping[str, object]) -> Catalog:
     red = {"id": 5, "name": "Red", "rgb": "#C91A09"}
     return Catalog.from_data(
         {"format": "bricky.catalog/1", "parts": list(parts), "colors": [red]}
     )
 
 
-def test_parts_without_a_shape_are_known_but_cannot_be_built():
+def test_parts_without_a_shape_are_known_but_cannot_be_built() -> None:
     catalog = catalog_of(BRICK_2X4, TECHNIC)
     assert catalog.entry("3700") == CatalogPart.model_validate(TECHNIC)
     assert catalog.part("3700") is None
@@ -165,7 +167,7 @@ def test_parts_without_a_shape_are_known_but_cannot_be_built():
     assert [p.id for p in catalog.search_parts("technic", shapeless=True)] == ["3700"]
 
 
-def test_printed_parts_take_their_base_part_shape():
+def test_printed_parts_take_their_base_part_shape() -> None:
     catalog = catalog_of(PRINTED, BRICK_2X4)
     printed, plain = catalog.part("3001pb001"), catalog.part("3001")
     assert printed is not None
@@ -176,7 +178,7 @@ def test_printed_parts_take_their_base_part_shape():
     assert [p.id for p in catalog.find(family=Family.BRICK)] == ["3001", "3001pb001"]
 
 
-def test_entries_are_checked_when_first_used():
+def test_entries_are_checked_when_first_used() -> None:
     broken = {
         "id": "9999",
         "name": "Brick 1 x 1",
@@ -188,7 +190,7 @@ def test_entries_are_checked_when_first_used():
         catalog.part("9999")
 
 
-def test_catalog_data_is_checked_when_loaded():
+def test_catalog_data_is_checked_when_loaded() -> None:
     with pytest.raises(BrickyError, match="repeated part id: 3001"):
         catalog_of(BRICK_2X4, BRICK_2X4)
     with pytest.raises(BrickyError, match="not a bricky catalog"):
@@ -197,7 +199,7 @@ def test_catalog_data_is_checked_when_loaded():
         catalog_of({"name": "Brick 1 x 1"})
 
 
-def test_catalog_files_round_trip_and_are_configurable(tmp_path):
+def test_catalog_files_round_trip_and_are_configurable(tmp_path: Path) -> None:
     written = CatalogFile(
         source="test",
         colors=(Color(id=5, name="Red", rgb="#C91A09"),),
@@ -226,7 +228,7 @@ def test_catalog_files_round_trip_and_are_configurable(tmp_path):
         load_catalog(tmp_path / "missing.json")
 
 
-def test_parts_without_a_shape_are_reported_by_the_builder_and_the_checks():
+def test_parts_without_a_shape_are_reported_by_the_builder_and_the_checks() -> None:
     catalog = catalog_of(BRICK_2X4, TECHNIC)
     builder = ModelBuilder(catalog=catalog)
     with pytest.raises(
@@ -236,11 +238,14 @@ def test_parts_without_a_shape_are_reported_by_the_builder_and_the_checks():
     model = Model(elements=(Element(id="axle", part="3700", color=5),))
     report = check_model(model, catalog=catalog, settings=Settings())
     assert [d.message for d in report.diagnostics] == [
-        "axle uses part '3700' (Technic, Brick 1 x 2 with Hole), which has no shape in the catalog"
+        (
+            "axle uses part '3700' (Technic, Brick 1 x 2 with Hole), "
+            "which has no shape in the catalog"
+        )
     ]
 
 
-def test_other_numbers_find_a_part_and_models_store_its_own():
+def test_other_numbers_find_a_part_and_models_store_its_own() -> None:
     catalog = default_catalog()
     tile = catalog.entry("3068b")
     assert tile is not None
@@ -251,7 +256,7 @@ def test_other_numbers_find_a_part_and_models_store_its_own():
     assert builder.build().elements[0].part == "3068"
 
 
-def test_search_puts_printed_parts_and_other_systems_last_unless_the_query_names_a_system():
+def test_search_puts_printed_parts_and_unnamed_systems_last() -> None:
     brick = {"id": "3001", "name": "Brick 2 x 4", "category": "Brick"}
     shaped = {"shape": {"family": "brick", "size": [2, 4]}}
     catalog = catalog_of(

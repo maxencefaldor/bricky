@@ -1,13 +1,14 @@
 # Copyright 2026 Maxence Faldor
 """The parts and colors bricky knows.
 
-The catalog keys parts and colors by their BrickLink ids. BrickLink, the LEGO Group's marketplace,
-lists every part. ``bricky catalog import`` imports BrickLink's catalog into a catalog file (see
-:mod:`bricky.catalog.importing`), and bricky uses the small sample shipped with it until then.
+The catalog keys parts and colors by their BrickLink ids. BrickLink, the LEGO Group's
+marketplace, lists every part. ``bricky catalog import`` imports BrickLink's catalog
+into a catalog file (see :mod:`bricky.catalog.importing`), and bricky uses the small
+sample shipped with it until then.
 
-Each catalog part carries BrickLink's facts and, when bricky has one, a shape: the family that
-generates the part's geometry and the numbers the family needs. The catalog generates a part's
-geometry on first use, so a catalog of every part loads quickly.
+Each catalog part carries BrickLink's facts and, when bricky has one, a shape: the
+family that generates the part's geometry and the numbers the family needs. The catalog
+generates a part's geometry on first use, so a catalog of every part loads quickly.
 """
 
 import json
@@ -70,10 +71,16 @@ CATALOG_FORMAT: Final = "bricky.catalog/1"
 SAMPLE_CATALOG: Final = Path(
     str(files("bricky.catalog").joinpath("data", "sample.toml"))
 )
-"""The sample catalog shipped with bricky: common parts and colors, with shapes written by hand."""
+"""The sample catalog shipped with bricky.
+
+The sample holds common parts and colors, with shapes written by hand.
+"""
 
 IMPORTED_CATALOG: Final = user_data_path("bricky", appauthor=False) / "catalog.json"
-"""The file ``bricky catalog import`` writes by default, and where bricky looks for a catalog."""
+"""The file ``bricky catalog import`` writes by default.
+
+bricky also looks for a catalog in this file.
+"""
 
 
 class CatalogFile(BaseModel):
@@ -98,7 +105,7 @@ class CatalogFile(BaseModel):
         return self
 
     def dump(self) -> bytes:
-        """Encode the file as JSON, one color or part per line, leaving out default values."""
+        """Encode the file as JSON, one color or part per line, without defaults."""
         head = {"format": self.format, "source": self.source}
         lines = [json.dumps(head, ensure_ascii=False)[:-1] + ', "colors": [']
         lines += _rows(self.colors)
@@ -115,8 +122,9 @@ _COLORS: Final = TypeAdapter(tuple[Color, ...])
 class Catalog:
     """An immutable index of parts and colors.
 
-    A part entry is a :class:`CatalogPart` or raw data. The catalog validates raw data the first
-    time the entry is needed, so a catalog of every BrickLink part loads in a fraction of a second.
+    A part entry is a :class:`CatalogPart` or raw data. The catalog validates raw data
+    the first time the entry is needed, so a catalog of every BrickLink part loads in a
+    fraction of a second.
     """
 
     def __init__(
@@ -126,6 +134,7 @@ class Catalog:
         *,
         source: str = "",
     ) -> None:
+        """Index parts and colors by id; a part stays raw data until first used."""
         self.source = source
         self._entries: dict[str, CatalogPart | Mapping[str, Any]] = {}
         for entry in parts:
@@ -179,6 +188,7 @@ class Catalog:
         return cls(parts, colors, source=str(data.get("source", "")))
 
     def __len__(self) -> int:
+        """The number of parts."""
         return len(self._entries)
 
     @property
@@ -188,7 +198,10 @@ class Catalog:
 
     @property
     def parts(self) -> tuple[Part, ...]:
-        """Every part with a shape, in catalog order. Reading it generates every part's geometry."""
+        """Every part with a shape, in catalog order.
+
+        Reading the property generates every part's geometry.
+        """
         return tuple(
             part for key in self._entries if (part := self.part(key)) is not None
         )
@@ -201,13 +214,14 @@ class Catalog:
     def entry(self, part_id: str) -> CatalogPart | None:
         """Return the catalog part with a BrickLink id, with or without a shape.
 
-        A part's alternate ids find it too: ``3068b`` finds the part BrickLink lists as ``3068``.
+        A part's alternate ids find it too: ``3068b`` finds the part BrickLink lists as
+        ``3068``.
         """
         key = part_id if part_id in self._entries else self._aliases.get(part_id)
         return None if key is None else self._entry(key)
 
     def shape(self, part_id: str) -> Shape | None:
-        """Return a part's shape, or a printed part's base's shape; ``None`` when it has none."""
+        """Return a part's shape, or a printed part's base's shape, or ``None``."""
         entry = self.entry(part_id)
         if entry is None:
             return None
@@ -217,7 +231,7 @@ class Catalog:
         return entry.shape
 
     def part(self, part_id: str) -> Part | None:
-        """Return the part with a BrickLink id, or ``None`` when the catalog has no shape for it."""
+        """Return the part with a BrickLink id, or ``None`` when it has no shape."""
         if part_id not in self._parts:
             entry, shape = self.entry(part_id), self.shape(part_id)
             self._parts[part_id] = (
@@ -226,7 +240,7 @@ class Catalog:
         return self._parts[part_id]
 
     def color(self, color_id: int) -> Color | None:
-        """Return the color with a BrickLink color id, or ``None`` when the catalog lacks it."""
+        """Return the color with a BrickLink id, or ``None`` if the catalog lacks it."""
         return self._colors.get(color_id)
 
     def resolve_color(self, value: int | str) -> Color:
@@ -251,12 +265,12 @@ class Catalog:
     def find(
         self, *, family: Family | str | None = None, size: tuple[int, int] | None = None
     ) -> list[Part]:
-        """Return the parts of a family and footprint: plain parts first, then printed ones.
+        """Return the parts of a family and footprint, plain parts before printed ones.
 
         Args:
             family: A family, such as ``"plate"``; any family when omitted.
-            size: A footprint in studs, in either order: ``(1, 6)`` and ``(6, 1)`` both find a
-                1 x 6 part; any footprint when omitted.
+            size: A footprint in studs, in either order: ``(1, 6)`` and ``(6, 1)`` both
+                find a 1 x 6 part; any footprint when omitted.
 
         Examples:
             >>> [
@@ -280,10 +294,10 @@ class Catalog:
         return plain + printed
 
     def search_colors(self, query: str = "") -> list[Color]:
-        """Return the colors whose id, name and type together contain every word of a query.
+        """Return colors whose id, name and type together contain every word of a query.
 
-        A query that is an RGB value, such as ``#F2CD37``, returns the colors nearest to it
-        instead, nearest first.
+        A query that is an RGB value, such as ``#F2CD37``, returns the colors nearest to
+        it instead, nearest first.
         """
         if _RGB.fullmatch(query.strip()):
             target = _channels(query.strip())
@@ -308,14 +322,16 @@ class Catalog:
     def search_parts(self, query: str, *, shapeless: bool = False) -> list[CatalogPart]:
         """Return the catalog parts whose text matches every word of a query.
 
-        A part's text is its id, alternate ids, name, category and family. A word matches when the
-        text contains it. A size matches a whole size of the text only, in either order and either
-        spelling: ``"1x2"``, ``"2x1"`` and ``"1 x 2"`` all find ``Plate 1 x 2`` and not
-        ``Plate 1 x 12``. Parts without a shape appear only when ``shapeless`` is set.
+        A part's text is its id, alternate ids, name, category and family. A word
+        matches when the text contains it. A size matches a whole size of the text only,
+        in either order and either spelling: ``"1x2"``, ``"2x1"`` and ``"1 x 2"`` all
+        find ``Plate 1 x 2`` and not ``Plate 1 x 12``. Parts without a shape appear only
+        when ``shapeless`` is set.
 
-        Parts with a shape come first. DUPLO, Quatro, Primo and Modulex parts, which belong to
-        other building systems, follow the rest unless the query names their system. Plain parts
-        come before printed ones, and shorter names before longer ones.
+        Parts with a shape come first. DUPLO, Quatro, Primo and Modulex parts, which
+        belong to other building systems, follow the rest unless the query names their
+        system. Plain parts come before printed ones, and shorter names before longer
+        ones.
         """
         words = _SIZE.sub(r"\1x\2", query.casefold()).split()
         hits: list[tuple[bool, bool, bool, int, int, str]] = []
@@ -336,7 +352,10 @@ class Catalog:
         return [self._entry(key) for *_, key in hits]
 
     def _raw_shape(self, key: str) -> Mapping[str, Any] | None:
-        """A part's shape, or its base's, as raw data, without validating the whole entry."""
+        """A part's shape, or its base's, as raw data.
+
+        The method reads the shape without validating the whole entry.
+        """
         entry = self._entries[key]
         shape = _raw_field(entry, "shape")
         if shape is None and (base := _raw(entry, "base")) and base in self._entries:
@@ -357,7 +376,9 @@ class Catalog:
 
 
 def load_catalog(path: Path) -> Catalog:
-    """Read a catalog file: JSON, as ``bricky catalog import`` writes it, or TOML, as the sample is.
+    """Read a catalog file in JSON or TOML.
+
+    ``bricky catalog import`` writes JSON, and the sample catalog is TOML.
 
     Raises:
         BrickyError: If the file cannot be read or is not a valid catalog.
@@ -380,8 +401,8 @@ def load_catalog(path: Path) -> Catalog:
 def catalog_path(settings: Settings | None = None) -> Path:
     """Return the catalog file bricky uses.
 
-    The configured catalog comes first, then the catalog imported into bricky's data folder, then
-    the sample shipped with bricky.
+    The configured catalog comes first, then the catalog imported into bricky's data
+    folder, then the sample shipped with bricky.
     """
     configured = (settings or Settings()).catalog
     if configured is not None:
@@ -391,7 +412,7 @@ def catalog_path(settings: Settings | None = None) -> Path:
 
 @cache
 def default_catalog() -> Catalog:
-    """Return the catalog bricky uses (see :func:`catalog_path`), loaded once per process."""
+    """Return the catalog at :func:`catalog_path`, loaded once per process."""
     return load_catalog(catalog_path())
 
 
@@ -399,7 +420,7 @@ _RGB: Final = re.compile(r"#?[0-9A-Fa-f]{6}")
 _NEAREST_COLORS: Final = 5
 _SIZE: Final = re.compile(r"(\d+)\s*x\s*(\d+)")
 _SYSTEMS: Final = ("duplo", "quatro", "primo", "modulex")
-"""Building systems other than the one bricks and plates belong to, as search text spells them."""
+"""Building systems other than that of bricks and plates, as search text spells them."""
 _SIZE_WORD: Final = re.compile(r"(\d+)x(\d+)")
 
 

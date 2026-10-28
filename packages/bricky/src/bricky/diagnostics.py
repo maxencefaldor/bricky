@@ -1,18 +1,19 @@
 # Copyright 2026 Maxence Faldor
 """Diagnostics: the facts that passes report, and the reports that collect them.
 
-A diagnostic states a fact about the model: a stable code whose letter gives its severity (``E``
-error, ``W`` warning, ``I`` info), what is wrong, the elements involved and the region they occupy,
-in studs and plates. A diagnostic never prescribes a fix: the agent decides what to change. The
-pass that reports a code documents its exact rule (see ``bricky explain``).
+A diagnostic states a fact about the model: a stable code whose letter gives its
+severity (``E`` error, ``W`` warning, ``I`` info), what is wrong, the elements involved
+and the region they occupy, in studs and plates. A diagnostic never prescribes a fix:
+the agent decides what to change. The pass that reports a code documents its exact rule
+(see ``bricky explain``).
 
-A report adds what the model and its source map know about each element a diagnostic names: the
-part, the color and the build-script line that placed it.
+A report adds what the model and its source map know about each element a diagnostic
+names: the part, the color and the build-script line that placed it.
 """
 
 from collections import Counter
 from enum import StrEnum
-from typing import Final
+from typing import Final, override
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -74,7 +75,9 @@ class Region(BaseModel):
             z=(to_plates(box.min.z), to_plates(box.max.z)),
         )
 
+    @override
     def __str__(self) -> str:
+        """The region as text, such as ``x 1..2  y 0..4  z 0..3``."""
         return "  ".join(
             f"{axis} {low:g}..{high:g}"
             for axis, (low, high) in zip("xyz", (self.x, self.y, self.z), strict=True)
@@ -105,7 +108,7 @@ class Diagnostic(BaseModel):
         return _SEVERITY[self.code[0]]
 
     def sort_key(self) -> tuple[int, str, str]:
-        """Return a key that sorts by severity, most serious first, then code and first uid."""
+        """Return the sort key: most serious first, then by code and first uid."""
         return (
             _RANK[self.severity],
             self.code,
@@ -114,7 +117,7 @@ class Diagnostic(BaseModel):
 
 
 class ElementInfo(BaseModel):
-    """What an element named by a diagnostic is, and where the build script placed it."""
+    """What an element named by a diagnostic is, and which script line placed it."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -138,7 +141,7 @@ class ElementInfo(BaseModel):
 
 
 class Report(BaseModel):
-    """The result of checking one model: its diagnostics and what each named element is."""
+    """The result of a check: a model's diagnostics and what each named element is."""
 
     model: str = Field(description="Name of the model checked.")
     profile: str | None = Field(
@@ -189,7 +192,9 @@ def render_report(report: Report) -> str:
         if len(sites) > _LISTED_SITES:
             lines.append(f"  ... and {len(sites) - _LISTED_SITES} more lines")
         blocks.append("\n".join(lines))
-    profile = f"profile {report.profile}" if report.profile else "explicit passes"
+    profile = (
+        "explicit passes" if report.profile is None else f"profile {report.profile}"
+    )
     passes = ", ".join(report.passes) or "none"
     summary = (
         f"checked {report.element_count} elements with {profile} ({passes}): "
@@ -206,9 +211,9 @@ def describe_element(uid: str, info: ElementInfo | None) -> str:
     if info is None:
         return uid
     part = (
-        f"{info.part_name} ({info.part})"
-        if info.part_name
-        else f"unknown part {info.part}"
+        f"unknown part {info.part}"
+        if info.part_name is None
+        else f"{info.part_name} ({info.part})"
     )
     color = info.color_name or f"unknown color {info.color}"
     text = f"{uid}: {part}, {color}"
@@ -236,7 +241,7 @@ def _render_diagnostic(diagnostic: Diagnostic, elements: dict[str, ElementInfo])
 
 
 def _sites(report: Report) -> Counter[Frame]:
-    """Count, for each script line, the listed diagnostics that name an element it placed."""
+    """Count, per script line, the listed diagnostics naming an element it placed."""
     counts: Counter[Frame] = Counter()
     for diagnostic in report.diagnostics:
         sites = {

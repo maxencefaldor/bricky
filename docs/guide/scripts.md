@@ -33,7 +33,7 @@ def build() -> ModelBuilder:
 - `color` is a color name or id.
 - `rotation` is `R0`, `R90`, `R180`, `R270`, or any of the 24 grid rotations.
 - `id` names the element.
-    Unnamed elements get `e1`, `e2` and so on, in placing order.
+  Unnamed elements get `e1`, `e2` and so on, in placing order.
 
 Give the elements that matter an id: the report and the pictures label elements by id, and `--highlight` selects them by id pattern.
 
@@ -69,12 +69,15 @@ Overhangs, and the squares beside them, take plates that reach back to what hold
 ```python
 from math import hypot
 
+INNER, OUTER = 4, 6.5  # the wall's radii, in studs
+STRIPE = 3  # the fourth of every four courses is white
+
 tower = {
-    (x, y, z): "White" if z // 3 % 4 == 3 else "Red"
+    (x, y, z): "White" if z // 3 % 4 == STRIPE else "Red"
     for x in range(-6, 7)
     for y in range(-6, 7)
     for z in range(24)
-    if 4 <= hypot(x, y) < 6.5
+    if INNER <= hypot(x, y) < OUTER
 }
 builder.fill(tower, id="tower")  # ids such as tower.4.-2.9: the prefix, then the corner
 ```
@@ -91,7 +94,9 @@ A tile or plate rotated `+x+z` faces -y, so its underside grips a side stud that
 
 ```python
 builder.place("87087", at=(0, 1, 4), color="White")  # Brick 1 x 1, stud on its side
-builder.place("3070", at=(0, 0.6, 4.5), rotation="+x+z", color="Blue")  # Tile 1 x 1, upright
+builder.place(
+    "3070", at=(0, 0.6, 4.5), rotation="+x+z", color="Blue"
+)  # Tile 1 x 1, upright
 ```
 
 The tile's bounding box is 0.4 studs deep (a plate's height) and one stud tall (2.5 plates), so its minimum corner sits 0.4 studs in front of the brick and half a plate above its base, so the tile ends flush with the brick's top.

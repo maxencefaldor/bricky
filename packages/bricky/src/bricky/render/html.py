@@ -1,9 +1,9 @@
 # Copyright 2026 Maxence Faldor
 """A standalone viewer: one HTML file people open in a browser to orbit a model.
 
-The page embeds the scene and bricky's viewer module, and loads three.js from jsDelivr, so it stays
-small and needs a network connection when opened. Renders for agents run offline in headless
-Chromium instead (see :mod:`bricky.render.browser`).
+The page embeds the scene and bricky's viewer module, and loads three.js from jsDelivr,
+so it stays small and needs a network connection when opened. Renders for agents run
+offline in headless Chromium instead (see :mod:`bricky.render.browser`).
 """
 
 import json
@@ -32,12 +32,14 @@ _PAGE: Final = Template("""\
 <title>$title</title>
 <style>
   :root {
-    color-scheme: light; --ink: #1f2328; --quiet: #59636e; --line: #d0d7de; --paper: #f6f7f9;
+    color-scheme: light; --ink: #1f2328; --quiet: #59636e;
+    --line: #d0d7de; --paper: #f6f7f9;
   }
   html, body { height: 100%; margin: 0; }
   body {
     display: grid; grid-template-rows: auto 1fr; background: #ffffff; color: var(--ink);
-    font: 14px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font: 14px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+      sans-serif;
   }
   header {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
@@ -49,7 +51,9 @@ _PAGE: Final = Template("""\
     font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px;
     background: #ffffff; color: var(--ink); cursor: pointer;
   }
-  button:focus-visible, input:focus-visible { outline: 2px solid #0969da; outline-offset: 2px; }
+  button:focus-visible, input:focus-visible {
+    outline: 2px solid #0969da; outline-offset: 2px;
+  }
   label { display: flex; align-items: center; gap: 8px; color: var(--quiet); }
   output { min-width: 7ch; font-variant-numeric: tabular-nums; color: var(--ink); }
   #stage { position: relative; min-height: 0; background: var(--paper); }

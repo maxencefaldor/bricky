@@ -1,9 +1,10 @@
 # Copyright 2026 Maxence Faldor
 """The pass plugin protocol and discovery.
 
-A pass is any class with a ``name``, a one-line ``summary``, the ``codes`` it can report and a
-``run`` method. Packages register passes under the ``bricky.passes`` entry-point group, so a pass
-pack, such as a future ``bricky-physics``, installs and uninstalls without changes to the core.
+A pass is any class with a ``name``, a one-line ``summary``, the ``codes`` it can report
+and a ``run`` method. Packages register passes under the ``bricky.passes`` entry-point
+group, so a pass pack, such as a future ``bricky-physics``, installs and uninstalls
+without changes to the core.
 """
 
 from collections.abc import Iterable, Mapping, Sequence
@@ -69,7 +70,7 @@ def run_passes(
     names: Sequence[str],
     available: Mapping[str, type[Pass]],
 ) -> tuple[list[Diagnostic], list[str]]:
-    """Run the named passes in order; return their diagnostics and the names not installed."""
+    """Run the named passes in order; return diagnostics and names not installed."""
     diagnostics: list[Diagnostic] = []
     missing: list[str] = []
     for name in names:

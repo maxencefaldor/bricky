@@ -1,5 +1,8 @@
 # Copyright 2026 Maxence Faldor
-"""Analyses derived from a model: world geometry, spatial index, connections, voxels and diffs."""
+"""Analyses derived from a model: world geometry, spatial index, connections, voxels.
+
+Diffs compare the worlds of two builds.
+"""
 
 from bricky.analysis.connections import AntiStudIndex, Connection
 from bricky.analysis.context import Context

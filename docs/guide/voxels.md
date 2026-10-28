@@ -3,16 +3,16 @@
 A voxel is one stud square and one plate tall: the grid parts are placed on.
 `voxels(model)` maps every voxel a model fills to the element and color that fill it, keyed `(x, y, z)` in studs, studs and plates, the units of `at`.
 
-```python
-from bricky import ModelBuilder, voxels
-
-builder = ModelBuilder("wall")
-builder.place("3004", at=(0, 0, 0), color="Red")  # Brick 1 x 2
-filled = voxels(builder.build())
-sorted(filled)
-# [(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 1, 0), (0, 1, 1), (0, 1, 2)]
-filled[0, 0, 0].uid, filled[0, 0, 0].color
-# ('e1', 5)
+```pycon
+>>> from bricky import ModelBuilder, voxels
+>>> builder = ModelBuilder("wall")
+>>> builder.place("3004", at=(0, 0, 0), color="Red")  # Brick 1 x 2
+'e1'
+>>> filled = voxels(builder.build())
+>>> sorted(filled)
+[(0, 0, 0), (0, 0, 1), (0, 0, 2), (0, 1, 0), (0, 1, 1), (0, 1, 2)]
+>>> filled[0, 0, 0].uid, filled[0, 0, 0].color
+('e1', 5)
 ```
 
 An element fills a voxel when the voxel's center lies inside its body.
@@ -29,11 +29,13 @@ A script can check a model against a plan, a layer drawing or another model in a
 ```python
 from bricky import voxels
 
-target = {(x, 0, z) for x in range(8) for z in range(9)}  # a wall 8 studs long, 3 bricks tall
+# A wall 8 studs long and 3 bricks tall.
+target = {(x, 0, z) for x in range(8) for z in range(9)}
 filled = set(voxels(builder.build()))
-print("missing:", sorted(target - filled))
-print("extra:", sorted(filled - target))
+missing, extra = target - filled, filled - target
 ```
+
+`missing` holds the voxels the plan fills and the model does not, and `extra` the reverse.
 
 The [benchmark](../agents/benchmark.md) scores models this way: it compares the voxels an agent's model fills with a reference's, over every rotation about the vertical axis and the best shift.
 

@@ -26,7 +26,7 @@ class PlacedElement:
 
 @dataclass(frozen=True, slots=True)
 class UnknownElement:
-    """An element whose part the catalog cannot place: the part is unknown or has no shape."""
+    """An element the catalog cannot place: its part is unknown or has no shape."""
 
     uid: str
     part: str

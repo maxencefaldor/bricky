@@ -1,9 +1,9 @@
 # Copyright 2026 Maxence Faldor
 """Reference for project 05: a toadstool on a lawn, from plate-by-plate layers.
 
-The stem is four courses of interlocking White 2 x 4 bricks. The cap is seven layers of plates whose
-rows rotate by 90 degrees from one layer to the next, so every row crosses the rows above and below
-it and the overhang holds together.
+The stem is four courses of interlocking White 2 x 4 bricks. The cap is seven layers of
+plates whose rows rotate by 90 degrees from one layer to the next, so every row crosses
+the rows above and below it and the overhang holds together.
 """
 
 from bricky import ModelBuilder
@@ -20,7 +20,8 @@ CAP = (
     (3, 7),
 )  # square extent of each layer
 CAP_Z = 13
-# White spots on the cap, by layer index: cells (x, y), each over a cell of the layer below.
+# White spots on the cap, by layer index: cells (x, y), each over a cell of the layer
+# below.
 SPOTS = {
     3: {(0, 4), (0, 5), (9, 2), (9, 3), (4, 0), (5, 0), (2, 9), (7, 9)},
     4: {(1, 7), (8, 1), (8, 7), (2, 2), (6, 3), (3, 6)},
@@ -41,9 +42,10 @@ def row(
     cells: list[tuple[int, int]],
     colors: list[str],
     z: int,
+    *,
     along_x: bool,
 ) -> None:
-    """Fill a straight row of cells with 1 x N plates, one color at a time, longest first."""
+    """Fill a straight row of cells with 1 x N plates, color by color, longest first."""
     i = 0
     while i < len(cells):
         j = i
@@ -94,5 +96,5 @@ def build() -> ModelBuilder:
                 for along in range(start, stop)
             ]
             colors = ["White" if cell in spots else "Red" for cell in cells]
-            row(builder, cells, colors, z, along_x)
+            row(builder, cells, colors, z, along_x=along_x)
     return builder

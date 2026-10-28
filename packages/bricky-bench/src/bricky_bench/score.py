@@ -1,11 +1,12 @@
 # Copyright 2026 Maxence Faldor
-"""Scores: what is true of the model an agent ends with, and how closely it matches a reference.
+"""Scores: the facts of an agent's final model, and how closely it matches a reference.
 
-A score has two parts. The facts come from building the agent's final script with bricky: whether
-the script builds, how many elements the model has, and its errors and warnings. Fidelity, for
-projects with a reference, compares the voxels the two models fill (see :func:`bricky.voxels`).
-Position is free: the comparison rotates the agent's model about the vertical axis and shifts it
-to line up with the reference, and the best match counts.
+A score has two parts. The facts come from building the agent's final script with
+bricky: whether the script builds, how many elements the model has, and its errors and
+warnings. Fidelity, for projects with a reference, compares the voxels the two models
+fill (see :func:`bricky.voxels`). Position is free: the comparison rotates the agent's
+model about the vertical axis and shifts it to line up with the reference, and the best
+match counts.
 """
 
 from collections import Counter
@@ -32,10 +33,14 @@ class Fidelity(BaseModel):
     """How closely a model's voxels match a reference's."""
 
     shape: float = Field(
-        description="Voxels filled in both models over voxels filled in either: 1 is identical."
+        description=(
+            "Voxels filled in both models over voxels filled in either: 1 is identical."
+        )
     )
     color: float = Field(
-        description="Like shape, but a voxel filled in both counts only when the colors match."
+        description=(
+            "Like shape, but a voxel filled in both counts only when the colors match."
+        )
     )
     rotation: str = Field(
         description="The rotation of the agent's model that matched best."
@@ -82,12 +87,12 @@ def facts(report: Report, elements: int) -> Score:
 def compare(
     model: Mapping[VoxelKey, Voxel], reference: Mapping[VoxelKey, Voxel]
 ) -> Fidelity:
-    """Match a model's voxels against a reference's, over each rotation and three ways to line up.
+    """Match a model's voxels to a reference's, over each rotation and three alignments.
 
-    For each rotation, the comparison shifts the rotated model so its bounding box's low corner,
-    high corner or center meets the reference's; levels always line up by the low corner. The
-    candidate with the most voxels filled in both models wins, and the most voxels filled in the
-    same color in both breaks ties.
+    For each rotation, the comparison shifts the rotated model so its bounding box's low
+    corner, high corner or center meets the reference's; levels always line up by the
+    low corner. The candidate with the most voxels filled in both models wins, and the
+    most voxels filled in the same color in both breaks ties.
     """
     ours = {key: voxel.color for key, voxel in model.items()}
     theirs = {key: voxel.color for key, voxel in reference.items()}
@@ -125,7 +130,9 @@ def compare(
 def _bounds(
     voxels: Mapping[VoxelKey, int],
 ) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
-    xs, ys, zs = zip(*voxels, strict=True)
+    xs = [x for x, _, _ in voxels]
+    ys = [y for _, y, _ in voxels]
+    zs = [z for _, _, z in voxels]
     return (min(xs), min(ys), min(zs)), (max(xs), max(ys), max(zs))
 
 
@@ -155,7 +162,7 @@ def _overlap(
     reference: Mapping[VoxelKey, int],
     shift: tuple[int, int, int],
 ) -> tuple[int, int]:
-    """Count the shifted voxels the reference also fills, and those of them in the same color."""
+    """Count shifted voxels the reference also fills, and those in the same color."""
     shift_x, shift_y, shift_z = shift
     shared = matched = 0
     for (x, y, z), color in rotated.items():

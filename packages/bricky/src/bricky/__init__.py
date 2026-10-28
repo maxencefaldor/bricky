@@ -2,10 +2,11 @@
 """bricky: a compiler-style toolkit that lets AI agents design buildable LEGO® models.
 
 Write a model with :class:`ModelBuilder`, then check it with :func:`check_model` or the
-``bricky`` command line. :func:`voxels` returns the voxels a model fills, for comparison with a
-target.
+``bricky`` command line. :func:`voxels` returns the voxels a model fills, for comparison
+with a target.
 
-LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse this project.
+LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or endorse
+this project.
 """
 
 from bricky.analysis.voxels import Voxel

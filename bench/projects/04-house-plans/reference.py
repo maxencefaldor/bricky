@@ -1,9 +1,10 @@
 # Copyright 2026 Maxence Faldor
-"""Reference for project 04: a small house with a door, glazed windows, a flat roof and a chimney.
+"""Reference for project 04: a small house.
 
-The walls are one stud thick and five bricks tall, laid in running bond with interlocking corners:
-on even courses the front and back walls run the full width, on odd courses the side walls run the
-full depth.
+The house has a door, glazed windows, a flat roof and a chimney. The walls are one stud
+thick and five bricks tall, laid in running bond with interlocking corners: on even
+courses the front and back walls run the full width, on odd courses the side walls run
+the full depth.
 """
 
 from bricky import ModelBuilder
@@ -37,11 +38,12 @@ def opening(x: int, y: int, course: int) -> str | None:
 def lay(
     builder: ModelBuilder,
     cells: list[tuple[int, int]],
+    *,
     along_x: bool,
     z: int,
     course: int,
 ) -> None:
-    """Fill a straight run of wall cells with bricks, one color at a time, longest first."""
+    """Fill a straight run of wall cells with bricks, color by color, longest first."""
     i = 0
     while i < len(cells):
         color = opening(*cells[i], course) or WALL

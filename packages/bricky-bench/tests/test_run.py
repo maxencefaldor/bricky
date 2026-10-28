@@ -5,23 +5,32 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from bricky.service import Session
 from bricky_bench.projects import load_projects
-from bricky_bench.run import Agent, Completed, footer, read_transcript, run_projects
+from bricky_bench.run import (
+    Agent,
+    Completed,
+    Record,
+    footer,
+    read_transcript,
+    run_projects,
+)
 
 ROOT = Path(__file__).parents[3]
 FAKE = Path(__file__).with_name("fake_claude.py")
 PROJECTS = {p.id: p for p in load_projects(ROOT / "bench" / "projects")}
 
 
-def test_prompts_end_with_where_to_work_and_where_the_answer_goes():
+def test_prompts_end_with_where_to_work_and_where_the_answer_goes() -> None:
     text = footer(PROJECTS["02-pixel-heart"])
     assert "The `inputs/` folder holds `heart.png` and `heart.txt`." in text
     assert "`models/pixel_heart.py`" in text
     assert "inputs/" not in footer(PROJECTS["01-wall"])
 
 
-def test_claude_code_runs_headless_within_the_budget():
+def test_claude_code_runs_headless_within_the_budget() -> None:
     argv = Agent(model="opus").argv("Build a wall.", max_turns=30)
     assert argv[:3] == ["claude", "-p", "Build a wall."]
     assert argv[argv.index("--output-format") + 1] == "stream-json"
@@ -31,7 +40,7 @@ def test_claude_code_runs_headless_within_the_budget():
     assert argv[argv.index("--model") + 1] == "opus"
 
 
-def test_transcripts_give_turns_cost_and_builds():
+def test_transcripts_give_turns_cost_and_builds() -> None:
     lines = [
         "not json",
         json.dumps(
@@ -65,12 +74,14 @@ def test_transcripts_give_turns_cost_and_builds():
     )
 
 
-def test_a_run_builds_the_answer_in_its_workspace_and_scores_it(tmp_path, monkeypatch):
+def test_a_run_builds_the_answer_in_its_workspace_and_scores_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     project = PROJECTS["01-wall"]
     monkeypatch.setenv("FAKE_SOLUTION", str(project.reference))
     agent = Agent(command=(sys.executable, str(FAKE)))
 
-    async def go():
+    async def go() -> list[Record]:
         async with Session() as session:
             return await run_projects(
                 [project],

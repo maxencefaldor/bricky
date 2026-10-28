@@ -1,9 +1,10 @@
 # Copyright 2026 Maxence Faldor
 """Reference for project 06: a striped lighthouse on a rocky islet.
 
-The tower is two hollow square shafts, one stud thick: 6 x 6 studs for eight courses, then 4 x 4
-for four, striped Red and White every two courses. A Black gallery with a railing rings the top,
-a Trans-Yellow lantern sits inside it, and a Red roof with a Black finial caps the lantern.
+The tower is two hollow square shafts, one stud thick: 6 x 6 studs for eight courses,
+then 4 x 4 for four, striped Red and White every two courses. A Black gallery with a
+railing rings the top, a Trans-Yellow lantern sits inside it, and a Red roof with a
+Black finial caps the lantern.
 """
 
 from bricky import ModelBuilder
@@ -14,13 +15,14 @@ BRICKS = {4: "3010", 3: "3622", 2: "3004", 1: "3005"}
 
 
 def ring(
-    builder: ModelBuilder, start: int, stop: int, z: int, course: int, color: str
+    builder: ModelBuilder, span: range, *, z: int, course: int, color: str
 ) -> None:
-    """One course of a hollow square shaft, one stud thick.
+    """One course of a hollow square shaft, one stud thick, over ``span`` in x and y.
 
-    The shaft spans ``start`` to ``stop - 1`` in both x and y. Corners alternate between the walls
-    along x and the walls along y, so courses interlock.
+    Corners alternate between the walls along x and the walls along y, so courses
+    interlock.
     """
+    start, stop = span.start, span.stop
     full_x = course % 2 == 0
     xs = range(start, stop) if full_x else range(start + 1, stop - 1)
     ys = range(start + 1, stop - 1) if full_x else range(start, stop)
@@ -33,6 +35,7 @@ def ring(
 def run(
     builder: ModelBuilder,
     cells: list[tuple[int, int]],
+    *,
     along_x: bool,
     z: int,
     color: str,
@@ -72,35 +75,33 @@ def islet(builder: ModelBuilder) -> None:
         builder.place("3003", at=(x, y, 2), color=color)
 
 
-def build() -> ModelBuilder:
-    """Build the lighthouse on its islet."""
-    builder = ModelBuilder("lighthouse")
-    islet(builder)
-    # Lower shaft: 6 x 6, from x and y 4 to 10, eight courses; a Reddish Brown door at the front.
+def shafts(builder: ModelBuilder) -> int:
+    """Lay both striped shafts and the door step; return the gallery deck's height."""
+    # Lower shaft: 6 x 6, from x and y 4 to 10, eight courses, with a Reddish Brown door
+    # step.
     for course in range(8):
-        z = 2 + 3 * course
         color = "Red" if course // 2 % 2 == 0 else "White"
-        ring(builder, 4, 10, z, course, color)
-    builder.place(
-        "3004", at=(6, 3, 2), rotation="R90", color="Reddish Brown"
-    )  # door step
-    # Upper shaft: 4 x 4, from 5 to 9, four courses, on a plate collar.
+        ring(builder, range(4, 10), z=2 + 3 * course, course=course, color=color)
+    builder.place("3004", at=(6, 3, 2), rotation="R90", color="Reddish Brown")
+    # Upper shaft: 4 x 4, from 5 to 9, four courses, on a collar of Black Plates 2 x 6.
     collar_z = 2 + 3 * 8
     for y in (4, 6, 8):
-        builder.place(
-            "3795", at=(4, y, collar_z), rotation="R90", color="Black"
-        )  # Plate 2 x 6
+        builder.place("3795", at=(4, y, collar_z), rotation="R90", color="Black")
     for course in range(4):
-        z = collar_z + 1 + 3 * course
         color = "Red" if (course + 8) // 2 % 2 == 0 else "White"
-        ring(builder, 5, 9, z, course, color)
-    # Gallery: an 8 x 8 Black deck of two crossed layers of 1 x 8 plates, so the rows that
-    # overhang the shaft hold on to the rows above them, with a railing of 1 x 1 bricks.
-    deck_z = collar_z + 1 + 3 * 4
+        z = collar_z + 1 + 3 * course
+        ring(builder, range(5, 9), z=z, course=course, color=color)
+    return collar_z + 1 + 3 * 4
+
+
+def gallery(builder: ModelBuilder, deck_z: int) -> int:
+    """Lay an 8 x 8 Black deck with a railing; return the railing's base height.
+
+    The deck is two crossed layers of Plates 1 x 8, so the rows that overhang the shaft
+    hold on to the rows above them.
+    """
     for line in range(3, 11):
-        builder.place(
-            "3460", at=(3, line, deck_z), rotation="R90", color="Black"
-        )  # Plate 1 x 8
+        builder.place("3460", at=(3, line, deck_z), rotation="R90", color="Black")
         builder.place("3460", at=(line, 3, deck_z + 1), color="Black")
     top = deck_z + 2
     for x in range(3, 11):
@@ -110,14 +111,26 @@ def build() -> ModelBuilder:
     for y in (5, 7):
         for x in (3, 10):
             builder.place("3005", at=(x, y, top), color="Black")
-    # Lantern: a hollow 4 x 4 ring of Trans-Yellow, two courses.
+    return top
+
+
+def lantern(builder: ModelBuilder, z: int) -> None:
+    """Lay a two-course hollow 4 x 4 Trans-Yellow lantern under a stepped Red roof."""
     for course in range(2):
-        ring(builder, 5, 9, top + 3 * course, course, "Trans-Yellow")
-    # Roof: Red plates stepping in, then a 2 x 2 brick and a Black finial.
-    roof_z = top + 3 * 2
+        span = range(5, 9)
+        ring(builder, span, z=z + 3 * course, course=course, color="Trans-Yellow")
+    roof_z = z + 3 * 2
     builder.place("3020", at=(5, 5, roof_z), color="Red")
     builder.place("3020", at=(7, 5, roof_z), color="Red")
     builder.place("3022", at=(6, 6, roof_z + 1), color="Red")
     builder.place("3003", at=(6, 6, roof_z + 2), color="Red")
-    builder.place("3005", at=(6, 6, roof_z + 5), color="Black")
+    builder.place("3005", at=(6, 6, roof_z + 5), color="Black")  # the finial
+
+
+def build() -> ModelBuilder:
+    """Build the lighthouse on its islet."""
+    builder = ModelBuilder("lighthouse")
+    islet(builder)
+    deck_z = shafts(builder)
+    lantern(builder, gallery(builder, deck_z))
     return builder

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters
+from mcp.types import CallToolResult, ImageContent, ListToolsResult, TextContent, Tool
 
 from bricky import ModelBuilder, save_model
 from bricky_mcp import create_server
@@ -25,23 +26,30 @@ def build():
 """
 
 
-def call(name: str, arguments: Mapping[str, object]):
-    async def go():
+def call(name: str, arguments: Mapping[str, object]) -> CallToolResult:
+    async def go() -> CallToolResult:
         async with Client(create_server()) as client:
             return await client.call_tool(name, dict(arguments))
 
     return asyncio.run(go())
 
 
-def list_tools():
-    async def go():
+def text_of(result: CallToolResult) -> str:
+    """The text of a tool result's first content, which is always text."""
+    content = result.content[0]
+    assert isinstance(content, TextContent)
+    return content.text
+
+
+def list_tools() -> list[Tool]:
+    async def go() -> ListToolsResult:
         async with Client(create_server()) as client:
             return await client.list_tools()
 
     return asyncio.run(go()).tools
 
 
-def test_tools_mirror_the_service_requests():
+def test_tools_mirror_the_service_requests() -> None:
     tools = {tool.name: tool for tool in list_tools()}
     assert set(tools) == {
         "build_model",
@@ -64,31 +72,33 @@ def test_tools_mirror_the_service_requests():
     assert all(tool.output_schema is not None for tool in tools.values())
     assert check.annotations is not None
     assert check.annotations.read_only_hint is True
-    assert tools["build_model"].annotations.read_only_hint is False
+    build = tools["build_model"].annotations
+    assert build is not None
+    assert build.read_only_hint is False
     assert "highlight" in tools["render_model"].input_schema["properties"]
 
 
-def test_check_model_answers_with_text_and_a_structured_report(tmp_path: Path):
+def test_check_model_answers_with_text_and_a_structured_report(tmp_path: Path) -> None:
     builder = ModelBuilder("floating")
     builder.place("3001", at=(0, 0, 3), color="Red")
     path = tmp_path / "m.bricky.json"
     save_model(builder.build(), path)
     result = call("check_model", {"model": str(path)})
     assert not result.is_error
-    assert result.content[0].text.startswith("error[E301]")
+    assert text_of(result).startswith("error[E301]")
     assert result.structured_content["errors"] == 1
     assert result.structured_content["diagnostics"][0]["code"] == "E301"
 
 
-def test_build_model_returns_the_report_and_the_picture(tmp_path: Path):
+def test_build_model_returns_the_report_and_the_picture(tmp_path: Path) -> None:
     script = tmp_path / "m.py"
     script.write_text(SCRIPT)
     result = call("build_model", {"script": str(script), "views": ["front"]})
     assert not result.is_error
-    text, image = result.content
-    assert "chatter on stdout" in text.text
-    assert "m.py:9 in build()" in text.text
-    assert image.type == "image"
+    text, image = text_of(result), result.content[1]
+    assert "chatter on stdout" in text
+    assert "m.py:9 in build()" in text
+    assert isinstance(image, ImageContent)
     assert image.mime_type == "image/png"
     data = result.structured_content
     assert data["output"]["stdout"] == "chatter on stdout\n"
@@ -98,7 +108,7 @@ def test_build_model_returns_the_report_and_the_picture(tmp_path: Path):
     script.write_text(SCRIPT.replace("at=(5, 5, 5)", "at=(0, 0, 3)"))
     again = call("build_model", {"script": str(script), "render": False})
     assert "since the last build: 0 added, 0 removed, 1 changed, 1 unchanged" in (
-        again.content[0].text
+        text_of(again)
     )
     assert again.structured_content["changes"]["changed_at"] == [
         {"line": f"{script}:9 in build()", "elements": 1}
@@ -106,7 +116,7 @@ def test_build_model_returns_the_report_and_the_picture(tmp_path: Path):
     assert again.structured_content["report"]["errors"] == 0
 
 
-def test_render_model_returns_one_picture_per_view(tmp_path: Path):
+def test_render_model_returns_one_picture_per_view(tmp_path: Path) -> None:
     builder = ModelBuilder("m")
     builder.place("3001", at=(0, 0, 0), color="Red", id="base")
     path = tmp_path / "m.bricky.json"
@@ -118,9 +128,9 @@ def test_render_model_returns_one_picture_per_view(tmp_path: Path):
     }
     result = call("render_model", arguments)
     assert not result.is_error
-    text, *images = result.content
+    images = result.content[1:]
     assert [image.type for image in images] == ["image", "image"]
-    assert f"top: {tmp_path / 'm.top.png'}" in text.text
+    assert f"top: {tmp_path / 'm.top.png'}" in text_of(result)
     assert [image["view"] for image in result.structured_content["images"]] == [
         "perspective",
         "top",
@@ -128,13 +138,13 @@ def test_render_model_returns_one_picture_per_view(tmp_path: Path):
     assert (tmp_path / "m.perspective.png").is_file()
 
 
-def test_errors_come_back_as_tool_errors(tmp_path: Path):
+def test_errors_come_back_as_tool_errors(tmp_path: Path) -> None:
     result = call("check_model", {"model": str(tmp_path / "missing.json")})
     assert result.is_error
-    assert "no such model file" in result.content[0].text
+    assert "no such model file" in text_of(result)
 
 
-def test_catalog_tools():
+def test_catalog_tools() -> None:
     parts = call("search_parts", {"query": "tile 2x2"})
     assert [p["id"] for p in parts.structured_content["parts"]] == ["3068", "14769"]
     colors = call("search_colors", {"query": "pearl gold"})
@@ -143,7 +153,7 @@ def test_catalog_tools():
     assert explained.structured_content["codes"][0]["title"] == "Blocked stud"
 
 
-def test_scripts_that_print_cannot_corrupt_the_stdio_channel(tmp_path: Path):
+def test_scripts_that_print_cannot_corrupt_the_stdio_channel(tmp_path: Path) -> None:
     script = tmp_path / "noisy.py"
     script.write_text(
         SCRIPT.replace('print("chatter on stdout")', 'print("{not json}" * 50)')
@@ -158,7 +168,7 @@ def test_scripts_that_print_cannot_corrupt_the_stdio_channel(tmp_path: Path):
         cwd=str(tmp_path),
     )
 
-    async def go():
+    async def go() -> tuple[CallToolResult, CallToolResult]:
         async with Client(server) as client:
             built = await client.call_tool(
                 "build_model", {"script": str(script), "render": False}

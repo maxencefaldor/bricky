@@ -2,11 +2,11 @@
 """Provenance: the build-script lines that placed each element and instance.
 
 A build script places parts by calling :meth:`ModelBuilder.place` and
-:meth:`ModelBuilder.instance`. The builder records the script's call stack at each call, so
-diagnostics and renders can point back at the line that placed a part.
+:meth:`ModelBuilder.instance`. The builder records the script's call stack at each call,
+so diagnostics and renders can point back at the line that placed a part.
 
-Provenance is build metadata and stays out of the model. A build result carries it, and bricky
-saves it beside the model file as a source map, tied to that file by its hash.
+Provenance is build metadata and stays out of the model. A build result carries it, and
+bricky saves it beside the model file as a source map, tied to that file by its hash.
 """
 
 import hashlib
@@ -16,7 +16,7 @@ from collections.abc import Iterator
 from functools import cache
 from pathlib import Path
 from types import FrameType
-from typing import Final, Literal
+from typing import Final, Literal, override
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -44,7 +44,9 @@ class Frame(BaseModel):
         description="Enclosing function, or '<module>' at the top level."
     )
 
+    @override
     def __str__(self) -> str:
+        """The frame as text, such as ``stonehenge.py:142 in sarsen_circle()``."""
         where = (
             "at module level"
             if self.function == "<module>"
@@ -67,12 +69,14 @@ class Source(BaseModel):
         """The innermost frame: the line that made the call."""
         return self.frames[0]
 
+    @override
     def __str__(self) -> str:
+        """The innermost frame, then the frames that called it."""
         callers = "".join(f", called from {frame}" for frame in self.frames[1:])
         return f"{self.site}{callers}"
 
     def relative_to(self, root: Path) -> Source:
-        """Return this source with file paths made relative to ``root`` where possible."""
+        """Return this source with file paths relative to ``root`` where possible."""
         return Source(
             frames=tuple(
                 frame.model_copy(update={"file": relative_path(frame.file, root)})
@@ -94,7 +98,7 @@ class ScopeSources(BaseModel):
     )
 
     def relative_to(self, root: Path) -> ScopeSources:
-        """Return these sources with file paths made relative to ``root`` where possible."""
+        """Return these sources with file paths relative to ``root`` where possible."""
         return ScopeSources(
             elements={
                 key: source.relative_to(root) for key, source in self.elements.items()
@@ -118,7 +122,7 @@ class Provenance(BaseModel):
     )
 
     def relative_to(self, root: Path) -> Provenance:
-        """Return this provenance with file paths made relative to ``root`` where possible."""
+        """Return the provenance with file paths relative to ``root`` where possible."""
         return Provenance(
             model=self.model.relative_to(root),
             components={
@@ -128,9 +132,10 @@ class Provenance(BaseModel):
         )
 
     def trace(self, model: Model, uid: str) -> Trace:
-        """Follow a world uid such as ``"west/e2"`` through its instances to its element.
+        """Trace a world uid such as ``"west/e2"`` through its instances to its element.
 
-        An unknown id yields an empty trace, never an error, since provenance only adds detail.
+        An unknown id yields an empty trace, never an error, since provenance only adds
+        detail.
         """
         *instance_ids, element_id = uid.split("/")
         scope_name: str | None = None
@@ -173,7 +178,7 @@ class InstanceStep(BaseModel):
 
 
 class Trace(BaseModel):
-    """Where an element came from: its own placement and the instances that copied it."""
+    """Where an element came from: its placement and the instances that copied it."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -215,9 +220,9 @@ def model_digest(data: bytes) -> str:
 def capture() -> Source | None:
     """Return the build script's call stack at the current point, innermost frame first.
 
-    The walk skips frames in bricky, the standard library and installed packages up to the first
-    script frame, then stops at the next frame outside the script, such as bricky's runner or the
-    interpreter's own machinery.
+    The walk skips frames in bricky, the standard library and installed packages up to
+    the first script frame, then stops at the next frame outside the script, such as
+    bricky's runner or the interpreter's own machinery.
 
     Returns:
         The script frames, or ``None`` when no script frame is on the stack.
@@ -249,8 +254,8 @@ def capture() -> Source | None:
 def is_script_file(filename: str) -> bool:
     """Return whether the code in a file belongs to a build script.
 
-    Generated code, such as ``<string>`` and ``<frozen runpy>``, and code in bricky, the standard
-    library or an installed package belong to no script.
+    Generated code, such as ``<string>`` and ``<frozen runpy>``, and code in bricky, the
+    standard library or an installed package belong to no script.
     """
     if filename.startswith("<"):
         return False

@@ -11,7 +11,7 @@ from bricky.geometry import Box
 
 
 class ConnectivityPass:
-    """Report every group of connected parts that stays above the ground plane (z = 0)."""
+    """Report every group of connected parts that stays above the ground (z = 0)."""
 
     name: ClassVar[str] = "connectivity"
     summary: ClassVar[str] = "Groups of parts with no connected path to the ground."
@@ -19,11 +19,14 @@ class ConnectivityPass:
         Code(
             code="E301",
             title="Floating group",
-            rule="Two parts are connected when a stud of one sits in an anti-stud of the other at "
-            "the same position, facing it. A connection works both ways: a part held only from "
-            "above is connected. A group of connected parts is grounded when any part in it "
-            "has its bottom at z = 0 or below. The pass reports every ungrounded group once, "
-            "with all its elements and the box around them.",
+            rule=(
+                "Two parts are connected when a stud of one sits in an anti-stud of "
+                "the other at the same position, facing it. A connection works both "
+                "ways: a part held only from above is connected. A group of connected "
+                "parts is grounded when any part in it has its bottom at z = 0 or "
+                "below. The pass reports every ungrounded group once, with all its "
+                "elements and the box around them."
+            ),
         ),
     )
 
@@ -33,10 +36,12 @@ class ConnectivityPass:
         parent = list(range(len(elements)))
 
         def root(i: int) -> int:
-            while parent[i] != i:
-                parent[i] = parent[parent[i]]
-                i = parent[i]
-            return i
+            path = [i]
+            while (up := parent[path[-1]]) != path[-1]:
+                path.append(up)
+            for node in path:
+                parent[node] = up
+            return up
 
         for connection in context.connections:
             parent[root(connection.a)] = root(connection.b)

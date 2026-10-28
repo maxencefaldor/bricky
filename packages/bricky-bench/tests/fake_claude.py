@@ -1,8 +1,9 @@
 # Copyright 2026 Maxence Faldor
 """A stand-in for Claude Code in print mode, for testing the runner without a model.
 
-The stand-in copies the script named by ``FAKE_SOLUTION`` to the path the prompt asks for, and
-reports on standard output the way ``claude -p --output-format stream-json`` does.
+The stand-in copies the script named by ``FAKE_SOLUTION`` to the path the prompt asks
+for, and reports on standard output the way ``claude -p --output-format stream-json``
+does.
 """
 
 import json

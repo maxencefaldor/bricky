@@ -1,12 +1,12 @@
 # Copyright 2026 Maxence Faldor
-"""A cottage on a baseplate: a tour of slopes, arches, round parts, side studs and jumpers.
+"""A cottage: a tour of slopes, arches, round parts, side studs and jumpers.
 
 - The baseplate is half a plate thick, so everything on it starts at z = 0.5.
-- The walls are one stud thick, in running bond. An Arch 1 x 4, rotated to run along the front
-  wall, spans the doorway.
-- The roof is rows of Slope 45 2 x 4: unrotated they fall toward -y (the front), and rotated R180
-  toward +y (the back). Tan bricks fill each level and show as the gables at the ends. Cheese
-  slopes finish the ridge.
+- The walls are one stud thick, in running bond. An Arch 1 x 4, rotated to run along the
+  front wall, spans the doorway.
+- The roof is rows of Slope 45 2 x 4: unrotated they fall toward -y (the front), and
+  rotated R180 toward +y (the back). Tan bricks fill each level and show as the gables
+  at the ends. Cheese slopes finish the ridge.
 - A brick with a stud on its side holds a tile rotated upright: a house sign.
 - A jumper puts the lamp post half a stud off the grid, centered on its 1 x 2 base.
 
@@ -29,7 +29,7 @@ BRICKS = {
 
 
 def opening(x: int, y: int, course: int) -> str | None:
-    """What fills a wall cell instead of the wall: the doorway, a window, or the sign's brick."""
+    """What replaces a wall cell: the doorway, a window, or the sign's brick."""
     front, back, side = y == SOUTH, y == NORTH - 1, x in {WEST, EAST - 1}
     if front and 7 <= x < 9 and course < 2:
         return "door"
@@ -45,11 +45,12 @@ def opening(x: int, y: int, course: int) -> str | None:
 def lay(
     builder: ModelBuilder,
     cells: list[tuple[int, int]],
+    *,
     along_x: bool,
     z: float,
     course: int,
 ) -> None:
-    """Fill a straight run of wall cells with bricks, one color at a time, longest first."""
+    """Fill a straight run of wall cells with bricks, color by color, longest first."""
     i = 0
     while i < len(cells):
         kind = opening(*cells[i], course)
@@ -80,11 +81,13 @@ def walls(builder: ModelBuilder) -> None:
             lay(builder, [(x, y) for x in xs], along_x=True, z=z, course=course)
         for x in (WEST, EAST - 1):
             lay(builder, [(x, y) for y in ys], along_x=False, z=z, course=course)
-    # The doorway's arch: an Arch 1 x 4 rotated to run along x, its legs either side of the door.
+    # The doorway's arch: an Arch 1 x 4 rotated to run along x, its legs either side of
+    # the door.
     builder.place(
         "3659", at=(6, SOUTH, BASE + 6), rotation="R90", color=WALL, id="door-arch"
     )
-    # The sign: a brick with a stud on its front, and a tile rotated upright onto that stud.
+    # The sign: a brick with a stud on its front, and a tile rotated upright onto that
+    # stud.
     builder.place("87087", at=(11, SOUTH, BASE + 3), color=WALL, id="sign-holder")
     builder.place(
         "3070",
@@ -96,7 +99,7 @@ def walls(builder: ModelBuilder) -> None:
 
 
 def roof(builder: ModelBuilder) -> None:
-    """Plates over the walls, then three levels of slopes and a ridge of cheese slopes."""
+    """Plates over the walls, then three levels of slopes and a cheese-slope ridge."""
     z = BASE + 3 * COURSES
     for y in range(
         SOUTH - 1, NORTH + 1, 2
@@ -125,7 +128,8 @@ def roof(builder: ModelBuilder) -> None:
             for y in range(front + 2, back - 2, 2):
                 builder.place("3003", at=(x, y, z), color=WALL)
         front, back, z = front + 2, back - 2, z + 3
-    # The ridge: cheese slopes on the studs of the last two slopes' flat tops, falling either way.
+    # The ridge: cheese slopes on the studs of the last two slopes' flat tops, falling
+    # either way.
     for x in range(WEST - 1, EAST + 1):
         builder.place("54200", at=(x, front + 1, z + 3), color="Red")
         builder.place("54200", at=(x, back - 2, z + 3), rotation="R180", color="Red")

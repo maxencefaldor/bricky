@@ -19,6 +19,7 @@ def railing(builder: ModelBuilder, y: int) -> None:
 
 
 def build() -> ModelBuilder:
+    """Place the piers, the deck and the railings of the footbridge."""
     builder = ModelBuilder("footbridge")
     pier(builder, 0)
     pier(builder, 10)

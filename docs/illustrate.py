@@ -1,11 +1,10 @@
 # Copyright 2026 Maxence Faldor
 """Draw every picture in bricky's docs with bricky's own renderer.
 
-Run from the repository root: ``uv run python docs/illustrate.py``, or name figures to draw only
-those. Each figure is a small model built below, or an example script, drawn into
-``docs/images``. Figures use the sample catalog, so
-anyone can draw them again; the figures of converted LDraw parts need an imported catalog and are
-skipped without one.
+Run from the repository root: ``uv run python docs/illustrate.py``, or name figures to
+draw only those. Each figure is a small model built below, or an example script, drawn
+into ``docs/images``. Figures use the sample catalog, so anyone can draw them again; the
+figures of converted LDraw parts need an imported catalog and are skipped without one.
 """
 
 import asyncio
@@ -56,15 +55,21 @@ class Figure:
     """Draw with the imported catalog: for parts converted from LDraw."""
 
     buildable: bool = True
-    """Whether the model has no errors; the script warns when a buildable model has some."""
+    """Whether the model has no errors.
+
+    The script warns when a buildable model has some.
+    """
 
 
-# ---------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------
 # Coordinates
 
 
 def axes(catalog: Catalog) -> ModelBuilder:
-    """Bricks along x (red, east), y (green, north) and z (blue, up), from a white origin."""
+    """Bricks along x (red, east), y (green, north) and z (blue, up).
+
+    The bricks start from a white origin.
+    """
     builder = ModelBuilder("axes", catalog=catalog)
     builder.place("3005", at=(0, 0, 0), color="White", id="origin")
     for step in range(1, 7):
@@ -75,7 +80,10 @@ def axes(catalog: Catalog) -> ModelBuilder:
 
 
 def corners(catalog: Catalog) -> ModelBuilder:
-    """One Brick 2 x 4 in four rotations: each ``at`` is the minimum corner of its footprint."""
+    """One Brick 2 x 4 in four rotations.
+
+    Each ``at`` is the minimum corner of its footprint.
+    """
     builder = ModelBuilder("corners", catalog=catalog)
     builder.place("3001", at=(0, 0, 0), color="Red", id="R0")
     builder.place("3001", at=(3, 0, 0), rotation="R90", color="Blue", id="R90")
@@ -118,7 +126,7 @@ def sideways(catalog: Catalog) -> ModelBuilder:
 
 
 def half_stud(catalog: Catalog) -> ModelBuilder:
-    """A jumper centers a lamp post half a stud off the grid, between two rows of bricks."""
+    """A jumper centers a lamp post half a stud off the grid, between two brick rows."""
     builder = ModelBuilder("jumper", catalog=catalog)
     builder.place("3020", at=(0, 0, 0), color="Dark Bluish Gray", id="base")
     builder.place("15573", at=(0, 1, 1), color="Black", id="jumper")
@@ -131,7 +139,7 @@ def half_stud(catalog: Catalog) -> ModelBuilder:
     return builder
 
 
-# ---------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------
 # Parts and colors
 
 FAMILIES: Final = (
@@ -162,16 +170,19 @@ def families(catalog: Catalog) -> ModelBuilder:
 
 
 COLORS: Final = (
-    "White", "Light Bluish Gray", "Dark Bluish Gray", "Black", "Red", "Dark Red", "Orange",
-    "Bright Light Orange", "Yellow", "Lime", "Green", "Dark Green", "Sand Green",
-    "Dark Turquoise", "Medium Azure", "Blue", "Dark Blue", "Magenta", "Tan", "Nougat",
-    "Reddish Brown", "Pearl Gold", "Flat Silver", "Trans-Clear", "Trans-Red", "Trans-Yellow",
-    "Trans-Green", "Trans-Light Blue",
+    "White", "Light Bluish Gray", "Dark Bluish Gray", "Black", "Red", "Dark Red",
+    "Orange", "Bright Light Orange", "Yellow", "Lime", "Green", "Dark Green",
+    "Sand Green", "Dark Turquoise", "Medium Azure", "Blue", "Dark Blue", "Magenta",
+    "Tan", "Nougat", "Reddish Brown", "Pearl Gold", "Flat Silver", "Trans-Clear",
+    "Trans-Red", "Trans-Yellow", "Trans-Green", "Trans-Light Blue",
 )  # fmt: skip
 
 
 def colors(catalog: Catalog) -> ModelBuilder:
-    """Round bricks in two rows, one stack per color: solid, pearl, metallic and transparent."""
+    """Round bricks in two rows, one stack per color.
+
+    The colors are solid, pearl, metallic and transparent.
+    """
     builder = ModelBuilder("colors", catalog=catalog)
     for index, color in enumerate(COLORS):
         row, column = divmod(index, len(COLORS) // 2)
@@ -181,7 +192,10 @@ def colors(catalog: Catalog) -> ModelBuilder:
 
 
 def converted(catalog: Catalog) -> ModelBuilder:
-    """Parts no name describes, converted from LDraw: their bodies as boxes, studs and all."""
+    """Parts no name describes, converted from LDraw.
+
+    The figure shows their bodies as boxes, studs and all.
+    """
     builder = ModelBuilder("converted", catalog=catalog)
     parts = (
         ("3700", "Dark Bluish Gray"),  # Technic, Brick 1 x 2 with Hole
@@ -203,7 +217,7 @@ def converted(catalog: Catalog) -> ModelBuilder:
     return builder
 
 
-# ---------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------
 # Building
 
 
@@ -251,7 +265,7 @@ def tower_before(catalog: Catalog) -> ModelBuilder:
 
 
 def tower_after(catalog: Catalog) -> ModelBuilder:
-    """The tower after an edit: the top two levels recolored, and a cap of tiles added."""
+    """The tower after an edit: the top two levels recolored, and a tile cap added."""
     builder = ModelBuilder("tower", catalog=catalog)
     for level in range(6):
         z = 3 * level
@@ -284,7 +298,7 @@ def filled(catalog: Catalog) -> ModelBuilder:
     return builder
 
 
-# ---------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------
 # Checks: one small model per diagnostic code
 
 
@@ -298,7 +312,10 @@ def overlap(catalog: Catalog) -> ModelBuilder:
 
 
 def blocked(catalog: Catalog) -> ModelBuilder:
-    """E202: a plate half a stud off the grid, so the studs below push into its underside."""
+    """E202: a plate half a stud off the grid.
+
+    The studs below push into the plate's underside.
+    """
     builder = ModelBuilder("blocked", catalog=catalog)
     builder.place("3001", at=(0, 0, 0), rotation="R90", color="Red", id="brick")
     builder.place("3022", at=(0.5, 0, 3), color="Yellow", id="shifted")
@@ -321,14 +338,15 @@ def underground(catalog: Catalog) -> ModelBuilder:
     return builder
 
 
-# ---------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------
 # Voxels
 
 
 def voxelized(catalog: Catalog) -> ModelBuilder:
     """A slope and an arch beside the voxels they fill, rebuilt from 1 x 1 plates.
 
-    The plates over the arch's opening float: the figure shows voxels, not a model to build.
+    The plates over the arch's opening float: the figure shows voxels, not a model to
+    build.
     """
     source = ModelBuilder("source", catalog=catalog)
     source.place("3039", at=(0, 0, 0), color="Red", id="slope")
@@ -446,7 +464,8 @@ async def draw(figure: Figure, renderer: Renderer, settings: Settings) -> Path |
     )
     if report.errors and figure.buildable and not figure.check:
         print(
-            f"warning: {figure.name} has {report.errors} errors, which the picture leaves out"
+            f"warning: {figure.name} has {report.errors} errors, "
+            "which the picture leaves out"
         )
     changed: list[str] = []
     if figure.before is not None:
@@ -471,9 +490,8 @@ async def draw(figure: Figure, renderer: Renderer, settings: Settings) -> Path |
 
 async def main() -> None:
     """Draw every figure, then copy the benchmark inputs the docs show."""
-    os.environ["BRICKY_CATALOG"] = str(
-        SAMPLE_CATALOG
-    )  # example scripts too use the sample
+    # Example scripts use the sample catalog too.
+    os.environ["BRICKY_CATALOG"] = str(SAMPLE_CATALOG)
     IMAGES.mkdir(parents=True, exist_ok=True)
     settings = Settings()
     wanted = set(sys.argv[1:])

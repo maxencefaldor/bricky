@@ -8,6 +8,7 @@ COURSES = 6
 
 
 def build() -> ModelBuilder:
+    """Lay the wall course by course, offsetting every other course by half a brick."""
     builder = ModelBuilder("wall")
     for course in range(COURSES):
         z = 3 * course

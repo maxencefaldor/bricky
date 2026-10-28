@@ -23,6 +23,7 @@ COLORS = {".": "White", "R": "Red", "D": "Dark Red"}
 
 
 def build() -> ModelBuilder:
+    """Lay the black base, then one tile per pixel of the picture."""
     builder = ModelBuilder("pixel-heart")
     rows = PICTURE.split()
     size = len(rows)

@@ -1,9 +1,10 @@
 # Copyright 2026 Maxence Faldor
 """Write models in agent-friendly coordinates.
 
-Coordinates are ``(x, y, z)``: x points east and y north, both in studs, and z points up, in
-plates. ``at`` names the minimum corner of the rotated bounding box of whatever is placed, a
-single part or a whole component, so a rotation never moves the corner of the footprint.
+Coordinates are ``(x, y, z)``: x points east and y north, both in studs, and z points
+up, in plates. ``at`` names the minimum corner of the rotated bounding box of whatever
+is placed, a single part or a whole component, so a rotation never moves the corner of
+the footprint.
 
 The builder also records the build-script line behind each placement (see
 :mod:`bricky.provenance`), so diagnostics and renders can point back at it.
@@ -53,7 +54,7 @@ class _PendingInstance:
 
 
 class _Scope:
-    """The elements and instances of the model or of one component, with their sources."""
+    """The elements and instances of the model or one component, with their sources."""
 
     def __init__(self, catalog: Catalog, label: str) -> None:
         self.catalog = catalog
@@ -77,10 +78,14 @@ class _Scope:
         if definition is None:
             entry = self.catalog.entry(part)
             if entry is None:
-                message = f"unknown part {part!r}: `bricky parts <words>` searches the catalog"
+                message = (
+                    f"unknown part {part!r}: "
+                    "`bricky parts <words>` searches the catalog"
+                )
             else:
                 message = (
-                    f"part {part} ({entry.name}) has no shape in bricky, so it cannot be placed; "
+                    f"part {part} ({entry.name}) has no shape in bricky, "
+                    "so it cannot be placed; "
                     "`bricky parts <words>` lists the parts that can be"
                 )
             raise ValueError(message)
@@ -114,12 +119,15 @@ class _Scope:
         return pending.id
 
     def claim(self, id: str | None, prefix: str) -> str:
-        """Claim an id in this scope: the given one, or the next free one with the prefix."""
+        """Claim the given id in this scope, or the next free id with the prefix."""
         if id is not None:
             try:
                 _IDENTIFIER.validate_python(id)
             except ValidationError:
-                message = f"id {id!r} holds characters other than letters, digits, '.', '_' and '-'"
+                message = (
+                    f"id {id!r} holds characters other than letters, digits, "
+                    "'.', '_' and '-'"
+                )
                 raise ValueError(message) from None
             if id in self.ids:
                 message = f"id {id!r} is already used in {self.label}"
@@ -144,8 +152,8 @@ class _Scope:
         """Position every instance by its component's bounding box.
 
         Returns:
-            The scope's elements, its instances and its bounding box, which is ``None`` when the
-            scope is empty.
+            The scope's elements, its instances and its bounding box, which is ``None``
+            when the scope is empty.
         """
         instances: list[Instance] = []
         extents = list(self.extents)
@@ -194,8 +202,8 @@ class _Placer:
 
         Args:
             part: Part id, such as ``"3001"``, or another BrickLink number of the part.
-            at: Minimum corner of the rotated part's bounding box, ``(x, y, z)`` in studs, studs
-                and plates.
+            at: Minimum corner of the rotated part's bounding box, ``(x, y, z)`` in
+                studs, studs and plates.
             color: Color id or name, such as ``5`` or ``"Red"``.
             rotation: Grid rotation, such as ``"R90"`` or ``"+y-x"``.
             id: The element's id; the builder generates one when omitted.
@@ -217,14 +225,14 @@ class _Placer:
 
         Args:
             component: Name given to :meth:`ModelBuilder.component`.
-            at: Minimum corner of the rotated component's bounding box, ``(x, y, z)`` in studs,
-                studs and plates, exactly as for :meth:`place`.
+            at: Minimum corner of the rotated component's bounding box, ``(x, y, z)`` in
+                studs, studs and plates, exactly as for :meth:`place`.
             rotation: Grid rotation, such as ``"R90"``.
             id: The instance's id; the builder generates one when omitted.
 
         Raises:
-            ValueError: If the rotation, coordinates or id is invalid. :meth:`ModelBuilder.build`
-                reports unknown and empty components.
+            ValueError: If the rotation, coordinates or id is invalid.
+                :meth:`ModelBuilder.build` reports unknown and empty components.
         """
         return self._scope.instance(component, at, rotation, id)
 
@@ -233,15 +241,15 @@ class _Placer:
     ) -> list[str]:
         """Fill voxels with bricks and plates, and return the elements' ids.
 
-        Bricks go where three plate levels of a course share a color, plates everywhere else,
-        each part as large as fits and made in its color, with joints staggered from level to
-        level; see :func:`bricky.fill.plan_fill`.
+        Bricks go where three plate levels of a course share a color, plates everywhere
+        else, each part as large as fits and made in its color, with joints staggered
+        from level to level; see :func:`bricky.fill.plan_fill`.
 
         Args:
-            voxels: The color of every voxel to fill, keyed ``(x, y, z)`` in studs, studs and
-                plates.
-            id: A prefix for the elements' ids, which end with their minimum corners, such as
-                ``"wall.4.0.3"``; the builder generates ids when omitted.
+            voxels: The color of every voxel to fill, keyed ``(x, y, z)`` in studs,
+                studs and plates.
+            id: A prefix for the elements' ids, which end with their minimum corners,
+                such as ``"wall.4.0.3"``; the builder generates ids when omitted.
 
         Raises:
             ValueError: If a color or the id prefix is invalid.
@@ -269,7 +277,7 @@ class _Placer:
         ]
 
     def _made_in(self, part: str, color: int | str) -> bool:
-        """Whether the catalog lists the part in the color, or lists no colors for it."""
+        """Whether the catalog lists the part in the color, or no colors for it."""
         catalog = self._scope.catalog
         entry = catalog.entry(part)
         if entry is None or not entry.colors:
@@ -284,6 +292,7 @@ class ComponentBuilder(_Placer):
     """Fill one component with elements and instances."""
 
     def __init__(self, scope: _Scope) -> None:
+        """Wrap the scope a component's parts go into."""
         self._scope = scope
 
 
@@ -301,6 +310,7 @@ class ModelBuilder(_Placer):
     """
 
     def __init__(self, name: str = "model", *, catalog: Catalog | None = None) -> None:
+        """Start an empty model, resolved against ``catalog`` or the default one."""
         self._catalog = catalog or default_catalog()
         self._name = name
         self._scope = _Scope(self._catalog, "the model")
@@ -314,7 +324,8 @@ class ModelBuilder(_Placer):
     def component(self, name: str) -> ComponentBuilder:
         """Start a reusable component and return the builder that fills it.
 
-        A script may fill components in any order, before or after it places their instances.
+        A script may fill components in any order, before or after it places their
+        instances.
 
         Raises:
             ValueError: If a component with this name already exists.
@@ -330,8 +341,8 @@ class ModelBuilder(_Placer):
         """Return the finished model.
 
         Raises:
-            ValueError: If an instance places an unknown or empty component, or if components place
-                each other in a cycle.
+            ValueError: If an instance places an unknown or empty component, or if
+                components place each other in a cycle.
         """
         boxes: dict[str, Box] = {}
         built: dict[str, Component] = {}
@@ -351,7 +362,7 @@ class ModelBuilder(_Placer):
         )
 
     def provenance(self) -> Provenance:
-        """Return where the build script has placed every element and instance so far."""
+        """Return where the build script placed every element and instance so far."""
         return Provenance(
             model=self._scope.sources(),
             components={

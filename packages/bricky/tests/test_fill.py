@@ -7,13 +7,13 @@ from bricky import ModelBuilder, check_model, voxels
 from bricky.fill import BRICKS, PLATES, plan_fill
 
 
-def test_a_solid_course_takes_bricks_and_the_rest_takes_plates():
+def test_a_solid_course_takes_bricks_and_the_rest_takes_plates() -> None:
     block = {(x, y, z): "Red" for x in range(2) for y in range(4) for z in range(4)}
     parts = [(placement.part, placement.at) for placement in plan_fill(block)]
     assert parts == [(BRICKS[2, 4], (0, 0, 0)), (PLATES[2, 4], (0, 0, 3))]
 
 
-def test_courses_alternate_their_direction_so_joints_stagger():
+def test_courses_alternate_their_direction_so_joints_stagger() -> None:
     wall = {(x, 0, z): "Red" for x in range(8) for z in range(6)}
     builder = ModelBuilder("wall")
     builder.fill(wall)
@@ -22,7 +22,7 @@ def test_courses_alternate_their_direction_so_joints_stagger():
     assert check_model(model).ok
 
 
-def test_an_overhang_takes_a_part_that_reaches_back_over_its_support():
+def test_an_overhang_takes_a_part_that_reaches_back_over_its_support() -> None:
     shelf = {(0, 0, z): "Tan" for z in range(3)} | {(x, 0, 3): "Tan" for x in range(3)}
     builder = ModelBuilder("shelf")
     ids = builder.fill(shelf, id="shelf")
@@ -31,7 +31,9 @@ def test_an_overhang_takes_a_part_that_reaches_back_over_its_support():
     assert check_model(model).ok
 
 
-def test_a_ledge_inside_a_course_makes_the_bricks_of_its_color_beside_it_plates():
+def test_a_ledge_inside_a_course_makes_the_bricks_of_its_color_beside_it_plates() -> (
+    None
+):
     ledge = {(0, 0, z): "Tan" for z in range(3)} | {(1, 0, 1): "Tan"}
     builder = ModelBuilder("ledge")
     builder.fill(ledge)
@@ -40,7 +42,7 @@ def test_a_ledge_inside_a_course_makes_the_bricks_of_its_color_beside_it_plates(
     assert check_model(model).ok
 
 
-def test_a_floor_between_two_walls_holds_together_across_the_gap():
+def test_a_floor_between_two_walls_holds_together_across_the_gap() -> None:
     walls = {(x, y, z): "Tan" for x in (0, 1, 8, 9) for y in range(4) for z in range(6)}
     floor = {(x, y, 6): "Tan" for x in range(10) for y in range(4)}
     builder = ModelBuilder("floor")
@@ -50,7 +52,7 @@ def test_a_floor_between_two_walls_holds_together_across_the_gap():
     assert check_model(model).ok
 
 
-def test_an_overhang_of_another_color_leaves_the_bricks_beside_it_alone():
+def test_an_overhang_of_another_color_leaves_the_bricks_beside_it_alone() -> None:
     wall = {(x, 0, z): "Red" for x in range(4) for z in range(3)}
     parts = [
         (placement.part, placement.color)
@@ -59,7 +61,7 @@ def test_an_overhang_of_another_color_leaves_the_bricks_beside_it_alone():
     assert parts == [(BRICKS[1, 4], "Red"), (PLATES[1, 1], "Blue")]
 
 
-def test_a_fill_uses_only_parts_that_come_in_each_color():
+def test_a_fill_uses_only_parts_that_come_in_each_color() -> None:
     block = {(x, y, z): "Red" for x in range(2) for y in range(4) for z in range(3)}
     plates_only = set(PLATES.values())
     placements = plan_fill(block, made_in=lambda part, _: part in plates_only)
@@ -67,7 +69,7 @@ def test_a_fill_uses_only_parts_that_come_in_each_color():
     assert len(placements) == 3  # a Plate 2 x 4 on each level
 
 
-def test_colors_are_never_mixed_within_a_part():
+def test_colors_are_never_mixed_within_a_part() -> None:
     stripes = {(x, 0, 0): "Red" if x < 2 else "Blue" for x in range(4)}
     builder = ModelBuilder("stripes")
     builder.fill(stripes)
@@ -90,7 +92,9 @@ columns = st.dictionaries(
 
 @settings(deadline=None, max_examples=40)
 @given(columns)
-def test_columns_standing_on_the_ground_fill_exactly_and_hold_together(heights):
+def test_columns_standing_on_the_ground_fill_exactly_and_hold_together(
+    heights: dict[tuple[int, int], tuple[int, str]],
+) -> None:
     shape = {
         (x, y, z): color
         for (x, y), (height, color) in heights.items()

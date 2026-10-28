@@ -1,5 +1,5 @@
 # Copyright 2026 Maxence Faldor
-"""Collision: parts that share space, and studs that push into parts with no anti-stud."""
+"""Collision: parts sharing space, and studs that push into parts with no anti-stud."""
 
 from collections import Counter
 from collections.abc import Iterable, Iterator
@@ -22,7 +22,7 @@ def stud_volume(stud: Connector) -> Box:
 
 
 def _shared(first: Iterable[Solid], second: Iterable[Solid]) -> Box | None:
-    """Return the box around the overlaps of two parts' solids, or ``None`` if none overlap."""
+    """Return the box around where two parts' solids overlap, or ``None`` if none do."""
     shared = [
         box
         for solid in first
@@ -34,7 +34,7 @@ def _shared(first: Iterable[Solid], second: Iterable[Solid]) -> Box | None:
 
 
 class CollisionPass:
-    """Report parts that overlap, and studs that push into parts with no anti-stud there."""
+    """Report overlapping parts and studs pushing into parts with no anti-stud there."""
 
     name: ClassVar[str] = "collision"
     summary: ClassVar[str] = (
@@ -44,17 +44,22 @@ class CollisionPass:
         Code(
             code="E201",
             title="Overlap",
-            rule="The bodies of two parts share positive volume. Faces that only touch do not "
-            "count, and studs belong to no body (see E202). The pass reports each overlapping "
-            "pair once, with the box the two share.",
+            rule=(
+                "The bodies of two parts share positive volume. Faces that only touch "
+                "do not count, and studs belong to no body (see E202). The pass "
+                "reports each overlapping pair once, with the box the two share."
+            ),
         ),
         Code(
             code="E202",
             title="Blocked stud",
-            rule="A stud stands inside another part's body where that part has no anti-stud "
-            "facing it at the same position, so the two parts cannot sit where they are. A stud "
-            "is 1.6 mm tall and 4.8 mm wide. The pass reports each pair of parts once, with the "
-            "number of blocked studs and the box they span.",
+            rule=(
+                "A stud stands inside another part's body where that part has no "
+                "anti-stud facing it at the same position, so the two parts cannot sit "
+                "where they are. A stud is 1.6 mm tall and 4.8 mm wide. The pass "
+                "reports each pair of parts once, with the number of blocked studs and "
+                "the box they span."
+            ),
         ),
     )
 
@@ -108,8 +113,10 @@ class CollisionPass:
             yield Diagnostic(
                 code="E202",
                 pass_name=self.name,
-                message=f"{studs} of {element.uid} {push} into {other.uid}, which has no anti-stud "
-                "there",
+                message=(
+                    f"{studs} of {element.uid} {push} into {other.uid}, "
+                    "which has no anti-stud there"
+                ),
                 elements=(element.uid, other.uid),
                 region=Region.of(regions[i, j]),
             )

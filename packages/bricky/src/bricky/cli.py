@@ -1,8 +1,9 @@
 # Copyright 2026 Maxence Faldor
 """The ``bricky`` command line.
 
-Each subcommand extends a request model from :mod:`bricky.service` with an output format. The
-command line therefore accepts exactly what the MCP tools accept and prints the text they return.
+Each subcommand extends a request model from :mod:`bricky.service` with an output
+format. The command line therefore accepts exactly what the MCP tools accept and prints
+the text they return.
 """
 
 import json
@@ -119,7 +120,7 @@ class ExplainCommand(service.ExplainRequest, _Output):
 
 
 class CatalogImportCommand(service.CatalogImportRequest, _Output):
-    """Import the catalog: parts and colors from BrickLink, shapes from names and LDraw."""
+    """Import the catalog: BrickLink parts and colors, shapes from names and LDraw."""
 
     async def cli_cmd(self) -> None:
         """Run the command and print its progress to standard error."""
@@ -245,7 +246,10 @@ class Bricky(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        """Read the command line only; configuration lives in :class:`bricky.Settings`."""
+        """Read the command line only.
+
+        Configuration lives in :class:`bricky.Settings`.
+        """
         return (init_settings,)
 
     def cli_cmd(self) -> None:
@@ -258,7 +262,10 @@ _ENUM_REPR: Final = re.compile(r"<\w+\.\w+: '([^']*)'>")
 
 
 class _Source(CliSettingsSource[Bricky]):
-    """Writes enum members in help as the values the command line accepts, such as ``sheet``."""
+    """Writes enum members in help as the values the command line accepts.
+
+    The help shows ``View.SHEET``, for example, as ``sheet``.
+    """
 
     @override
     def _metavar_format_recurse(self, obj: object) -> str:
@@ -284,8 +291,9 @@ class _Source(CliSettingsSource[Bricky]):
 def main(argv: Sequence[str] | None = None) -> None:
     """Run the command line.
 
-    The exit status is 1 when a model has errors or a part fails verification, and 2 when the
-    arguments are invalid or a command fails with a :class:`~bricky.BrickyError`.
+    The exit status is 1 when a model has errors or a part fails verification, and 2
+    when the arguments are invalid or a command fails with a
+    :class:`~bricky.BrickyError`.
     """
     try:
         CliApp.run(

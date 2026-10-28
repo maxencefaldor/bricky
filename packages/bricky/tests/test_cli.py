@@ -39,7 +39,9 @@ def floating(tmp_path: Path) -> Path:
     return path
 
 
-def test_check_states_facts_and_exits_1(floating, capsys):
+def test_check_states_facts_and_exits_1(
+    floating: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     assert run("check", str(floating)) == 1
     out = capsys.readouterr().out
     assert "error[E301]: 1 element floats" in out
@@ -47,7 +49,7 @@ def test_check_states_facts_and_exits_1(floating, capsys):
     assert "help" not in out
 
 
-def test_check_writes_json(floating, capsys):
+def test_check_writes_json(floating: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert run("check", str(floating), "--output-format", "json") == 1
     report = json.loads(capsys.readouterr().out)
     assert report["ok"] is False
@@ -55,7 +57,9 @@ def test_check_writes_json(floating, capsys):
     assert report["elements"]["lonely"]["part_name"] == "Brick 2 x 4"
 
 
-def test_build_saves_checks_and_names_script_lines(tmp_path, capsys):
+def test_build_saves_checks_and_names_script_lines(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     script = tmp_path / "tower.py"
     script.write_text(
         TOWER.replace('at=(0, 0, 3), rotation="R90"', 'at=(9, 9, 3), rotation="R90"')
@@ -69,7 +73,9 @@ def test_build_saves_checks_and_names_script_lines(tmp_path, capsys):
     assert "by source line:" in out
 
 
-def test_build_shows_what_the_script_printed(tmp_path, capsys):
+def test_build_shows_what_the_script_printed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     script = tmp_path / "chatty.py"
     script.write_text(
         TOWER.replace(
@@ -81,7 +87,9 @@ def test_build_shows_what_the_script_printed(tmp_path, capsys):
     assert "script output:\n  hello from the script" in capsys.readouterr().out
 
 
-def test_building_again_says_what_changed_and_where(tmp_path, capsys):
+def test_building_again_says_what_changed_and_where(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     script = tmp_path / "tower.py"
     script.write_text(TOWER)
     assert run("build", str(script), "--no-render") == 0
@@ -113,7 +121,9 @@ def test_building_again_says_what_changed_and_where(tmp_path, capsys):
     )
 
 
-def test_build_reports_script_failures_with_line_numbers(tmp_path, capsys):
+def test_build_reports_script_failures_with_line_numbers(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     script = tmp_path / "bad.py"
     script.write_text("def build():\n    return 1 / 0\n")
     assert run("build", str(script)) == 2
@@ -121,19 +131,25 @@ def test_build_reports_script_failures_with_line_numbers(tmp_path, capsys):
     assert "bad.py:2 in build(): ZeroDivisionError: division by zero" in err
 
 
-def test_build_requires_a_build_function(tmp_path, capsys):
+def test_build_requires_a_build_function(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     script = tmp_path / "empty.py"
     script.write_text("x = 1\n")
     assert run("build", str(script)) == 2
     assert "must define build()" in capsys.readouterr().err
 
 
-def test_missing_files_exit_2(tmp_path, capsys):
+def test_missing_files_exit_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     assert run("check", str(tmp_path / "nope.json")) == 2
     assert "no such model file" in capsys.readouterr().err
 
 
-def test_build_draws_a_picture_and_render_looks_closer_beside_it(tmp_path, capsys):
+def test_build_draws_a_picture_and_render_looks_closer_beside_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     script = tmp_path / "tower.py"
     script.write_text(TOWER)
     assert run("build", str(script)) == 0
@@ -154,7 +170,7 @@ def test_build_draws_a_picture_and_render_looks_closer_beside_it(tmp_path, capsy
     assert '"clips":[{"axis":"z","keep":"below","value":24}]' in viewer.read_text()
 
 
-def test_outputs_go_where_they_are_asked_creating_folders(tmp_path):
+def test_outputs_go_where_they_are_asked_creating_folders(tmp_path: Path) -> None:
     script = tmp_path / "tower.py"
     script.write_text(TOWER)
     model = tmp_path / "out" / "models" / "tower.bricky.json"
@@ -179,7 +195,9 @@ def test_outputs_go_where_they_are_asked_creating_folders(tmp_path):
     assert (shots.parent / "look.top.png").is_file()
 
 
-def test_files_that_cannot_be_written_or_read_are_errors(tmp_path, capsys):
+def test_files_that_cannot_be_written_or_read_are_errors(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     script = tmp_path / "tower.py"
     script.write_text(TOWER)
     blocker = tmp_path / "blocker"
@@ -195,7 +213,9 @@ def test_files_that_cannot_be_written_or_read_are_errors(tmp_path, capsys):
 DOWNLOADS = Path(__file__).parent / "data" / "bricklink"
 
 
-def test_the_catalog_is_imported_and_looked_into(tmp_path, capsys, monkeypatch):
+def test_the_catalog_is_imported_and_looked_into(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     output = tmp_path / "catalog.json"
     assert (
         run("catalog", "import", "--bricklink", str(DOWNLOADS), "--output", str(output))
@@ -217,8 +237,8 @@ def test_the_catalog_is_imported_and_looked_into(tmp_path, capsys, monkeypatch):
     out = capsys.readouterr().out
     assert "printed on: 3068b, whose shape it has" in out
     assert (
-        "shape: tile, 2 x 2 studs (x by y, unrotated), 1 plate tall, 0 studs, 4 anti-studs"
-        in out
+        "shape: tile, 2 x 2 studs (x by y, unrotated), 1 plate tall, "
+        "0 studs, 4 anti-studs" in out
     )
     picture = tmp_path / "brick.png"
     assert run("catalog", "show", "3001", "--render", "--output", str(picture)) == 0
@@ -234,8 +254,8 @@ def test_the_catalog_is_imported_and_looked_into(tmp_path, capsys, monkeypatch):
 
 
 def test_shapes_come_from_ldraw_for_parts_no_name_describes(
-    tmp_path, capsys, monkeypatch
-):
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     output = tmp_path / "catalog.json"
     ldraw = str(DOWNLOADS.parent / "ldraw")
     assert run("catalog", "import", "--ldraw", ldraw, "--output", str(output)) == 0
@@ -247,8 +267,8 @@ def test_shapes_come_from_ldraw_for_parts_no_name_describes(
     assert run("catalog", "show", "4490") == 0
     out = capsys.readouterr().out
     assert (
-        "shape: boxes, 3 x 1 studs (x by y, unrotated), 3 plates tall, 3 studs, 2 anti-studs"
-        in out
+        "shape: boxes, 3 x 1 studs (x by y, unrotated), 3 plates tall, "
+        "3 studs, 2 anti-studs" in out
     )
     assert "converted from LDraw 4490.dat, as it is oriented there" in out
     assert run("catalog", "verify") == 0
@@ -260,8 +280,8 @@ def test_shapes_come_from_ldraw_for_parts_no_name_describes(
 
 
 def test_show_maps_a_sloped_top_and_draws_the_part_outside_the_workspace(
-    tmp_path, capsys, monkeypatch
-):
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(service, "PART_PICTURES", tmp_path / "parts")
     monkeypatch.chdir(tmp_path)
     assert run("catalog", "show", "3039", "--render") == 0  # Slope 45 2 x 2
@@ -277,8 +297,8 @@ def test_show_maps_a_sloped_top_and_draws_the_part_outside_the_workspace(
 
 
 def test_help_writes_choices_as_the_values_the_command_line_accepts(
-    capsys, monkeypatch
-):
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv(
         "PYTHON_COLORS", "0"
     )  # argparse colors help where CI forces color
@@ -289,14 +309,14 @@ def test_help_writes_choices_as_the_values_the_command_line_accepts(
     assert "View." not in out
 
 
-def test_parts_search(capsys):
+def test_parts_search(capsys: pytest.CaptureFixture[str]) -> None:
     assert run("parts", "plate 1x1") == 0
     out = capsys.readouterr().out
     assert "3024" in out
     assert "1 plate  1 stud" in out
 
 
-def test_colors_search(capsys):
+def test_colors_search(capsys: pytest.CaptureFixture[str]) -> None:
     assert run("colors", "bluish") == 0
     out = capsys.readouterr().out
     assert "Light Bluish Gray" in out
@@ -304,7 +324,7 @@ def test_colors_search(capsys):
     assert "2 colors" in out
 
 
-def test_passes_lists_profiles_and_codes(capsys):
+def test_passes_lists_profiles_and_codes(capsys: pytest.CaptureFixture[str]) -> None:
     assert run("passes") == 0
     out = capsys.readouterr().out
     assert "digital (default): schema, collision, connectivity" in out
@@ -312,18 +332,18 @@ def test_passes_lists_profiles_and_codes(capsys):
     assert "E201, E202" in out
 
 
-def test_explain_gives_the_exact_rule(capsys):
+def test_explain_gives_the_exact_rule(capsys: pytest.CaptureFixture[str]) -> None:
     assert run("explain", "e301") == 0
     out = capsys.readouterr().out
     assert out.startswith("E301 Floating group (error, pass connectivity)")
     assert "held only from above" in out
 
 
-def test_explain_rejects_unknown_codes(capsys):
+def test_explain_rejects_unknown_codes(capsys: pytest.CaptureFixture[str]) -> None:
     assert run("explain", "E999") == 2
     assert "no installed pass reports E999" in capsys.readouterr().err
 
 
-def test_json_schema(capsys):
+def test_json_schema(capsys: pytest.CaptureFixture[str]) -> None:
     assert run("json-schema") == 0
     assert json.loads(capsys.readouterr().out)["title"] == "Model"

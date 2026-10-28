@@ -93,7 +93,7 @@ The gap between the chimney and the wall reads straight off the z ruler: one pla
 Lower the chimney onto the top course, at z = 9:
 
 ```python
-    builder.place("3004", at=(3, 0, 9), rotation="R90", color="Blue", id="chimney")
+builder.place("3004", at=(3, 0, 9), rotation="R90", color="Blue", id="chimney")
 ```
 
 Build again.

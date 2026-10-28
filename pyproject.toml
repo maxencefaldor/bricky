@@ -21,27 +21,30 @@ dev = [
 docs = ["mkdocstrings-python>=2", "zensical>=0.0.73"]
 
 [tool.ruff]
-line-length = 100
+# The workspace root has no [project] table, so ruff cannot read requires-python here.
 target-version = "py315"
 src = ["packages/bricky/src", "packages/bricky-bench/src", "packages/bricky-mcp/src"]
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-  "COM812", # trailing commas are the formatter's job
-  "CPY001", # no per-file copyright headers
-  "D105",   # magic methods document themselves
-  "D107",   # __init__ arguments are documented on the class
-  "TC",     # annotations are lazy since 3.14; TYPE_CHECKING blocks only break pydantic
+  "COM812", # the formatter places trailing commas itself
+  # pydantic reads annotations at runtime, so an import used only in an annotation is still a
+  # runtime import, and bricky writes no TYPE_CHECKING blocks.
+  "TC",
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["ANN", "D", "INP001", "PLR2004", "S101"]
-# Build scripts are models written as code: numbers are their content, helpers stay small.
-"examples/**" = ["C901", "D103", "FBT001", "INP001", "PLR0911", "PLR0913", "PLR0917", "PLR2004", "T201"]
-"bench/**" = ["C901", "D103", "FBT001", "INP001", "PLR0911", "PLR0913", "PLR0917", "PLR2004", "T201"]
+# pytest checks with assert and imports test folders by path; a test's name says what it checks,
+# and the values it expects are its content.
+"**/tests/**" = ["D100", "D103", "INP001", "PLR2004", "S101"]
+# Build scripts are models written as code: their numbers are the model, they print to the build
+# report, and they run as scripts, outside any package.
+"examples/**" = ["INP001", "PLR2004", "T201"]
+"bench/**" = ["INP001", "PLR2004", "T201"]
+# Scripts that draw the docs' pictures and pages, and say what they wrote.
+"docs/*.py" = ["INP001", "PLR2004", "T201"]
 "packages/*/src/*/cli.py" = ["T201"] # a command line prints
-"docs/*.py" = ["INP001", "PLR2004", "T201"] # scripts that draw the docs' models and say what they wrote
 
 [tool.ruff.lint.flake8-builtins]
 # "id" is the vocabulary word for identifiers, in models, catalogs and the builder's arguments.
@@ -50,8 +53,14 @@ builtins-ignorelist = ["id"]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.ruff.format]
+docstring-code-format = true
+
 [tool.ty.environment]
 python-version = "3.15"
+
+[tool.ty.rules]
+all = "error"
 
 [tool.pytest]
 minversion = "9.1"
@@ -59,10 +68,6 @@ testpaths = ["packages"]
 addopts = ["--import-mode=importlib", "--doctest-modules", "--strict-config", "--strict-markers", "-ra"]
 filterwarnings = ["error"]
 xfail_strict = true
+# Expected output in docstrings wraps at 88 columns like the code around it.
+doctest_optionflags = ["NORMALIZE_WHITESPACE"]
 
-[tool.rumdl]
-line-length = 100
-flavor = "mkdocs"
-
-[tool.rumdl.MD033]
-allowed-elements = ["div"]

@@ -1,16 +1,16 @@
 # Copyright 2026 Maxence Faldor
-"""What changed between two builds of a model: elements added, removed and changed, and voxels.
+"""What changed between two builds: elements added, removed and changed, and voxels.
 
-The diff matches elements by what they are and the space they take: the same part in the same
-color, filling the same space with its connectors in the same places, is the same element. The
-builder numbers unnamed elements in the order a script places them, so one part inserted early
-renumbers every later one, and a match by id would report them all as changed. A match by space
-also counts a symmetric part rotated onto itself, such as a 2 x 2 brick rotated 180° in place, as
-unchanged.
+The diff matches elements by what they are and the space they take: the same part in the
+same color, filling the same space with its connectors in the same places, is the same
+element. The builder numbers unnamed elements in the order a script places them, so one
+part inserted early renumbers every later one, and a match by id would report them all
+as changed. A match by space also counts a symmetric part rotated onto itself, such as a
+2 x 2 brick rotated 180° in place, as unchanged.
 
-The diff then pairs the elements left over on both sides by id. An element with the same id and
-part in both models, but another position, rotation or color, has changed. The remaining elements
-were added or removed.
+The diff then pairs the elements left over on both sides by id. An element with the same
+id and part in both models, but another position, rotation or color, has changed. The
+remaining elements were added or removed.
 """
 
 from collections import defaultdict
@@ -35,11 +35,10 @@ class WorldDiff:
     """Uids, in the earlier model, of elements the later one no longer has."""
 
     changed: tuple[str, ...]
-    """Uids of elements with the same id and part in both models, but another position, rotation
-    or color."""
+    """Uids of elements with the same id and part in both, but another pose or color."""
 
     unchanged: int
-    """The number of elements in both models with the same part and color in the same space."""
+    """The number of elements with the same part, color and space in both models."""
 
     filled: int
     """The number of voxels empty before and filled after."""
@@ -59,7 +58,7 @@ def diff_worlds(before: World, after: World) -> WorldDiff:
     matched: set[str] = set()
     unmatched: list[PlacedElement] = []
     for element in after.elements:
-        same = waiting.get(_key(element))
+        same = waiting.get(_key(element), [])
         if same:
             matched.add(same.pop(0).uid)
         else:
