@@ -13,7 +13,7 @@ classifiers = [
   "Programming Language :: Python :: 3.15",
   "Typing :: Typed",
 ]
-dependencies = ["bricky", "pydantic>=2", "pydantic-settings>=2"]
+dependencies = ["bricky", "pydantic>=2.14", "pydantic-settings>=2.15"]
 
 [project.scripts]
 bricky-bench = "bricky_bench.cli:main"

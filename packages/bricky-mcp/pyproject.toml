@@ -13,7 +13,7 @@ classifiers = [
   "Programming Language :: Python :: 3.15",
   "Typing :: Typed",
 ]
-dependencies = ["bricky", "mcp>=2"]
+dependencies = ["bricky", "mcp>=2.1"]
 
 [project.scripts]
 bricky-mcp = "bricky_mcp.server:main"

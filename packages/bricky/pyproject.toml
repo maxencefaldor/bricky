@@ -16,11 +16,11 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "numpy>=2",
+  "numpy>=2.5.2",
   "platformdirs>=4",
   "playwright>=1.63",
-  "pydantic>=2",
-  "pydantic-settings>=2",
+  "pydantic>=2.14",
+  "pydantic-settings>=2.15",
 ]
 
 [project.scripts]

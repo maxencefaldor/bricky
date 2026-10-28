@@ -70,11 +70,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "numpy", specifier = ">=2" },
+    { name = "numpy", specifier = ">=2.5.2" },
     { name = "platformdirs", specifier = ">=4" },
     { name = "playwright", specifier = ">=1.63" },
-    { name = "pydantic", specifier = ">=2" },
-    { name = "pydantic-settings", specifier = ">=2" },
+    { name = "pydantic", specifier = ">=2.14" },
+    { name = "pydantic-settings", specifier = ">=2.15" },
 ]
 
 [[package]]
@@ -90,8 +90,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "bricky", editable = "packages/bricky" },
-    { name = "pydantic", specifier = ">=2" },
-    { name = "pydantic-settings", specifier = ">=2" },
+    { name = "pydantic", specifier = ">=2.14" },
+    { name = "pydantic-settings", specifier = ">=2.15" },
 ]
 
 [[package]]
@@ -106,7 +106,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "bricky", editable = "packages/bricky" },
-    { name = "mcp", specifier = ">=2" },
+    { name = "mcp", specifier = ">=2.1" },
 ]
 
 [[package]]
