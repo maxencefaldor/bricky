@@ -2,7 +2,7 @@
 
 A pass is any class with a ``name``, a one-line ``summary``, the ``codes`` it can report and a
 ``run`` method. Packages register passes under the ``bricky.passes`` entry-point group, so a pass
-pack such as a future ``bricky-physics`` can be installed or removed without touching the core.
+pack, such as a future ``bricky-physics``, installs and uninstalls without changes to the core.
 """
 
 from collections.abc import Iterable, Mapping, Sequence
@@ -16,13 +16,18 @@ from bricky.diagnostics import Code, Diagnostic
 from bricky.errors import BrickyError
 
 ENTRY_POINT_GROUP: Final = "bricky.passes"
+"""The entry-point group that packages register passes under."""
 
 
 class Pass(Protocol):
     """A check that reads a model's shared analyses and reports facts as diagnostics."""
 
     name: ClassVar[str]
+    """The name that profiles and commands use for the pass."""
+
     summary: ClassVar[str]
+    """One line on what the pass checks."""
+
     codes: ClassVar[tuple[Code, ...]]
     """Every code the pass can report, with the exact rule behind it."""
 
@@ -33,7 +38,7 @@ class Pass(Protocol):
 
 @cache
 def installed_passes() -> Mapping[str, type[Pass]]:
-    """Discover every installed pass, by name; the result is computed once per process."""
+    """Return every installed pass by name, discovered once per process."""
     found: dict[str, type[Pass]] = {}
     for entry_point in entry_points(group=ENTRY_POINT_GROUP):
         found[entry_point.name] = entry_point.load()
@@ -42,7 +47,7 @@ def installed_passes() -> Mapping[str, type[Pass]]:
 
 @cache
 def installed_codes() -> Mapping[str, tuple[str, Code]]:
-    """Return every code documented by an installed pass, with the pass that reports it.
+    """Return every code that an installed pass documents, with the name of that pass.
 
     Raises:
         BrickyError: If two installed passes claim the same code.
@@ -63,7 +68,7 @@ def run_passes(
     names: Sequence[str],
     available: Mapping[str, type[Pass]],
 ) -> tuple[list[Diagnostic], list[str]]:
-    """Run the named passes in order and return their diagnostics and the names not installed."""
+    """Run the named passes in order; return their diagnostics and the names not installed."""
     diagnostics: list[Diagnostic] = []
     missing: list[str] = []
     for name in names:

@@ -1,9 +1,9 @@
 """The canonical model format: what a build is, stored once.
 
-A model is a small tree: top-level elements and instances, plus named components that instances
-place. It refers to catalog parts and colors by id and never copies their data, so everything
-else (world geometry, connections, scores) is derived. Positions are in 0.4 mm base units and
-rotations use the grid-rotation names from :mod:`bricky.geometry`.
+A model is a small tree: top-level elements and instances, plus the named components that
+instances place. The model refers to catalog parts and colors by id and never copies their data,
+so analyses derive everything else, such as world geometry and connections. Positions are in
+0.4 mm base units, and rotations use the grid rotation names of :mod:`bricky.geometry`.
 """
 
 from collections.abc import Mapping, Sequence
@@ -25,11 +25,11 @@ def _canonical_rotation(value: str) -> str:
 type RotationName = Annotated[
     str,
     AfterValidator(_canonical_rotation),
-    Field(description="Grid rotation, such as '+x+y' (identity), '+y-x' or the alias 'R90'."),
+    Field(description="Grid rotation, such as '+x+y' (the identity), '+y-x' or the alias 'R90'."),
 ]
 type Identifier = Annotated[
     str,
-    Field(pattern=r"^[A-Za-z0-9_.-]+$", description="Identifier, unique within its scope."),
+    Field(pattern=r"^[A-Za-z0-9_.-]+$", description="Id, unique within its scope."),
 ]
 type Position = Annotated[
     tuple[int, int, int],
@@ -42,17 +42,17 @@ class _Record(BaseModel):
 
 
 class Element(_Record):
-    """One placed part."""
+    """One part in one color, placed in a model."""
 
     id: Identifier
-    part: str = Field(description="BrickLink item number, such as '3001'.")
-    color: int = Field(description="BrickLink color id.")
+    part: str = Field(description="Part id in the BrickLink catalog, such as '3001'.")
+    color: int = Field(description="Color id in the BrickLink catalog, such as 5 (Red).")
     rotation: RotationName = "+x+y"
     position: Position = (0, 0, 0)
 
 
 class Instance(_Record):
-    """A placed copy of a component."""
+    """One placed copy of a component."""
 
     id: Identifier
     component: str = Field(description="Name of the component to place.")
@@ -61,7 +61,7 @@ class Instance(_Record):
 
 
 class Component(_Record):
-    """A reusable group of elements and nested instances: stored once, placed many times."""
+    """A group of elements and nested instances, stored once and placed by instances."""
 
     elements: tuple[Element, ...] = ()
     instances: tuple[Instance, ...] = ()
@@ -92,9 +92,11 @@ class Model(_Record):
         @cache
         def size(name: str) -> int:
             component = self.components[name]
-            return len(component.elements) + sum(size(i.component) for i in component.instances)
+            return len(component.elements) + sum(
+                size(instance.component) for instance in component.instances
+            )
 
-        return len(self.elements) + sum(size(i.component) for i in self.instances)
+        return len(self.elements) + sum(size(instance.component) for instance in self.instances)
 
 
 def _check_scope(

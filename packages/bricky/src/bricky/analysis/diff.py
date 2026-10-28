@@ -1,15 +1,15 @@
 """What changed between two builds of a model: elements added, removed and changed, and voxels.
 
-Elements are matched by what they are and the space they take, not by id: the same part in the
-same color, filling the same space with its connectors in the same places, is the same element.
-Unnamed elements are numbered in the order a script places them, so inserting one part early
-renumbers every later one, and matching by id would report them all as changed. Matching by space
-also means that a symmetric part rotated onto itself, such as a 2 x 2 brick rotated a half turn in
-place, has not changed.
+The diff matches elements by what they are and the space they take: the same part in the same
+color, filling the same space with its connectors in the same places, is the same element. The
+builder numbers unnamed elements in the order a script places them, so one part inserted early
+renumbers every later one, and a match by id would report them all as changed. A match by space
+also counts a symmetric part rotated onto itself, such as a 2 x 2 brick rotated 180° in place, as
+unchanged.
 
-Elements left over on both sides are then paired by id: an element whose id and part are the same
-in both models, but whose position, rotation or color differ, has changed. The rest were added or
-removed.
+The diff then pairs the elements left over on both sides by id. An element with the same id and
+part in both models, but another position, rotation or color, has changed. The remaining elements
+were added or removed.
 """
 
 from collections import defaultdict
@@ -34,20 +34,20 @@ class WorldDiff:
     """Uids, in the earlier model, of elements the later one no longer has."""
 
     changed: tuple[str, ...]
-    """Uids of elements whose id and part are the same in both, now in another position,
-    rotation or color."""
+    """Uids of elements with the same id and part in both models, but another position, rotation
+    or color."""
 
     unchanged: int
-    """Elements in both: the same part and color, taking the same space."""
+    """The number of elements in both models with the same part and color in the same space."""
 
     filled: int
-    """Voxels filled now that were empty."""
+    """The number of voxels empty before and filled after."""
 
     emptied: int
-    """Voxels empty now that were filled."""
+    """The number of voxels filled before and empty after."""
 
     recolored: int
-    """Voxels filled in both, in a different color."""
+    """The number of voxels filled in both models, in another color after."""
 
 
 def diff_worlds(before: World, after: World) -> WorldDiff:
@@ -88,7 +88,7 @@ def diff_worlds(before: World, after: World) -> WorldDiff:
 
 
 def _key(element: PlacedElement) -> Key:
-    """What an element is and the space it takes, whatever pose put it there."""
+    """Return what an element is and the space it takes, whatever pose put it there."""
     shapes = frozenset(
         solid if isinstance(solid, Box) else frozenset(solid.vertices) for solid in element.solids
     )

@@ -19,17 +19,17 @@ from pydantic_settings import (
 from bricky.errors import BrickyError
 
 DIGITAL: Final = ("schema", "collision", "connectivity")
-"""Passes that every model needs, whether or not it will be built for real."""
+"""Passes every model needs, whether or not anyone builds it for real."""
 
 DEFAULT_PROFILES: Final[dict[str, tuple[str, ...]]] = {
     "digital": DIGITAL,
     "physical": (*DIGITAL, "stability", "buildability", "budget"),
 }
-"""Built-in profiles. ``physical`` names passes that a physics plugin pack provides."""
+"""Built-in profiles by name. ``physical`` adds passes that a physics pass pack provides."""
 
 
 class Settings(BaseSettings):
-    """bricky settings."""
+    """Settings shared by every front-end."""
 
     model_config = SettingsConfigDict(
         env_prefix="BRICKY_",
@@ -38,14 +38,17 @@ class Settings(BaseSettings):
     )
 
     profile: str = Field(default="digital", description="Profile used when a command names none.")
-    max_diagnostics: int = Field(default=20, ge=1, description="Diagnostics returned per check.")
+    max_diagnostics: int = Field(
+        default=20, ge=1, description="Maximum number of diagnostics a report lists."
+    )
     build_timeout: float = Field(
-        default=60.0, gt=0, description="Seconds a build script may run before it is stopped."
+        default=60.0, gt=0, description="Seconds a build script may run before bricky stops it."
     )
     output_limit: int = Field(
         default=20_000,
         ge=0,
-        description="Characters of a build script's stdout and of its stderr kept in results.",
+        description="Characters kept from each of a build script's standard output and standard "
+        "error.",
     )
     render_browser: Path | None = Field(
         default=None,
@@ -53,8 +56,8 @@ class Settings(BaseSettings):
     )
     catalog: Path | None = Field(
         default=None,
-        description="Catalog file to use. When unset, bricky uses the catalog `bricky "
-        "import-catalog` wrote to its data folder, or the sample it ships with when there is none.",
+        description="Catalog file to use. When unset, bricky uses the catalog that `bricky "
+        "catalog import` wrote to its data folder, or its sample catalog when there is none.",
     )
     profiles: dict[str, tuple[str, ...]] = Field(
         default_factory=lambda: dict(DEFAULT_PROFILES),
@@ -86,7 +89,8 @@ class Settings(BaseSettings):
     ) -> tuple[str | None, tuple[str, ...]]:
         """Return the profile name and the passes to run.
 
-        Explicit passes win over any profile; otherwise the named or default profile applies.
+        Explicit passes override any profile, and the profile name is then ``None``. Otherwise
+        the named profile applies, or the default one.
 
         Raises:
             BrickyError: If the profile is unknown.

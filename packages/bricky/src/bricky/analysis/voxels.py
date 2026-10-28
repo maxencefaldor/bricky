@@ -1,9 +1,9 @@
 """The model as voxels: which element fills each voxel, one stud square and one plate tall.
 
-A voxel is one stud wide, one stud deep and one plate tall: the grid parts are placed on. An
-element fills a voxel when the voxel's center lies inside its body, so every voxel belongs to at
-most one element of a model whose elements do not overlap, and comparing a model with a target
-made of voxels is exact. Studs are not part of a body and fill no voxel.
+A voxel is one stud wide, one stud deep and one plate tall: the grid that parts are placed on.
+An element fills a voxel when the voxel's center lies inside its body. Every voxel of a model
+free of overlaps therefore belongs to at most one element, and a comparison with a target made of
+voxels is exact. Studs belong to no body and fill no voxel.
 """
 
 from dataclasses import dataclass
@@ -27,7 +27,7 @@ class Voxel:
     """The element's uid, such as ``"bay2/e3"``."""
 
     color: int
-    """BrickLink color id."""
+    """The element's color id."""
 
 
 _HALF_STUD: Final = STUD // 2
@@ -37,7 +37,7 @@ _HALF_PLATE: Final = PLATE // 2
 def world_voxels(world: World) -> dict[VoxelKey, Voxel]:
     """Return every filled voxel of a placed model, keyed by its minimum corner.
 
-    Where overlapping elements both fill a voxel, the voxel belongs to the one placed first.
+    A voxel that overlapping elements both fill belongs to the one placed first.
     """
     voxels: dict[VoxelKey, Voxel] = {}
     for element in world.elements:

@@ -4,8 +4,8 @@ A build script places parts by calling :meth:`ModelBuilder.place` and
 :meth:`ModelBuilder.instance`. The builder records the script's call stack at each call, so
 diagnostics and renders can point back at the line that placed a part.
 
-Provenance is build metadata, not model data. It never enters the model; it travels with a build
-result and is saved beside the model file as a source map, tied to that file by its hash.
+Provenance is build metadata and stays out of the model. A build result carries it, and bricky
+saves it beside the model file as a source map, tied to that file by its hash.
 """
 
 import hashlib
@@ -45,7 +45,7 @@ class Frame(BaseModel):
 
 
 class Source(BaseModel):
-    """The script call stack at one placement, innermost frame first."""
+    """The script's call stack at one placement, innermost frame first."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -64,7 +64,8 @@ class Source(BaseModel):
         """Return this source with file paths made relative to ``root`` where possible."""
         return Source(
             frames=tuple(
-                f.model_copy(update={"file": relative_path(f.file, root)}) for f in self.frames
+                frame.model_copy(update={"file": relative_path(frame.file, root)})
+                for frame in self.frames
             )
         )
 
@@ -80,8 +81,8 @@ class ScopeSources(BaseModel):
     def relative_to(self, root: Path) -> ScopeSources:
         """Return these sources with file paths made relative to ``root`` where possible."""
         return ScopeSources(
-            elements={k: s.relative_to(root) for k, s in self.elements.items()},
-            instances={k: s.relative_to(root) for k, s in self.instances.items()},
+            elements={key: source.relative_to(root) for key, source in self.elements.items()},
+            instances={key: source.relative_to(root) for key, source in self.instances.items()},
         )
 
 
@@ -99,13 +100,15 @@ class Provenance(BaseModel):
         """Return this provenance with file paths made relative to ``root`` where possible."""
         return Provenance(
             model=self.model.relative_to(root),
-            components={k: s.relative_to(root) for k, s in self.components.items()},
+            components={
+                name: sources.relative_to(root) for name, sources in self.components.items()
+            },
         )
 
     def trace(self, model: Model, uid: str) -> Trace:
         """Follow a world uid such as ``"west/e2"`` through its instances to its element.
 
-        Unknown ids yield an empty trace rather than an error: provenance is advisory.
+        An unknown id yields an empty trace, never an error, since provenance only adds detail.
         """
         *instance_ids, element_id = uid.split("/")
         scope_name: str | None = None
@@ -113,7 +116,7 @@ class Provenance(BaseModel):
         instances = model.instances
         steps: list[InstanceStep] = []
         for instance_id in instance_ids:
-            instance = next((i for i in instances if i.id == instance_id), None)
+            instance = next((item for item in instances if item.id == instance_id), None)
             if instance is None or instance.component not in model.components:
                 return Trace()
             steps.append(
@@ -174,9 +177,12 @@ def model_digest(data: bytes) -> str:
 def capture() -> Source | None:
     """Return the build script's call stack at the current point, innermost frame first.
 
-    Frames inside bricky, the standard library and installed packages are skipped until the first
-    script frame; the walk then stops at the first frame that is not script code (bricky's runner,
-    or the interpreter's own machinery). Returns ``None`` when no script frame is on the stack.
+    The walk skips frames in bricky, the standard library and installed packages up to the first
+    script frame, then stops at the next frame outside the script, such as bricky's runner or the
+    interpreter's own machinery.
+
+    Returns:
+        The script frames, or ``None`` when no script frame is on the stack.
     """
     frame: FrameType | None = inspect.currentframe()
     frames: list[Frame] = []
@@ -203,10 +209,10 @@ def capture() -> Source | None:
 
 @cache
 def is_script_file(filename: str) -> bool:
-    """Whether code in this file belongs to a build script.
+    """Return whether the code in a file belongs to a build script.
 
-    Code is not script code when it is generated (``<string>``, ``<frozen runpy>``) or lives in
-    bricky, the standard library or an installed package.
+    Generated code, such as ``<string>`` and ``<frozen runpy>``, and code in bricky, the standard
+    library or an installed package belong to no script.
     """
     if filename.startswith("<"):
         return False

@@ -8,7 +8,7 @@ from bricky.diagnostics import Code, Diagnostic, Region
 
 
 class SchemaPass:
-    """Report references the catalog cannot resolve and parts that dip below the ground."""
+    """Report parts and colors the catalog cannot resolve, and parts below the ground plane."""
 
     name: ClassVar[str] = "schema"
     summary: ClassVar[str] = "Unknown parts and colors, and parts below the ground plane."
@@ -17,8 +17,8 @@ class SchemaPass:
             code="E101",
             title="Unknown part",
             rule="The element's part id is not in the catalog, or the catalog lists the part "
-            "without a shape, so it has no geometry and no other check can see it. `bricky parts` "
-            "searches the catalog.",
+            "without a shape. The element then has no geometry, and no other pass sees it. "
+            "`bricky parts` searches the catalog.",
         ),
         Code(
             code="E102",
@@ -29,13 +29,13 @@ class SchemaPass:
         Code(
             code="E103",
             title="Below the ground",
-            rule="Some of the part's body lies below the ground plane, z = 0. The ground plane is "
+            rule="The element's body reaches below the ground plane, z = 0. The ground plane is "
             "the table the model stands on.",
         ),
     )
 
     def run(self, context: Context) -> Iterator[Diagnostic]:
-        """Return the diagnostics found in the model."""
+        """Yield the unknown parts, then the unknown colors and the parts below the ground."""
         for unknown in context.world.unknown:
             entry = context.catalog.entry(unknown.part)
             what = (

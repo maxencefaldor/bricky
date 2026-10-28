@@ -1,10 +1,11 @@
 """Integer geometry: vectors, the 24 grid rotations, poses, boxes and convex solids.
 
-Every part sits in one of the 24 orientations that map grid axes onto grid axes, so a rotation is
-a signed permutation and all arithmetic stays exact. Boxes stay axis-aligned under any rotation,
-which keeps most collision tests to a handful of integer comparisons. Parts that are not boxes,
-such as slopes and round parts, are unions of convex solids with integer corners: their faces'
-planes have integer normals, and whether two solids overlap is decided exactly, by separating axes.
+Every element takes one of the 24 rotations that map grid axes onto grid axes. Each rotation is a
+signed permutation, so all arithmetic stays exact. Boxes stay axis-aligned under every rotation,
+which reduces most collision tests to a handful of integer comparisons. The body of a slope, a
+round part or any other part that boxes cannot describe is a union of convex solids with integer
+corners. Every face of such a solid lies in a plane with an integer normal, and separating axes
+decide exactly whether two solids overlap.
 """
 
 from collections.abc import Iterable, Iterator, Sequence
@@ -75,7 +76,7 @@ _AXIS_NAMES: Final = {vector: name for name, vector in AXES.items()}
 
 
 def axis_name(vector: Vector) -> str:
-    """Name a signed unit grid axis, such as ``"+x"``.
+    """Return the name of a signed unit grid axis, such as ``"+x"``.
 
     Raises:
         ValueError: If the vector is not a signed unit grid axis.
@@ -83,7 +84,7 @@ def axis_name(vector: Vector) -> str:
     try:
         return _AXIS_NAMES[vector]
     except KeyError:
-        message = f"{vector} is not a unit grid axis"
+        message = f"{vector} is not a signed unit grid axis"
         raise ValueError(message) from None
 
 
@@ -95,7 +96,7 @@ ALIASES: Final[dict[str, str]] = {"R0": "+x+y", "R90": "+y-x", "R180": "-x-y", "
 class Rotation:
     """A proper rotation mapping grid axes onto grid axes: one of 24.
 
-    A rotation is named by the images of the local x and y axes: ``"+x+y"`` is the identity, and
+    A rotation's name gives the images of the local x and y axes: ``"+x+y"`` is the identity, and
     ``"+y-x"`` rotates a part 90° counter-clockwise seen from above. :data:`ALIASES` gives short
     names to the four rotations about the vertical axis.
     """
@@ -137,7 +138,7 @@ class Rotation:
 
     @property
     def name(self) -> str:
-        """The canonical name: images of local x and y, for example ``"+y-x"``."""
+        """The canonical name: the images of local x and y, such as ``"+y-x"``."""
         return axis_name(self.x_axis) + axis_name(self.y_axis)
 
     def apply(self, vector: Vector) -> Vector:
@@ -215,7 +216,7 @@ class Box:
 
     @classmethod
     def bounding(cls, boxes: Iterable[Box]) -> Box:
-        """Return the smallest box containing all the given boxes.
+        """Return the smallest box that contains all the given boxes.
 
         Raises:
             ValueError: If no boxes are given.
@@ -226,20 +227,20 @@ class Box:
             raise ValueError(message)
         return cls(
             Vector(
-                min(b.min.x for b in boxes),
-                min(b.min.y for b in boxes),
-                min(b.min.z for b in boxes),
+                min(box.min.x for box in boxes),
+                min(box.min.y for box in boxes),
+                min(box.min.z for box in boxes),
             ),
             Vector(
-                max(b.max.x for b in boxes),
-                max(b.max.y for b in boxes),
-                max(b.max.z for b in boxes),
+                max(box.max.x for box in boxes),
+                max(box.max.y for box in boxes),
+                max(box.max.z for box in boxes),
             ),
         )
 
     @property
     def size(self) -> Vector:
-        """Extent along each axis."""
+        """The extent along each axis."""
         return self.max - self.min
 
     @property
@@ -248,7 +249,7 @@ class Box:
         return self
 
     def corners(self) -> tuple[Vector, ...]:
-        """The eight corners: bit 1 of the index picks the high x, bit 2 high y, bit 4 high z."""
+        """Return the eight corners: index bit 1 picks high x, bit 2 high y and bit 4 high z."""
         low, high = self.min, self.max
         return tuple(
             Vector(
@@ -258,7 +259,7 @@ class Box:
         )
 
     def as_convex(self) -> Convex:
-        """The same solid as a :class:`Convex`, for exact tests against other convex solids.
+        """Return the same solid as a :class:`Convex`, for exact tests against convex solids.
 
         Raises:
             ValueError: If the box has no volume.
@@ -267,12 +268,12 @@ class Box:
 
     @property
     def volume(self) -> int:
-        """Volume in cubic base units."""
+        """The volume in cubic base units."""
         size = self.size
         return size.x * size.y * size.z
 
     def contains(self, point: Vector) -> bool:
-        """Return whether a point lies in the box, counting low faces in and high faces out."""
+        """Return whether a point lies in the box; low faces count as inside, high ones outside."""
         return (
             self.min.x <= point.x < self.max.x
             and self.min.y <= point.y < self.max.y
@@ -291,7 +292,7 @@ class Box:
         )
 
     def intersection(self, other: Box) -> Box | None:
-        """Return the shared box, or ``None`` if the boxes share no volume."""
+        """Return the box both boxes share, or ``None`` if they share no volume."""
         if not self.overlaps(other):
             return None
         return Box(
@@ -331,13 +332,13 @@ type Plane = tuple[Vector, int]
 class Convex:
     """A convex solid with integer corners, such as the body of a slope.
 
-    Faces list corner indices counter-clockwise seen from outside. Every face's plane is kept as an
-    integer outward normal and offset, so whether a point is inside, or two solids overlap, is
-    decided without rounding.
+    Each face lists corner indices counter-clockwise seen from outside. The solid keeps every
+    face's plane as an integer outward normal and offset, so the tests for a point inside and for
+    an overlap never round.
 
     Raises:
-        ValueError: If a face has fewer than three corners, is not flat, or faces inward, or the
-            solid is not convex.
+        ValueError: If a face has fewer than three corners, is not flat or faces inward, or the
+            solid is concave.
     """
 
     vertices: tuple[Vector, ...]
@@ -364,10 +365,10 @@ class Convex:
                 message = f"face {face} faces inward, or the solid is not convex"
                 raise ValueError(message)
             planes.append((normal, offset))
-            for a, b in zip(corners, corners[1:] + corners[:1], strict=True):
-                if a != b:
-                    directions.add(_direction(b - a))
-        xs, ys, zs = zip(*(v.as_tuple() for v in self.vertices), strict=True)
+            for corner, following in zip(corners, corners[1:] + corners[:1], strict=True):
+                if corner != following:
+                    directions.add(_direction(following - corner))
+        xs, ys, zs = zip(*(vertex.as_tuple() for vertex in self.vertices), strict=True)
         object.__setattr__(self, "planes", tuple(planes))
         object.__setattr__(
             self,
@@ -404,18 +405,20 @@ class Convex:
                 return Vector(c, a, b)
             return Vector(b, c, a)
 
-        n = len(polygon)
+        count = len(polygon)
         vertices = tuple(point(a, b, start) for a, b in polygon) + tuple(
             point(a, b, end) for a, b in polygon
         )
-        bottom = tuple(reversed(range(n)))
-        top = tuple(range(n, 2 * n))
-        sides = tuple((i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n))
+        bottom = tuple(reversed(range(count)))
+        top = tuple(range(count, 2 * count))
+        sides = tuple(
+            (i, (i + 1) % count, count + (i + 1) % count, count + i) for i in range(count)
+        )
         return cls(vertices, (bottom, top, *sides))
 
     def transformed(self, pose: Pose) -> Convex:
         """Return the solid placed by a pose; proper rotations keep faces wound outward."""
-        return Convex(tuple(pose.apply(v) for v in self.vertices), self.faces)
+        return Convex(tuple(pose.apply(vertex) for vertex in self.vertices), self.faces)
 
     def contains(self, point: Vector) -> bool:
         """Return whether a point lies in the solid.
@@ -431,21 +434,21 @@ class Convex:
         return True
 
     def extent(self, axis: Vector) -> tuple[int, int]:
-        """The lowest and highest values of ``axis.dot(corner)`` over the corners."""
-        values = [axis.dot(v) for v in self.vertices]
+        """Return the lowest and highest values of ``axis.dot(vertex)`` over the vertices."""
+        values = [axis.dot(vertex) for vertex in self.vertices]
         return min(values), max(values)
 
 
 type Solid = Box | Convex
-"""A part's body is a union of solids: boxes, or convex solids where a box will not do."""
+"""One solid of a part's body: a box, or a convex solid where a box falls short."""
 
 
 def overlaps(a: Solid, b: Solid) -> bool:
     """Return whether two solids share positive volume; touching faces or edges do not count.
 
-    Convex solids are tested by separating axes: two convex solids keep their insides apart exactly
-    when some axis from their face normals, or the cross products of their edge directions, has
-    them on opposite sides, touching at most.
+    The test uses separating axes. Two convex solids keep their insides apart exactly when some
+    axis, among their face normals and the cross products of their edge directions, puts them on
+    opposite sides, touching at most.
     """
     if not a.bounds.overlaps(b.bounds):
         return False
@@ -454,7 +457,7 @@ def overlaps(a: Solid, b: Solid) -> bool:
     first = a if isinstance(a, Convex) else a.as_convex()
     second = b if isinstance(b, Convex) else b.as_convex()
     axes = [normal for normal, _ in (*first.planes, *second.planes)]
-    axes += [u.cross(v) for u in first.directions for v in second.directions]
+    axes += [one.cross(other) for one in first.directions for other in second.directions]
     for axis in axes:
         if axis == ORIGIN:
             continue
@@ -471,17 +474,17 @@ def _box_convex(box: Box) -> Convex:
 
 
 def _newell(points: Sequence[Vector]) -> Vector:
-    """Newell's normal of a polygon: outward for corners counter-clockwise seen from outside."""
+    """Return Newell's normal of a polygon, outward for corners counter-clockwise from outside."""
     x = y = z = 0
-    for p, q in zip(points, [*points[1:], points[0]], strict=True):
-        x += (p.y - q.y) * (p.z + q.z)
-        y += (p.z - q.z) * (p.x + q.x)
-        z += (p.x - q.x) * (p.y + q.y)
+    for point, following in zip(points, [*points[1:], points[0]], strict=True):
+        x += (point.y - following.y) * (point.z + following.z)
+        y += (point.z - following.z) * (point.x + following.x)
+        z += (point.x - following.x) * (point.y + following.y)
     return Vector(x, y, z)
 
 
 def _primitive(vector: Vector) -> Vector:
-    """The vector divided by the greatest common divisor of its components."""
+    """Return the vector divided by the greatest common divisor of its components."""
     divisor = gcd(vector.x, vector.y, vector.z)
     if divisor == 0:
         return vector
@@ -489,13 +492,13 @@ def _primitive(vector: Vector) -> Vector:
 
 
 def _direction(vector: Vector) -> Vector:
-    """A primitive vector along the same line, its first nonzero component positive."""
+    """Return the primitive vector on the same line whose first nonzero component is positive."""
     primitive = _primitive(vector)
     return -primitive if _looks_up(-primitive) else primitive
 
 
 def _looks_up(vector: Vector) -> bool:
-    """Whether the first nonzero component is positive."""
+    """Return whether the first nonzero component is positive."""
     for component in vector:
         if component:
             return component > 0

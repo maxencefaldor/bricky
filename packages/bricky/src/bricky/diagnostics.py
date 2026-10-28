@@ -1,9 +1,9 @@
-"""Diagnostics: the facts passes report, and how a report reads for agents and humans.
+"""Diagnostics: the facts that passes report, and the reports that collect them.
 
 A diagnostic states a fact about the model: a stable code whose letter gives its severity (``E``
 error, ``W`` warning, ``I`` info), what is wrong, the elements involved and the region they occupy,
-in studs and plates. A diagnostic never prescribes a fix: deciding what to change is the agent's
-job. The pass that reports a code documents its exact rule (see ``bricky explain``).
+in studs and plates. A diagnostic never prescribes a fix: the agent decides what to change. The
+pass that reports a code documents its exact rule (see ``bricky explain``).
 
 A report adds what the model and its source map know about each element a diagnostic names: the
 part, the color and the build-script line that placed it.
@@ -21,7 +21,7 @@ from bricky.units import to_plates, to_studs
 
 
 class Severity(StrEnum):
-    """How bad a diagnostic is."""
+    """How serious a diagnostic is."""
 
     ERROR = "error"
     WARNING = "warning"
@@ -36,7 +36,7 @@ _LISTED_SITES: Final = 10
 
 
 class Code(BaseModel):
-    """A diagnostic code, what it is called, and the exact rule behind it."""
+    """A diagnostic code, its title and the exact rule behind it."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -47,7 +47,7 @@ class Code(BaseModel):
     @computed_field
     @property
     def severity(self) -> Severity:
-        """Severity, read from the code's letter."""
+        """The severity, read from the code's letter."""
         return _SEVERITY[self.code[0]]
 
 
@@ -90,11 +90,11 @@ class Diagnostic(BaseModel):
     @computed_field
     @property
     def severity(self) -> Severity:
-        """Severity, read from the code's letter."""
+        """The severity, read from the code's letter."""
         return _SEVERITY[self.code[0]]
 
     def sort_key(self) -> tuple[int, str, str]:
-        """Order errors first, then by code, then by first element."""
+        """Return a key that sorts by severity, most serious first, then code and first uid."""
         return (_RANK[self.severity], self.code, self.elements[0] if self.elements else "")
 
 
@@ -103,13 +103,13 @@ class ElementInfo(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    part: str = Field(description="BrickLink item number.")
-    part_name: str | None = Field(description="BrickLink item name; null for unknown parts.")
-    color: int = Field(description="BrickLink color id.")
-    color_name: str | None = Field(description="BrickLink color name; null for unknown colors.")
+    part: str = Field(description="Part id.")
+    part_name: str | None = Field(description="Part name; null when the catalog cannot place it.")
+    color: int = Field(description="Color id.")
+    color_name: str | None = Field(description="Color name; null for an unknown color.")
     component: str | None = Field(default=None, description="Component defining the element.")
     source: Source | None = Field(
-        default=None, description="Script stack that placed it, innermost first; null if unknown."
+        default=None, description="Script frames that placed it, innermost first; null if unknown."
     )
     via: tuple[InstanceStep, ...] = Field(
         default=(), description="Instances that copied it into the model, outermost first."
@@ -117,21 +117,21 @@ class ElementInfo(BaseModel):
 
 
 class Report(BaseModel):
-    """The result of checking one model."""
+    """The result of checking one model: its diagnostics and what each named element is."""
 
     model: str = Field(description="Name of the model checked.")
     profile: str | None = Field(
-        description="Profile used, or null when passes were named explicitly."
+        description="Profile used, or null when the caller named the passes."
     )
     passes: tuple[str, ...] = Field(description="Passes that ran.")
     missing: tuple[str, ...] = Field(
         default=(), description="Requested passes that are not installed."
     )
     element_count: int = Field(description="Number of elements checked.")
-    errors: int = Field(description="Errors found, including any omitted below.")
-    warnings: int = Field(description="Warnings found, including any omitted below.")
-    diagnostics: tuple[Diagnostic, ...] = Field(description="Diagnostics, most severe first.")
-    omitted: int = Field(default=0, description="Diagnostics left out to respect the cap.")
+    errors: int = Field(description="Number of errors found, omitted ones included.")
+    warnings: int = Field(description="Number of warnings found, omitted ones included.")
+    diagnostics: tuple[Diagnostic, ...] = Field(description="Diagnostics, most serious first.")
+    omitted: int = Field(default=0, description="Number of diagnostics left out by the cap.")
     elements: dict[str, ElementInfo] = Field(
         default_factory=dict, description="Every element named by the diagnostics, by uid."
     )
@@ -139,13 +139,13 @@ class Report(BaseModel):
     @computed_field
     @property
     def ok(self) -> bool:
-        """Whether the model has no errors."""
+        """Whether the model is free of errors."""
         return self.errors == 0
 
 
 def render_report(report: Report) -> str:
     """Render a report as compiler-style text."""
-    blocks = [_render_diagnostic(d, report.elements) for d in report.diagnostics]
+    blocks = [_render_diagnostic(diagnostic, report.elements) for diagnostic in report.diagnostics]
     if report.omitted:
         blocks.append(f"... {report.omitted} more not shown; raise --max-diagnostics to see them")
     sites = _sites(report)
@@ -171,7 +171,7 @@ def render_report(report: Report) -> str:
 
 
 def describe_element(uid: str, info: ElementInfo | None) -> str:
-    """One line saying what an element is and which script line placed it."""
+    """Return one line that says what an element is and which script line placed it."""
     if info is None:
         return uid
     part = f"{info.part_name} ({info.part})" if info.part_name else f"unknown part {info.part}"
@@ -182,7 +182,7 @@ def describe_element(uid: str, info: ElementInfo | None) -> str:
     if info.via:
         step = info.via[-1]
         placed = f" placed at {step.source.site}" if step.source is not None else ""
-        text += f", copy {step.id} of component {step.component}{placed}"
+        text += f", instance {step.id} of component {step.component}{placed}"
     return text
 
 
@@ -201,7 +201,7 @@ def _render_diagnostic(diagnostic: Diagnostic, elements: dict[str, ElementInfo])
 
 
 def _sites(report: Report) -> Counter[Frame]:
-    """Count the diagnostics shown that name an element placed at each script line."""
+    """Count, for each script line, the listed diagnostics that name an element it placed."""
     counts: Counter[Frame] = Counter()
     for diagnostic in report.diagnostics:
         sites = {

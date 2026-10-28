@@ -1,10 +1,10 @@
 """Write models in agent-friendly coordinates.
 
 Coordinates are ``(x, y, z)``: x points east and y north, both in studs, and z points up, in
-plates. ``at`` always names the minimum corner of the rotated bounding box of whatever is placed,
-a single part or a whole component, so rotating something never moves the corner of its footprint.
+plates. ``at`` names the minimum corner of the rotated bounding box of whatever is placed, a
+single part or a whole component, so a rotation never moves the corner of the footprint.
 
-The builder also records which line of the build script made each placement (see
+The builder also records the build-script line behind each placement (see
 :mod:`bricky.provenance`), so diagnostics and renders can point back at it.
 """
 
@@ -30,7 +30,7 @@ def to_base_units(at: Coordinates) -> Vector:
     """Convert coordinates in studs, studs and plates to base units.
 
     Raises:
-        ValueError: If the point does not have three coordinates or lands off the grid.
+        ValueError: If the point lacks three coordinates or lands off the grid.
     """
     try:
         x, y, z = at
@@ -42,7 +42,7 @@ def to_base_units(at: Coordinates) -> Vector:
 
 @dataclass(frozen=True, slots=True)
 class _PendingInstance:
-    """An instance whose position waits for its component's bounding box."""
+    """An instance whose position waits on its component's bounding box."""
 
     id: str
     component: str
@@ -73,8 +73,8 @@ class _Scope:
                 message = f"unknown part {part!r}; search the catalog with `bricky parts <words>`"
             else:
                 message = (
-                    f"part {part} ({entry.name}) has no shape in bricky yet, so it cannot be "
-                    "placed; `bricky parts <words>` lists parts that can be"
+                    f"part {part} ({entry.name}) has no shape in bricky, so it cannot be placed; "
+                    "`bricky parts <words>` lists the parts that can be"
                 )
             raise ValueError(message)
         parsed = Rotation.parse(rotation)
@@ -105,7 +105,7 @@ class _Scope:
         return pending.id
 
     def claim(self, id: str | None, prefix: str) -> str:
-        """Claim an id in this scope: the one given, or the next free one with the prefix."""
+        """Claim an id in this scope: the given one, or the next free one with the prefix."""
         if id is not None:
             _IDENTIFIER.validate_python(id)
             if id in self.ids:
@@ -128,10 +128,11 @@ class _Scope:
     def resolve(
         self, boxes: Mapping[str, Box]
     ) -> tuple[tuple[Element, ...], tuple[Instance, ...], Box | None]:
-        """Position every instance by its component's box and return the scope's contents.
+        """Position every instance by its component's bounding box.
 
-        Returns the elements, the instances and the scope's bounding box, or ``None`` for the box
-        when the scope is empty.
+        Returns:
+            The scope's elements, its instances and its bounding box, which is ``None`` when the
+            scope is empty.
         """
         instances: list[Instance] = []
         extents = list(self.extents)
@@ -179,11 +180,12 @@ class _Placer:
         """Place a part and return the element's id.
 
         Args:
-            part: BrickLink item number, such as ``"3001"``, or another number of the part.
-            at: Minimum corner of the rotated part, ``(x, y, z)`` in studs, studs and plates.
-            color: BrickLink color id or name, such as ``"Red"``.
+            part: Part id, such as ``"3001"``, or another BrickLink number of the part.
+            at: Minimum corner of the rotated part's bounding box, ``(x, y, z)`` in studs, studs
+                and plates.
+            color: Color id or name, such as ``5`` or ``"Red"``.
             rotation: Grid rotation, such as ``"R90"`` or ``"+y-x"``.
-            id: The element's id; generated when omitted.
+            id: The element's id; the builder generates one when omitted.
 
         Raises:
             ValueError: If the part, color, rotation, coordinates or id is invalid.
@@ -200,17 +202,17 @@ class _Placer:
             at: Minimum corner of the rotated component's bounding box, ``(x, y, z)`` in studs,
                 studs and plates, exactly as for :meth:`place`.
             rotation: Grid rotation, such as ``"R90"``.
-            id: The instance's id; generated when omitted.
+            id: The instance's id; the builder generates one when omitted.
 
         Raises:
-            ValueError: If the rotation, coordinates or id is invalid. Unknown and empty
-                components are reported by :meth:`ModelBuilder.build`.
+            ValueError: If the rotation, coordinates or id is invalid. :meth:`ModelBuilder.build`
+                reports unknown and empty components.
         """
         return self._scope.instance(component, at, rotation, id)
 
 
 class ComponentBuilder(_Placer):
-    """Collects the contents of one reusable component."""
+    """Fill one component with elements and instances."""
 
     def __init__(self, scope: _Scope) -> None:
         self._scope = scope
@@ -243,7 +245,7 @@ class ModelBuilder(_Placer):
     def component(self, name: str) -> ComponentBuilder:
         """Start a reusable component and return the builder that fills it.
 
-        Components may be filled in any order, before or after their instances are placed.
+        A script may fill components in any order, before or after it places their instances.
 
         Raises:
             ValueError: If a component with this name already exists.
@@ -267,7 +269,7 @@ class ModelBuilder(_Placer):
         for name in self._dependency_order():
             elements, instances, bounds = self._components[name].resolve(boxes)
             if bounds is None:
-                message = f"component {name!r} is empty: place at least one part in it"
+                message = f"component {name!r} is empty"
                 raise ValueError(message)
             boxes[name] = bounds
             built[name] = Component(elements=elements, instances=instances)
@@ -280,14 +282,14 @@ class ModelBuilder(_Placer):
         )
 
     def provenance(self) -> Provenance:
-        """Return where the build script placed every element and instance so far."""
+        """Return where the build script has placed every element and instance so far."""
         return Provenance(
             model=self._scope.sources(),
             components={name: scope.sources() for name, scope in self._components.items()},
         )
 
     def _dependency_order(self) -> list[str]:
-        """Order components so each comes after every component it places."""
+        """Order the components so that each follows every component it places."""
         order: list[str] = []
         done: set[str] = set()
 
@@ -300,7 +302,7 @@ class ModelBuilder(_Placer):
                 raise ValueError(message)
             scope = self._components.get(name)
             if scope is None:
-                return  # reported by resolve(), with the instance that names it
+                return  # resolve() reports it, with the instance that names it
             for pending in scope.instances:
                 visit(pending.component, (*path, name))
             done.add(name)

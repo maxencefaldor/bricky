@@ -1,4 +1,4 @@
-"""Analyses derived from a model: world geometry, spatial indices, connections and voxels."""
+"""Analyses derived from a model: world geometry, spatial index, connections, voxels and diffs."""
 
 from bricky.analysis.connections import AntiStudIndex, Connection
 from bricky.analysis.context import Context
