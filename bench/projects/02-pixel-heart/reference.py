@@ -33,5 +33,5 @@ def build() -> ModelBuilder:
     for row, line in enumerate(rows):
         y = size - 1 - row
         for x, pixel in enumerate(line):
-            builder.place("3070b", at=(x, y, 1), color=COLORS[pixel])  # Tile 1 x 1
+            builder.place("3070", at=(x, y, 1), color=COLORS[pixel])  # Tile 1 x 1
     return builder

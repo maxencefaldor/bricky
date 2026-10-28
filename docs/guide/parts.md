@@ -19,11 +19,16 @@ longer ones. Each row gives the family, the footprint, the height and the studs,
 part sits when unrotated, where that matters:
 
 ```text
-3040  Slope 45 2 x 1      slope    1x2  3 plates  1 stud
+id    name            family  x by y  height    studs
+3040  Slope 45 2 x 1  slope   1 x 2   3 plates  1 stud
       falls toward -y (the front) when unrotated
-3039  Slope 45 2 x 2      slope    2x2  3 plates  2 studs
+3039  Slope 45 2 x 2  slope   2 x 2   3 plates  2 studs
       falls toward -y (the front) when unrotated
+2 of 6 matching parts; --limit shows more
 ```
+
+Sizes read x by y with the part unrotated: a Brick 2 x 4 (`3001`) is 2 studs along x and 4 along
+y, and `R90` makes it 4 along x.
 
 `bricky catalog show 3039` describes one part in full: its category, its other numbers, its
 shape, and the colors it comes in.
@@ -69,8 +74,9 @@ uv run bricky colors gray
 uv run bricky colors trans
 ```
 
-Colors carry BrickLink's names and ids, such as `Dark Bluish Gray` (`85`), an RGB value, and a
-type: solid, transparent, pearl, metallic and more. Renders draw transparent parts see-through and
+`bricky colors "#F2CD37"` lists the five colors nearest to an RGB value, to match a color seen
+in a picture. Colors carry BrickLink's names and ids, such as `Dark Bluish Gray` (`85`), an RGB
+value, and a type: solid, transparent, pearl, metallic and more. Renders draw transparent parts see-through and
 pearl parts with a sheen.
 
 ![Round bricks in 28 colors: solid, pearl, metallic and transparent](../images/colors.png)

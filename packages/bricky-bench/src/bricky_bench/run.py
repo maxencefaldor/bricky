@@ -50,6 +50,10 @@ you like. When you stop, the last version of that file is your answer.
 _BUILD_MINUTES: Final = 10
 _STOP_GRACE_SECONDS: Final = 10
 _PINNED_PACKAGES: Final = ("playwright", "pydantic", "pydantic-settings")
+_REPOSITORY_ONLY: Final = frozenset(
+    {"VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONPATH", "UV_LOCKED", "UV_FROZEN"}
+)
+"""Environment variables that describe the repository's environment, not a workspace's."""
 
 
 class Agent(BaseModel):
@@ -456,13 +460,12 @@ async def _setup(workspace: Path) -> None:
 
 
 def _clean_environment() -> dict[str, str]:
-    """The environment of this process, without the repository's virtual environment."""
+    """The environment of this process, without the repository's virtual environment.
+
+    uv's lock settings go too: a workspace has its own project, which its first sync locks.
+    """
     executables = str(Path(sys.prefix) / "bin")
-    environment = {
-        key: value
-        for key, value in os.environ.items()
-        if key not in {"VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONPATH"}
-    }
+    environment = {key: value for key, value in os.environ.items() if key not in _REPOSITORY_ONLY}
     path = environment.get("PATH", "")
     environment["PATH"] = os.pathsep.join(
         folder for folder in path.split(os.pathsep) if folder != executables

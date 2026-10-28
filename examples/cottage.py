@@ -73,7 +73,7 @@ def walls(builder: ModelBuilder) -> None:
     # The sign: a brick with a stud on its front, and a tile rotated upright onto that stud.
     builder.place("87087", at=(11, SOUTH, BASE + 3), color=WALL, id="sign-holder")
     builder.place(
-        "3070b", at=(11, SOUTH - 0.4, BASE + 3.25), rotation="+x+z", color="Blue", id="sign"
+        "3070", at=(11, SOUTH - 0.4, BASE + 3.5), rotation="+x+z", color="Blue", id="sign"
     )
 
 
@@ -106,11 +106,11 @@ def garden(builder: ModelBuilder) -> None:
     """A path of tiles to the door, a lamp post and a round bush."""
     for x in (7, 8):
         for y in range(0, SOUTH, 2):
-            builder.place("3069b", at=(x, y, BASE), color="Light Bluish Gray")  # Tile 1 x 2
+            builder.place("3069", at=(x, y, BASE), color="Light Bluish Gray")  # Tile 1 x 2
     # A lamp post on a jumper, so it stands half a stud off the grid.
     builder.place("15573", at=(4, 1, BASE), color="Black")  # Jumper 1 x 2, along y
     for level in range(3):
-        builder.place("3062b", at=(4, 1.5, BASE + 1 + 3 * level), color="Black")  # round brick
+        builder.place("3062", at=(4, 1.5, BASE + 1 + 3 * level), color="Black")  # round brick
     builder.place("4073", at=(4, 1.5, BASE + 10), color="Trans-Yellow", id="lamp")
     # A round bush.
     builder.place("3941", at=(12, 1, BASE), color="Green")  # Brick, Round 2 x 2

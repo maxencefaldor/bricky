@@ -69,11 +69,12 @@ faces -y, so its underside grips a side stud that faces -y:
 
 ```python
 builder.place("87087", at=(0, 1, 4), color="White")  # Brick 1 x 1, stud on its side
-builder.place("3070", at=(0, 0.6, 4.25), rotation="+x+z", color="Blue")  # Tile 1 x 1, upright
+builder.place("3070", at=(0, 0.6, 4.5), rotation="+x+z", color="Blue")  # Tile 1 x 1, upright
 ```
 
 The tile's bounding box is 0.4 studs deep (a plate's height) and one stud tall (2.5 plates), so its
-minimum corner sits 0.4 studs in front of the brick and a quarter plate above the brick's base.
+minimum corner sits 0.4 studs in front of the brick and half a plate above its base, so the tile
+ends flush with the brick's top.
 
 ![A tile and a plate held sideways by studs on the sides of bricks](../images/sideways.png)
 

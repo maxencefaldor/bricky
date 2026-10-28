@@ -194,7 +194,9 @@ def test_the_catalog_is_imported_and_looked_into(tmp_path, capsys, monkeypatch):
     assert run("catalog", "show", "3068bpb0001") == 0
     out = capsys.readouterr().out
     assert "printed on: 3068b, whose shape it has" in out
-    assert "shape: tile, 2 x 2 studs, 1 plate tall, 0 studs, 4 anti-studs" in out
+    assert (
+        "shape: tile, 2 x 2 studs (x by y, unrotated), 1 plate tall, 0 studs, 4 anti-studs" in out
+    )
     picture = tmp_path / "brick.png"
     assert run("catalog", "show", "3001", "--render", "--output", str(picture)) == 0
     assert "colors (2): White, Red" in capsys.readouterr().out
@@ -219,7 +221,9 @@ def test_shapes_come_from_ldraw_for_parts_no_name_describes(tmp_path, capsys, mo
     monkeypatch.setenv("BRICKY_CATALOG", str(output))
     assert run("catalog", "show", "4490") == 0
     out = capsys.readouterr().out
-    assert "shape: boxes, 3 x 1 studs, 3 plates tall, 3 studs, 2 anti-studs" in out
+    assert (
+        "shape: boxes, 3 x 1 studs (x by y, unrotated), 3 plates tall, 3 studs, 2 anti-studs" in out
+    )
     assert "converted from LDraw 4490.dat, as it is oriented there" in out
     assert run("catalog", "verify") == 0
     assert run("catalog", "import") == 2

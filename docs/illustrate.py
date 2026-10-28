@@ -98,10 +98,10 @@ def sideways(catalog: Catalog) -> ModelBuilder:
     for x in (0, 3):
         builder.place("3005", at=(x, 1, 1), color="White", id=f"column{x}")
     builder.place("87087", at=(0, 1, 4), color="White", id="holder")
-    builder.place("3070", at=(0, 0.6, 4.25), rotation="+x+z", color="Blue", id="sign")
+    builder.place("3070", at=(0, 0.6, 4.5), rotation="+x+z", color="Blue", id="sign")
     builder.place("3005", at=(3, 1, 4), color="White", id="column3-top")
     builder.place("30414", at=(0, 1, 7), color="White", id="studs-on-side")
-    builder.place("3710", at=(0, 0.6, 7.25), rotation="-z+x", color="Red", id="facade")
+    builder.place("3710", at=(0, 0.6, 7.5), rotation="-z+x", color="Red", id="facade")
     return builder
 
 

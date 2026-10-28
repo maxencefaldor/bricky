@@ -57,7 +57,7 @@ from bricky.provenance import Provenance
 from bricky.render import Clip, Renderer, View, build_scene, write_html
 from bricky.runner import RunResult
 from bricky.settings import Settings
-from bricky.units import to_plates
+from bricky.units import to_plates, to_studs
 
 _PROFILE_HELP: Final = (
     "Profile to run, such as 'digital' or 'physical'; defaults to the configured one."
@@ -148,7 +148,7 @@ class Timings(BaseModel):
     """Seconds spent in each stage of a command."""
 
     script: float = 0.0
-    compare: float = 0.0
+    changes: float = 0.0
     check: float = 0.0
     render: float = 0.0
 
@@ -199,7 +199,7 @@ class BuildRequest(BaseModel):
     )
     check: bool = Field(default=True, description="Check the model after building it.")
     render: bool = Field(default=True, description="Render the model after checking it.")
-    views: list[View] = Field(default_factory=lambda: [View.SHEET], description=_VIEWS_HELP)
+    views: list[View] = Field(default=[View.SHEET], description=_VIEWS_HELP)
     profile: str | None = Field(default=None, description=_PROFILE_HELP)
     passes: list[str] | None = Field(default=None, description=_PASSES_HELP)
     max_diagnostics: int | None = Field(default=None, ge=1, description=_MAX_DIAGNOSTICS_HELP)
@@ -280,6 +280,11 @@ class BuildResult(BaseModel):
         description="The saved source map, linking elements to script lines."
     )
     elements: int = Field(description="Elements in the model, with every instance unfolded.")
+    size: tuple[float, float, float] | None = Field(
+        default=None,
+        description="Size of the model's bodies: x and y in studs, z in plates; null when the "
+        "catalog can place none of its elements.",
+    )
     output: ScriptOutput = Field(description="What the build script printed.")
     changes: Changes | None = Field(
         description="What changed since the last build saved a model at the same path; null on "
@@ -291,7 +296,11 @@ class BuildResult(BaseModel):
 
     def describe(self) -> str:
         """Return the result as text for people and agents."""
-        blocks = [f"saved {self.model} ({self.elements} elements)"]
+        saved = f"saved {self.model}: {_count(self.elements, 'element')}"
+        if self.size is not None:
+            x, y, z = self.size
+            saved += f", {x:g} x {y:g} studs, {_count(z, 'plate')} tall"
+        blocks = [saved]
         if self.changes is not None:
             blocks.append(self.changes.describe())
         if text := self.output.describe():
@@ -320,13 +329,14 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
     earlier = await asyncio.to_thread(_earlier, path)
     source_map = await asyncio.to_thread(_save, run, request.script, path)
     seconds = Timings(script=time.perf_counter() - started)
+    size = await asyncio.to_thread(_size, run.model, session.catalog)
 
     changes = None
     changed: tuple[str, ...] = ()
     if earlier is not None:
         started = time.perf_counter()
         changes, changed = await asyncio.to_thread(_compare, earlier, run, session.catalog)
-        seconds.compare = time.perf_counter() - started
+        seconds.changes = time.perf_counter() - started
 
     report = None
     if request.check:
@@ -359,6 +369,7 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
         model=path,
         source_map=source_map,
         elements=run.model.element_count(),
+        size=size,
         output=run.output,
         changes=changes,
         report=report,
@@ -525,7 +536,7 @@ class RenderRequest(BaseModel):
     """Render pictures of a model file."""
 
     model: CliPositionalArg[Path] = Field(description="Path to a .bricky.json model file.")
-    views: list[View] = Field(default_factory=lambda: [View.SHEET], description=_VIEWS_HELP)
+    views: list[View] = Field(default=[View.SHEET], description=_VIEWS_HELP)
     highlight: list[str] = Field(
         default_factory=list,
         description=(
@@ -708,8 +719,9 @@ class PartInfo(BaseModel):
         default=None,
         description="The family that turns the part's shape into geometry; null without a shape.",
     )
-    width: int | None = Field(default=None, description="Studs along the part's local x axis.")
-    length: int | None = Field(default=None, description="Studs along the part's local y axis.")
+    footprint: tuple[int, int] | None = Field(
+        default=None, description="Studs along x, then along y, when the part is unrotated."
+    )
     height: float | None = Field(default=None, description="Body height in plates.")
     studs: int | None = Field(default=None, description="Number of studs, on top and on sides.")
     note: str = Field(
@@ -728,24 +740,33 @@ class PartsResult(BaseModel):
 
     def describe(self) -> str:
         """Return the result as a table, with each part's note under it."""
-        id_width = max((len(part.id) for part in self.parts), default=0)
-        name_width = max((len(part.name) for part in self.parts), default=0)
-        family_width = max((len(part.family or "") for part in self.parts), default=0)
-        rows = []
+        table: list[tuple[list[str], str]] = []
         for part in self.parts:
             if part.family is None:
-                rows.append(
-                    f"{part.id:<{id_width}}  {part.name:<{name_width}}  no shape: cannot be placed"
-                )
+                table.append(([part.id, part.name, "no shape: cannot be placed"], ""))
                 continue
-            rows.append(
-                f"{part.id:<{id_width}}  {part.name:<{name_width}}  "
-                f"{part.family:<{family_width}}  {part.width}x{part.length}  "
-                f"{_count(part.height or 0, 'plate')}  {_count(part.studs or 0, 'stud')}"
-            )
-            if part.note:
-                rows.append(f"{'':<{id_width + 2}}{part.note}")
-        rows.append(f"{len(self.parts)} of {self.total} matching parts")
+            x, y = part.footprint or (0, 0)
+            cells = [
+                part.id,
+                part.name,
+                part.family,
+                f"{x} x {y}",
+                _count(part.height or 0, "plate"),
+                _count(part.studs or 0, "stud"),
+            ]
+            table.append((cells, part.note))
+        header = ["id", "name", "family", "x by y", "height", "studs"]
+        widths = [
+            max([len(title), *(len(cells[i]) for cells, _ in table if len(cells) > i)])
+            for i, title in enumerate(header)
+        ]
+        rows = [_row(header, widths)] if table else []
+        for cells, note in table:
+            rows.append(_row(cells, widths))
+            if note:
+                rows.append(" " * (widths[0] + 2) + note)
+        shown = f"{len(self.parts)} of {self.total:,} matching parts"
+        rows.append(shown + ("; --limit shows more" if len(self.parts) < self.total else ""))
         return "\n".join(rows)
 
 
@@ -762,7 +783,9 @@ class ColorsRequest(BaseModel):
     """Search the catalog's colors."""
 
     query: CliPositionalArg[str] = Field(
-        default="", description="Words to match against ids, names and types, such as 'gray'."
+        default="",
+        description="Words to match against ids, names and types, such as 'gray', or an RGB "
+        "value, such as '#F2CD37', to list the nearest colors.",
     )
 
 
@@ -987,8 +1010,9 @@ class CatalogShowResult(BaseModel):
         if info.family is None:
             lines.append("shape: none, so it cannot be placed")
         else:
+            x, y = info.footprint or (0, 0)
             lines.append(
-                f"shape: {info.family}, {info.width} x {info.length} studs, "
+                f"shape: {info.family}, {x} x {y} studs (x by y, unrotated), "
                 f"{_count(info.height or 0, 'plate')} tall, {_count(info.studs or 0, 'stud')}, "
                 f"{_count(self.anti_studs or 0, 'anti-stud')}"
             )
@@ -1210,12 +1234,10 @@ def _part_info(catalog: Catalog, entry: CatalogPart) -> PartInfo:
     part = catalog.part(entry.id)
     if part is None:
         return info
-    width, length = part.footprint
     return info.model_copy(
         update={
             "family": part.family,
-            "width": width,
-            "length": length,
+            "footprint": part.footprint,
             "height": to_plates(part.size.z),
             "studs": part.stud_count,
             "note": part.note,
@@ -1276,12 +1298,27 @@ def _describe_images(images: Sequence[Image]) -> list[str]:
     return ["rendered (open the images to see the model):\n" + "\n".join(lines)]
 
 
+def _row(cells: Sequence[str], widths: Sequence[int]) -> str:
+    """A table row: each cell padded to its column's width, the last left as it is."""
+    padded = [cell.ljust(width) for cell, width in zip(cells[:-1], widths, strict=False)]
+    return "  ".join([*padded, cells[-1]])
+
+
+def _size(model: Model, catalog: Catalog) -> tuple[float, float, float] | None:
+    """The size of a model's bodies, in studs, studs and plates."""
+    elements = build_world(model, catalog).elements
+    if not elements:
+        return None
+    size = Box.bounding(element.bounds for element in elements).size
+    return to_studs(size.x), to_studs(size.y), to_plates(size.z)
+
+
 def _describe_timings(seconds: Timings) -> str:
     stages = [
         f"{name} {value:.2f} s"
         for name, value in (
             ("script", seconds.script),
-            ("compare", seconds.compare),
+            ("changes", seconds.changes),
             ("check", seconds.check),
             ("render", seconds.render),
         )

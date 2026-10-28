@@ -208,14 +208,15 @@ def _round(shape: RoundShape) -> Geometry:
 def _side_studs(shape: SideStudsShape) -> Geometry:
     """A brick with studs on top, anti-studs underneath, and studs on the faces its shape names.
 
-    Side studs sit halfway up the face, one per stud position along it, so a plate rotated on its
-    side to grip them lines up with the stud grid along the face.
+    Side studs sit half a stud below the top, one per stud position along the face, so a plate
+    rotated on its side to grip them lines up with the stud grid along the face and ends flush with
+    the brick's top.
     """
     width, length = shape.size
     height = shape.height * PLATE
     grid = _positions(width, length)
     connectors = _anti_studs(grid) + _studs(grid, height)
-    middle = height // 2
+    middle = height - STUD // 2
     for side in shape.sides:
         normal = AXES[side]
         if side in {"-y", "+y"}:

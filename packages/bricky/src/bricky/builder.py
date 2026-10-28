@@ -12,7 +12,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final
 
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 from bricky.catalog import Catalog, default_catalog
 from bricky.geometry import ORIGIN, Box, Pose, Rotation, Vector
@@ -107,7 +107,11 @@ class _Scope:
     def claim(self, id: str | None, prefix: str) -> str:
         """Claim an id in this scope: the given one, or the next free one with the prefix."""
         if id is not None:
-            _IDENTIFIER.validate_python(id)
+            try:
+                _IDENTIFIER.validate_python(id)
+            except ValidationError:
+                message = f"id {id!r} holds characters other than letters, digits, '.', '_' and '-'"
+                raise ValueError(message) from None
             if id in self.ids:
                 message = f"id {id!r} is already used in {self.label}"
                 raise ValueError(message)

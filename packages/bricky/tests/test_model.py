@@ -155,7 +155,7 @@ def test_unknown_empty_and_cyclic_components_fail_when_built():
 
 def test_invalid_names_are_rejected_without_using_up_the_id():
     builder = ModelBuilder()
-    with pytest.raises(ValueError, match="pattern"):
+    with pytest.raises(ValueError, match="holds characters other than"):
         builder.place("3001", at=(0, 0, 0), color="Red", id="two words")
     with pytest.raises(ValueError, match="unknown color"):
         builder.place("3001", at=(0, 0, 0), color="Mauve", id="first")
