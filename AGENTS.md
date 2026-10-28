@@ -6,13 +6,13 @@ bricky is a compiler-style toolkit that lets AI agents design buildable LEGO® m
 ## Commands
 
 ```sh
-uv sync                              # install Python 3.15 and every tool from uv.lock
-uv run playwright install chromium   # the browser renders draw in, once per machine
-uv run pytest                        # tests; warnings are errors
-uv run ruff format                   # format
-uv run ruff check                    # lint, with every rule enabled
-uv run ty check                      # types
-uv run rumdl check .                 # Markdown
+uv sync                             # install Python 3.15 and every tool from uv.lock
+uv run playwright install chromium  # the browser renders draw in, once per machine
+uv run pytest                       # tests; warnings are errors
+uv run ruff format                  # format
+uv run ruff check                   # lint, with every rule enabled
+uv run ty check                     # types
+uv run rumdl check .                # Markdown
 ```
 
 A change is done when all five checks pass.

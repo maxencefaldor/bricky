@@ -20,10 +20,10 @@ Seven have a reference model the agent never sees, and are scored against it; th
 ## Running it
 
 ```sh
-uv run bricky-bench list                     # the projects and their inputs
-uv run bricky-bench run --project 1          # run one project with Claude Code
+uv run bricky-bench list              # the projects and their inputs
+uv run bricky-bench run --project 1   # run one project with Claude Code
 uv run bricky-bench run --repeats 3 --jobs 2 # every project three times, two at a time
-uv run bricky-bench run --model opus         # choose Claude Code's model
+uv run bricky-bench run --model opus  # choose Claude Code's model
 ```
 
 Run from the repository root.

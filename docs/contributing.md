@@ -12,8 +12,8 @@ uv run ruff format && uv run ruff check && uv run ty check && uv run rumdl check
 The docs build with [Zensical](https://zensical.org), and their pictures come from bricky itself:
 
 ```sh
-uv run python docs/illustrate.py   # draw every picture into docs/images
-uv run zensical serve              # preview the site at http://localhost:8000
+uv run python docs/illustrate.py  # draw every picture into docs/images
+uv run zensical serve             # preview the site at http://localhost:8000
 ```
 
 --8<-- "AGENTS.md:3:"

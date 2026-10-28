@@ -36,10 +36,11 @@ BrickLink's catalog downloads come from <https://www.bricklink.com/catalogDownlo
 The LDraw library is the unzipped `complete.zip` from library.ldraw.org.
 
 ```sh
-uv run bricky catalog import --bricklink ~/bricklink --ldraw ~/ldraw   # either, or both
-uv run bricky catalog status               # which catalog is in use, and what it holds
-uv run bricky catalog show 3001 --render   # one part: its facts, its shape and a picture
-uv run bricky catalog verify               # generate every shaped part's geometry and check it
+# Import either source, or both.
+uv run bricky catalog import --bricklink ~/bricklink --ldraw ~/ldraw
+uv run bricky catalog status              # the catalog in use, and what it holds
+uv run bricky catalog show 3001 --render  # one part: its facts, its shape and a picture
+uv run bricky catalog verify              # generate and check every shaped part
 ```
 
 The import writes `catalog.json` to bricky's data folder, outside any repository, and bricky uses it from then on.

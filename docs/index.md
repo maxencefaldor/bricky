@@ -104,7 +104,7 @@ bricky needs [uv](https://docs.astral.sh/uv/), which installs Python 3.15 and ev
 git clone https://github.com/maxencefaldor/bricky
 cd bricky
 uv sync
-uv run playwright install chromium   # the browser renders draw in, once per machine
+uv run playwright install chromium  # the browser renders draw in, once per machine
 uv run bricky build examples/cottage.py
 ```
 

@@ -17,9 +17,9 @@ bricky never fixes a model; deciding what to change stays the agent's job.
 git clone https://github.com/maxencefaldor/bricky
 cd bricky
 uv sync
-uv run playwright install chromium            # the browser renders draw in, once per machine
-uv run bricky build examples/cottage.py       # 0 errors, and examples/cottage.png
-uv run bricky build examples/broken.py        # one mistake of each kind
+uv run playwright install chromium       # the browser renders draw in, once per machine
+uv run bricky build examples/cottage.py  # 0 errors, and examples/cottage.png
+uv run bricky build examples/broken.py   # one mistake of each kind
 ```
 
 A build script places parts by BrickLink id, in studs and plates:
