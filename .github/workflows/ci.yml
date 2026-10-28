@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,25 +13,105 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  UV_LOCKED: "1"
+  FORCE_COLOR: "1"
+
 jobs:
-  check:
+  lint:
+    name: Format, lint, types and Markdown
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - name: Install
-        run: uv sync --locked
-      - name: Browser for renders
-        run: uv run playwright install --with-deps chromium
+        run: uv sync
       - name: Format
         run: uv run ruff format --check
       - name: Lint
-        run: uv run ruff check
+        run: uv run ruff check --output-format=github
       - name: Types
         run: uv run ty check
       - name: Markdown
         run: uv run rumdl check .
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install
+        run: uv sync
+      - name: Cache the browser renders draw in
+        id: browser
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+      - name: Install the browser
+        if: steps.browser.outputs.cache-hit != 'true'
+        run: uv run playwright install --with-deps chromium
+      - name: Install the browser's system libraries
+        if: steps.browser.outputs.cache-hit == 'true'
+        run: uv run playwright install-deps chromium
       - name: Tests
         run: uv run pytest
+
+  examples:
+    name: Examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install
+        run: uv sync
+      - name: Install the browser
+        run: uv run playwright install --with-deps chromium
+      - name: Build every example
+        run: |
+          for script in examples/*.py; do
+            uv run bricky build "$script" || [ "$script" = examples/broken.py ]
+          done
+      - name: Keep the models and their pictures
+        uses: actions/upload-artifact@v7
+        with:
+          name: examples
+          path: |
+            examples/*.png
+            examples/*.bricky.json
+            examples/*.bricky.map.json
+          if-no-files-found: error
+
+  packages:
+    name: Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Build sdists and wheels
+        run: uv build --all-packages
+      - name: Install the wheels in a fresh environment
+        run: |
+          uv venv --python 3.15 /tmp/fresh
+          uv pip install --python /tmp/fresh dist/*.whl
+          /tmp/fresh/bin/bricky --help
+          /tmp/fresh/bin/bricky parts "brick 2x4"
+      - name: Keep the packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: dist/
+          if-no-files-found: error

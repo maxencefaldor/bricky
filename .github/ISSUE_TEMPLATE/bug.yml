@@ -1,0 +1,30 @@
+name: Bug
+description: bricky reports something false, misses a fact, or fails.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command or tool call, and what bricky printed or drew.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What is true instead
+      description: The fact bricky should have reported, with the parts involved.
+    validations:
+      required: true
+  - type: textarea
+    id: script
+    attributes:
+      label: Build script
+      description: The smallest build script that shows the problem.
+      render: python
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The commit or release, and the catalog in use (`bricky catalog status`).

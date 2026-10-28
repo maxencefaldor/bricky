@@ -1,0 +1,16 @@
+name: Feature
+description: A part family, a check, a view, or anything else bricky should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What an agent needs
+      description: The model or the situation, and what bricky should report or draw.
+    validations:
+      required: true
+  - type: textarea
+    id: parts
+    attributes:
+      label: Parts involved
+      description: BrickLink ids of the parts, if any.

@@ -17,6 +17,7 @@ dev = [
   "ruff>=0.17",
   "ty>=0.0.92",
 ]
+docs = ["mkdocstrings-python>=2", "zensical>=0.0.73"]
 
 [tool.ruff]
 line-length = 100
@@ -39,6 +40,7 @@ ignore = [
 "examples/**" = ["C901", "D103", "FBT001", "INP001", "PLR0911", "PLR0913", "PLR0917", "PLR2004", "T201"]
 "bench/**" = ["C901", "D103", "FBT001", "INP001", "PLR0911", "PLR0913", "PLR0917", "PLR2004", "T201"]
 "packages/*/src/*/cli.py" = ["T201"] # a command line prints
+"docs/*.py" = ["INP001", "T201"]       # scripts that write the docs, and say what they wrote
 
 [tool.ruff.lint.flake8-builtins]
 # "id" is the vocabulary word for identifiers, in models, catalogs and the builder's arguments.
@@ -59,3 +61,7 @@ xfail_strict = true
 
 [tool.rumdl]
 line-length = 100
+flavor = "mkdocs"
+
+[tool.rumdl.MD033]
+allowed-elements = ["div"]

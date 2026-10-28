@@ -17,3 +17,9 @@ models/*.html
 
 # What benchmark runs write
 bench/runs/
+
+# Worktrees of parallel agents
+.claude/worktrees/
+
+# The docs site zensical builds
+site/

@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+title: bricky
+message: If you use bricky, please cite it as below.
+type: software
+authors:
+  - family-names: Faldor
+    given-names: Maxence
+repository-code: https://github.com/maxencefaldor/bricky
+url: https://maxencefaldor.github.io/bricky/
+abstract: A compiler-style toolkit that lets AI agents design buildable LEGO® models.
+keywords:
+  - AI agents
+  - LEGO
+  - design
+  - geometry
+  - Model Context Protocol
+license: Apache-2.0
