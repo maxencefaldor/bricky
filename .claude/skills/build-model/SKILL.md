@@ -36,6 +36,8 @@ def build() -> ModelBuilder:
 
 - `at=(x, y, z)`: x east and y north in studs, z up in plates. It is the minimum corner of the
   rotated bounding box of what you place, a part or a whole component.
+- Sizes read x by y when a part is unrotated: Brick 2 x 4 (`3001`) is 2 studs along x and 4 along
+  y, and `R90` makes it 4 along x. `bricky parts` and `bricky catalog show` print sizes that way.
 - `rotation`: `R0`, `R90`, `R180` or `R270` about the vertical axis. Any of the 24 grid rotations
   can be named by where the part's x and y axes go: `+x+z` stands a part up with its top facing -y.
 - Parts that face a way say so in `uv run bricky parts slope`: unrotated, slopes fall toward -y
@@ -48,13 +50,15 @@ def build() -> ModelBuilder:
   `builder.instance(...)` for identical groups.
 - `uv run bricky catalog show 3001 --render` describes one part and draws it. Parts the catalog
   lists without a shape cannot be placed; `bricky parts` lists only parts that can be.
-- Find parts with `uv run bricky parts "plate 2x4"`, or from Python with
-  `builder.catalog.find(family="plate", size=(1, 6))`. List colors with
-  `uv run bricky colors gray`; names follow BrickLink, such as `Dark Bluish Gray`.
-- Give important parts an `id=`; the report and the pictures label parts by id.
+- Find parts with `uv run bricky parts "plate 2x4"` (20 at a time; `--limit 100` lists more), or
+  from Python with `builder.catalog.find(family="plate", size=(1, 6))`. List colors with
+  `uv run bricky colors gray`, or the nearest to an RGB value with `uv run bricky colors "#F2CD37"`;
+  names follow BrickLink, such as `Dark Bluish Gray`.
+- Give important parts an `id=` of letters, digits, `.`, `_` and `-`; the report and the pictures
+  label elements by id.
 - To compare with a target (a plan, layers or another model), `from bricky import voxels`:
   `voxels(builder.build())` maps every filled voxel `(x, y, z)`, in studs, studs and plates, to the
-  element and color that fill it.
+  element's uid and its color id; `builder.catalog.resolve_color("Red").id` gives a name's id.
 - `print()` freely: the build shows what the script printed.
 
 ## Reading the feedback

@@ -14,6 +14,7 @@ import re
 import tomllib
 from collections import Counter
 from collections.abc import Iterable, Mapping
+from difflib import get_close_matches
 from functools import cache
 from importlib.resources import files
 from pathlib import Path
@@ -216,7 +217,11 @@ class Catalog:
         else:
             color = self._color_names.get(value.casefold())
         if color is None:
-            message = f"unknown color {value!r}: `bricky colors <words>` searches the catalog"
+            message = f"unknown color {value!r}"
+            names = [color.name for color in self._colors.values()]
+            if similar := get_close_matches(str(value), names, n=3, cutoff=0.6):
+                message += f"; similar names: {', '.join(similar)}"
+            message += "; `bricky colors <words>` searches the catalog"
             raise ValueError(message)
         return color
 
@@ -249,7 +254,20 @@ class Catalog:
         return plain + printed
 
     def search_colors(self, query: str = "") -> list[Color]:
-        """Return the colors whose id, name and type together contain every word of a query."""
+        """Return the colors whose id, name and type together contain every word of a query.
+
+        A query that is an RGB value, such as ``#F2CD37``, returns the colors nearest to it
+        instead, nearest first.
+        """
+        if _RGB.fullmatch(query.strip()):
+            target = _channels(query.strip())
+            ranked = sorted(
+                self._colors.values(),
+                key=lambda color: sum(
+                    (a - b) ** 2 for a, b in zip(_channels(color.rgb), target, strict=True)
+                ),
+            )
+            return ranked[:_NEAREST_COLORS]
         words = query.casefold().split()
         return [
             color
@@ -340,8 +358,16 @@ def default_catalog() -> Catalog:
     return load_catalog(catalog_path())
 
 
+_RGB: Final = re.compile(r"#?[0-9A-Fa-f]{6}")
+_NEAREST_COLORS: Final = 5
 _SIZE: Final = re.compile(r"(\d+)\s*x\s*(\d+)")
 _SIZE_WORD: Final = re.compile(r"(\d+)x(\d+)")
+
+
+def _channels(rgb: str) -> tuple[int, int, int]:
+    """The red, green and blue channels of an RGB value such as ``#F2CD37``."""
+    digits = rgb.removeprefix("#")
+    return int(digits[0:2], 16), int(digits[2:4], 16), int(digits[4:6], 16)
 
 
 def _raw(entry: CatalogPart | Mapping[str, Any], field: str) -> str:

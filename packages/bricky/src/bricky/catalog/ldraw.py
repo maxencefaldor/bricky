@@ -72,6 +72,7 @@ _JITTER: Final = np.array([0.0137, 0.0071, 0.0193])
 """An offset that moves the samples off the grid lines that the surface's edges run along."""
 
 _STUD: Final = 20
+_STUD_HEIGHT: Final = 4.0
 _HALF_STUD: Final = 10
 _FLAT: Final = 1e-9
 """Triangles whose shadow on a ray's plane is smaller than this have no inside to cross."""
@@ -221,8 +222,12 @@ class Library:
         matrix, offset = _transform(fields[2:14])
         name = " ".join(fields[14:]).replace("\\", "/").casefold()
         if name.rsplit("/", 1)[-1] in STUD_PRIMITIVES:
+            # A stud primitive is 4 units tall, its top at y = -4. A stretched one sinks its base
+            # into the part, so the stud's base is 4 units below its top, wherever the top lands.
             up = matrix @ np.array([0.0, -1.0, 0.0])
-            studs.append(np.array([[offset, up / np.linalg.norm(up)]]))
+            up /= np.linalg.norm(up)
+            top = matrix @ np.array([0.0, -_STUD_HEIGHT, 0.0]) + offset
+            studs.append(np.array([[top - _STUD_HEIGHT * up, up]]))
             return
         child = self._flatten(name, chain)
         if len(child.triangles):

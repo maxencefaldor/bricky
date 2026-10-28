@@ -53,10 +53,11 @@ id, so the report and the pictures name it.
 uv run bricky build models/wall.py
 ```
 
-bricky runs the script in a process of its own, saves the model, checks it and draws it:
+bricky runs the script in a process of its own, saves the model, checks it and draws it. The
+first line gives the model's size; the rest states what is wrong:
 
 ```text
-saved models/wall.bricky.json (8 elements)
+saved models/wall.bricky.json: 8 elements, 8 x 1 studs, 13 plates tall
 
 error[E301]: 1 element floats: no chain of stud connections leads to the ground
   --> x 3..5  y 0..1  z 10..13
@@ -96,7 +97,7 @@ Lower the chimney onto the top course, at z = 9:
 Build again. The report now opens with what changed since the last build:
 
 ```text
-saved models/wall.bricky.json (8 elements)
+saved models/wall.bricky.json: 8 elements, 8 x 1 studs, 12 plates tall
 
 since the last build: 0 added, 0 removed, 1 changed, 7 unchanged
   voxels: 2 filled, 2 emptied, 0 recolored

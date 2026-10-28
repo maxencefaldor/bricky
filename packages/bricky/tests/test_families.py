@@ -33,9 +33,9 @@ def test_every_part_sits_in_its_box_with_connectors_on_its_faces(p):
         assert c.normal in AXES.values()
         if c.normal == UP:
             assert c.position.z == p.size.z
-        else:  # a side stud: on a vertical face, halfway up
+        else:  # a side stud: on a vertical face, half a stud below the top
             assert c.normal.z == 0
-            assert c.position.z == p.size.z // 2
+            assert c.position.z == p.size.z - STUD // 2
             face = {AXES["-x"]: 0, AXES["+x"]: p.size.x, AXES["-y"]: 0, AXES["+y"]: p.size.y}
             assert (c.position.x if c.normal.x else c.position.y) == face[c.normal]
 
@@ -74,7 +74,7 @@ def test_round_parts_are_round_inside_their_square():
 def test_side_studs_face_the_sides_they_name():
     brick = part("87087")  # Brick, Modified 1 x 1 with Stud on 1 Side
     side = [c for c in studs(brick) if c.normal != UP]
-    assert [(c.position.as_tuple(), c.normal) for c in side] == [((10, 0, 12), AXES["-y"])]
+    assert [(c.position.as_tuple(), c.normal) for c in side] == [((10, 0, 14), AXES["-y"])]
     assert len([c for c in studs(part("4733")) if c.normal != UP]) == 4
 
 
@@ -105,7 +105,7 @@ def test_new_parts_build_together_without_errors():
     builder.place("15573", at=(4, 0, 0), color="Tan")  # a jumper
     builder.place("3005", at=(4, 0.5, 1), color="Tan")  # a brick half a stud off the grid
     builder.place("87087", at=(7, 1, 0), color="Dark Bluish Gray")  # a stud facing -y at y 1
-    builder.place("3070b", at=(7, 0.6, 0.25), rotation="+x+z", color="Yellow")  # a tile gripping it
+    builder.place("3070b", at=(7, 0.6, 0.5), rotation="+x+z", color="Yellow")  # a tile gripping it
     report = check_model(builder.build())
     assert report.ok, [d.message for d in report.diagnostics]
 

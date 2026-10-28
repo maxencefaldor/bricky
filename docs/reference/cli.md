@@ -71,7 +71,7 @@ Search the catalog's colors.
 | Option | Default | Description |
 | --- | --- | --- |
 | `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
-| `QUERY` |  | Words to match against ids, names and types, such as 'gray'. |
+| `QUERY` |  | Words to match against ids, names and types, such as 'gray', or an RGB value, such as '#F2CD37', to list the nearest colors. |
 
 ## `bricky catalog import`
 
