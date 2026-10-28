@@ -12,9 +12,12 @@ Each source supplies what it knows best:
 
 An import without BrickLink's downloads takes the parts from LDraw alone, with LDraw's names, and
 the colors from the sample catalog. The import compares the two shapes of a part that has both a
-shape from its name and an LDraw file. The two agree for almost every part, which checks both. A
-disagreement means the name hides a detail that changes the part: the part then takes LDraw's
-shape, and the import reports the disagreement.
+shape from its name and an LDraw file. The two agree for almost every part, which checks both.
+
+The import reports every disagreement. Where LDraw's shape only lacks anti-studs that the name
+gives, the part keeps its name's shape: the conversion finds anti-studs by the room under a body
+on a 0.8 mm grid, which misses sockets under thin and curved bodies. Any other disagreement means
+the name hides a detail that changes the part, so the part takes LDraw's shape.
 """
 
 import re
@@ -73,7 +76,7 @@ class Coverage(BaseModel):
     )
     disagreements: tuple[str, ...] = Field(
         default=(),
-        description="Parts whose name and LDraw file disagree, and how; they take LDraw's shape.",
+        description="Parts whose name and LDraw file disagree, which shape each keeps, and how.",
     )
 
 
@@ -143,13 +146,17 @@ class _Shaping:
             return
         self.compared += 1
         difference = _difference(entry, entry.shape, converted)
-        if difference:
-            self.disagreements.append(f"{key} {entry.name}: {difference}")
-            rotation = _closest_rotation(entry, entry.shape, converted)
-            entries[key] = entry.model_copy(
-                update={"shape": converted.model_copy(update={"rotation": rotation})}
-            )
-            self.origin[key] = "LDraw"
+        if not difference:
+            return
+        if _lacks_anti_studs(entry, entry.shape, converted):
+            self.disagreements.append(f"{key} {entry.name} keeps its name's shape: {difference}")
+            return
+        self.disagreements.append(f"{key} {entry.name} takes LDraw's shape: {difference}")
+        rotation = _closest_rotation(entry, entry.shape, converted)
+        entries[key] = entry.model_copy(
+            update={"shape": converted.model_copy(update={"rotation": rotation})}
+        )
+        self.origin[key] = "LDraw"
 
     def coverage(
         self, catalog: CatalogFile, sources: list[str], skipped: tuple[str, ...]
@@ -220,6 +227,19 @@ def _difference(entry: CatalogPart, named: Shape, converted: Shape) -> str:
     facts = [_facts(a), _facts(b)]
     where = " in other places" if facts[0] == facts[1] else ""
     return f"its name gives {_describe(facts[0])}; LDraw gives {_describe(facts[1])}{where}"
+
+
+def _lacks_anti_studs(entry: CatalogPart, named: Shape, converted: Shape) -> bool:
+    """Whether LDraw's shape, in some rotation, is the name's with only some anti-studs missing."""
+    a, b = build_part(entry, named), build_part(entry, converted)
+    size, connectors = _placed(a, "R0")
+    for rotation in ALIASES:
+        rotated_size, rotated = _placed(b, rotation)
+        if rotated_size == size and rotated < connectors:
+            missing = connectors - rotated
+            if all(connector.kind is ConnectorKind.ANTI_STUD for connector in missing):
+                return True
+    return False
 
 
 def _closest_rotation(entry: CatalogPart, named: Shape, converted: BoxesShape) -> str:

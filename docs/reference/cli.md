@@ -101,7 +101,7 @@ Show one part.
 | `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
 | `PART` | required | BrickLink item number, such as '3001'. |
 | `--render`, `--no-render` | `False` | Also draw the part, in the first color it comes in. |
-| `--output` |  | Image file for the drawing; defaults to &lt;part&gt;.png in the current folder. |
+| `--output` |  | Image file for the drawing; defaults to &lt;part&gt;.png in bricky's cache folder, outside the workspace. |
 
 ## `bricky catalog verify`
 

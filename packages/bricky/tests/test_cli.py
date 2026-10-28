@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from bricky import ModelBuilder, save_model
+from bricky import ModelBuilder, save_model, service
 from bricky.cli import main
 
 TOWER = """
@@ -215,8 +215,8 @@ def test_shapes_come_from_ldraw_for_parts_no_name_describes(tmp_path, capsys, mo
     ldraw = str(DOWNLOADS.parent / "ldraw")
     assert run("catalog", "import", "--ldraw", ldraw, "--output", str(output)) == 0
     captured = capsys.readouterr()
-    assert "looked at 8 of 8 parts" in captured.err
-    assert "shapes by source: LDraw 5, printed 1" in captured.out
+    assert "looked at 9 of 9 parts" in captured.err
+    assert "shapes by source: LDraw 6, printed 1" in captured.out
     assert "encloses no volume: 1" in captured.out
     monkeypatch.setenv("BRICKY_CATALOG", str(output))
     assert run("catalog", "show", "4490") == 0
@@ -228,6 +228,28 @@ def test_shapes_come_from_ldraw_for_parts_no_name_describes(tmp_path, capsys, mo
     assert run("catalog", "verify") == 0
     assert run("catalog", "import") == 2
     assert "needs BrickLink's downloads, an LDraw library, or both" in capsys.readouterr().err
+
+
+def test_show_maps_a_sloped_top_and_draws_the_part_outside_the_workspace(
+    tmp_path, capsys, monkeypatch
+):
+    monkeypatch.setattr(service, "PART_PICTURES", tmp_path / "parts")
+    monkeypatch.chdir(tmp_path)
+    assert run("catalog", "show", "3039", "--render") == 0  # Slope 45 2 x 2
+    out = capsys.readouterr().out
+    assert "height over each square in plates, north up:\n       3    3\n    1.88 1.88\n" in out
+    assert (tmp_path / "parts" / "3039.png").is_file()
+    assert not (tmp_path / "3039.png").exists()
+    assert run("catalog", "show", "3001") == 0
+    assert "height over" not in capsys.readouterr().out
+
+
+def test_help_writes_choices_as_the_values_the_command_line_accepts(capsys):
+    assert run("render", "--help") == 0
+    out = capsys.readouterr().out
+    assert "--views list[{sheet,perspective,perspective-south-west," in out
+    assert "(default: [sheet])" in out
+    assert "View." not in out
 
 
 def test_parts_search(capsys):

@@ -18,6 +18,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Final, Self
 
+from platformdirs import user_cache_path
 from pydantic import BaseModel, Field, ValidationError
 from pydantic_settings import CliPositionalArg
 
@@ -50,7 +51,7 @@ from bricky.files import (
     save_source_map,
     write_file,
 )
-from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box
+from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Vector
 from bricky.model import Element, Model
 from bricky.passes import installed_codes, installed_passes
 from bricky.provenance import Provenance
@@ -76,6 +77,8 @@ _LISTED_CATEGORIES: Final = 25
 _LISTED_DISAGREEMENTS: Final = 40
 _FALLBACK_COLOR: Final = 86
 """Light Bluish Gray: the color `catalog show` draws a part in when the catalog lists none."""
+PART_PICTURES: Final = user_cache_path("bricky", appauthor=False) / "parts"
+"""Where `catalog show --render` draws parts unless told otherwise: out of every workspace."""
 
 
 class Session:
@@ -876,8 +879,7 @@ class CatalogImportResult(BaseModel):
             lines += [
                 "",
                 f"compared {coverage.compared:,} named shapes with LDraw: "
-                + _count(len(disagreements), "disagreement")
-                + (", which take LDraw's shape" if disagreements else ""),
+                + _count(len(disagreements), "disagreement"),
                 *(f"  {disagreement}" for disagreement in disagreements[:_LISTED_DISAGREEMENTS]),
             ]
             hidden = len(disagreements) - _LISTED_DISAGREEMENTS
@@ -987,7 +989,8 @@ class CatalogShowRequest(BaseModel):
     )
     output: Path | None = Field(
         default=None,
-        description="Image file for the drawing; defaults to <part>.png in the current folder.",
+        description="Image file for the drawing; defaults to <part>.png in bricky's cache folder, "
+        "outside the workspace.",
     )
 
 
@@ -1002,6 +1005,11 @@ class CatalogShowResult(BaseModel):
         default=(),
         description="Where the part's studs and anti-studs are, as text: maps of its top and its "
         "underside, north up, then the connectors off those maps.",
+    )
+    heights: tuple[str, ...] = Field(
+        default=(),
+        description="How tall the part stands over the center of each stud square, in plates, as "
+        "a map north up; empty when the top is flat.",
     )
     images: tuple[Image, ...] = ()
 
@@ -1025,6 +1033,7 @@ class CatalogShowResult(BaseModel):
             if info.note:
                 lines.append(f"  {info.note}")
             lines.extend(self.connectors)
+            lines.extend(self.heights)
         if self.colors:
             lines.append(f"colors ({len(self.colors)}): {', '.join(self.colors)}")
         lines.extend(_describe_images(self.images))
@@ -1053,7 +1062,8 @@ async def catalog_show(request: CatalogShowRequest, session: Session) -> Catalog
             raise BrickyError(message)
         color = next(iter(entry.colors), _FALLBACK_COLOR)
         model = Model(name=entry.id, elements=(Element(id=entry.id, part=entry.id, color=color),))
-        path = request.output or Path(f"{entry.id}.png")
+        path = request.output or PART_PICTURES / f"{entry.id}.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
         images = await _render(
             session, model, provenance=None, report=None, views=[View.SHEET], paths=[path]
         )
@@ -1065,6 +1075,7 @@ async def catalog_show(request: CatalogShowRequest, session: Session) -> Catalog
         if part is None
         else sum(connector.kind is ConnectorKind.ANTI_STUD for connector in part.connectors),
         connectors=() if part is None else _connector_maps(part),
+        heights=() if part is None else _heights(part),
         images=images,
     )
 
@@ -1106,6 +1117,31 @@ def _connector_maps(part: Part) -> tuple[str, ...]:
     if others:
         lines += ["other connectors:", *others]
     return tuple(lines)
+
+
+def _heights(part: Part) -> tuple[str, ...]:
+    """A map of how tall a part stands over each stud square's center, north up; empty if flat."""
+    width, length = part.footprint
+
+    def top(x: int, y: int) -> int:
+        center = Vector(x * STUD + STUD // 2, y * STUD + STUD // 2, 0)
+        return next(
+            (
+                z + 1
+                for z in reversed(range(part.size.z))
+                if any(solid.contains(Vector(center.x, center.y, z)) for solid in part.solids)
+            ),
+            0,
+        )
+
+    tops = [[f"{to_plates(top(x, y)):.3g}" for x in range(width)] for y in reversed(range(length))]
+    if all(cell == tops[0][0] for row in tops for cell in row):
+        return ()
+    span = max(len(cell) for row in tops for cell in row)
+    return (
+        "height over each square in plates, north up:",
+        *("    " + " ".join(cell.rjust(span) for cell in row) for row in tops),
+    )
 
 
 class CatalogVerifyRequest(BaseModel):
