@@ -1,11 +1,11 @@
-"""Geometry generators for part families.
+"""The families: generators that convert a part's shape into its solids and connectors.
 
-A family converts a part's shape, a few numbers from the catalog, into the part's solids and
-connectors, so many parts share one tested definition. Every generator places the part's bounding
-box with its minimum corner at the origin, and works in exact base units (see :mod:`bricky.units`).
+A shape holds a few numbers from the catalog, and its family converts them into geometry, so many
+parts share one tested definition. Every generator works in exact base units (see
+:mod:`bricky.units`) and puts the minimum corner of the part's bounding box at the origin.
 
-Shapes that are not boxes are convex solids with integer corners. Curved surfaces are drawn as a
-few flat facets, chosen so the corners stay on the grid: close to the real part, and exact.
+A body that is not a box is a union of convex solids with integer corners. A few flat facets draw
+each curved surface, with their corners on the grid: close to the real part, and exact.
 """
 
 from collections.abc import Iterable, Sequence
@@ -116,7 +116,7 @@ def _anti_studs(positions: Iterable[tuple[int, int]]) -> list[Connector]:
 
 
 def _block(shape: BlockShape) -> Geometry:
-    """A box with anti-studs under every stud position, and studs on top unless it is a tile."""
+    """A box with anti-studs under every stud position, and studs on top except on a tile."""
     width, length = shape.size
     height = (shape.height or BLOCK_HEIGHTS[Family(shape.family)]) * PLATE
     grid = _positions(width, length)
@@ -127,7 +127,7 @@ def _block(shape: BlockShape) -> Geometry:
 
 
 def _baseplate(shape: BaseplateShape) -> Geometry:
-    """A thin box with studs on top and a flat underside that grips nothing."""
+    """A thin box with studs on top and a flat underside."""
     width, length = shape.size
     body = Box(ORIGIN, Vector(width * STUD, length * STUD, BASEPLATE_HEIGHT))
     note = "half a plate thick: parts standing on it start at z = 0.5"
@@ -153,7 +153,7 @@ def _slope(shape: SlopeShape) -> Geometry:
 
 
 def _inverted_slope(shape: InvertedSlopeShape) -> Geometry:
-    """A slope underneath: flat bottom at the back, the underside rising to the front (y = 0)."""
+    """A slope underneath: a flat bottom at the back, the underside rising to the front (y = 0)."""
     width, length = shape.size
     run = min(shape.run, length - 1)
     height = shape.height * PLATE
@@ -163,15 +163,15 @@ def _inverted_slope(shape: InvertedSlopeShape) -> Geometry:
     body = Convex.prism(profile, "x", 0, width * STUD)
     connectors = _studs(_positions(width, length), height)
     connectors += _anti_studs(_positions(width, length, range(run, length)))
-    return [body], connectors, "its underside rises toward -y (the front) when unrotated"
+    return [body], connectors, "the underside rises toward -y (the front) when unrotated"
 
 
 def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
-    """A smooth top curving down from the back to a low lip at the front (y = 0), no studs.
+    """A smooth top curving down from the back to a low lip at the front (y = 0), without studs.
 
     The curve is a quarter ellipse, flat at the back and steep at the front, drawn as a few facets
-    with corners on whole base units. Under the front row the part is too low for a stud, so a
-    curved slope longer than one stud has anti-studs under every row but that one.
+    with corners on whole base units. The front row stands too low for a stud underneath, so a
+    curved slope longer than one stud has anti-studs under every row except the front one.
     """
     width, length = shape.size
     height = shape.height * PLATE
@@ -189,7 +189,7 @@ def _curved_slope(shape: CurvedSlopeShape) -> Geometry:
 
 
 def _round(shape: RoundShape) -> Geometry:
-    """A cylinder filling a square footprint, drawn as a regular polygon with integer corners."""
+    """A cylinder filling a square footprint, drawn as a near-regular polygon on the grid."""
     width, length = shape.size
     radius = width * STUD // 2
     height = shape.height * PLATE
@@ -207,10 +207,10 @@ def _round(shape: RoundShape) -> Geometry:
 
 
 def _side_studs(shape: SideStudsShape) -> Geometry:
-    """A brick with studs on top, anti-studs underneath, and studs on the faces it names.
+    """A brick with studs on top, anti-studs underneath, and studs on the faces its shape names.
 
-    Side studs sit at the middle of the face's height, one per stud position along it, so a
-    plate rotated on its side to grip them lines up with the stud grid.
+    Side studs sit halfway up the face, one per stud position along it, so a plate rotated on its
+    side to grip them lines up with the stud grid along the face.
     """
     width, length = shape.size
     height = shape.height * PLATE
@@ -244,8 +244,8 @@ def _jumper(shape: JumperShape) -> Geometry:
 def _arch(shape: ArchShape) -> Geometry:
     """An arch along y: a leg at each end and an opening under a half-ellipse between them.
 
-    The opening rises to one plate below the top. The body over it is cut into convex slices, one
-    per facet of the curve.
+    The opening rises to one plate below the top. Convex slices, one per facet of the curve, form
+    the body over it.
     """
     width, length = shape.size
     height = shape.height * PLATE
@@ -265,7 +265,7 @@ def _arch(shape: ArchShape) -> Geometry:
         Box(Vector(0, end, 0), Vector(thickness, length * STUD, height)),
     ]
     for (y0, z0), (y1, z1) in pairwise(curve):
-        if y0 == y1:  # a steep facet beside a leg: no body between it and the leg
+        if y0 == y1:  # a vertical facet beside a leg: no body lies between it and the leg
             continue
         slice_ = [(y0, z0), (y1, z1), (y1, height), (y0, height)]
         solids.append(Convex.prism(slice_, "x", 0, thickness))
@@ -276,7 +276,7 @@ def _arch(shape: ArchShape) -> Geometry:
 
 
 def _boxes(shape: BoxesShape) -> Geometry:
-    """A body of boxes, with studs and anti-studs where the shape says."""
+    """A body of boxes, with studs and anti-studs where the shape lists them."""
     solids = [Box(Vector(x0, y0, z0), Vector(x1, y1, z1)) for x0, y0, z0, x1, y1, z1 in shape.boxes]
     connectors = _anti_studs(shape.anti_studs)
     connectors += [
@@ -286,7 +286,10 @@ def _boxes(shape: BoxesShape) -> Geometry:
 
 
 def _distinct(points: Sequence[tuple[int, int]]) -> Profile:
-    """Drop points that repeat the one before, which rounding can produce."""
+    """Drop each point that repeats the one before it, and a last point that repeats the first.
+
+    Rounding to the grid can make neighboring points equal.
+    """
     kept: Profile = []
     for point in points:
         if not kept or kept[-1] != point:

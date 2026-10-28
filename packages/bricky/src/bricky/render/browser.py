@@ -18,25 +18,25 @@ from bricky.errors import BrickyError
 from bricky.render.scene import Scene, View
 
 ORIGIN: Final = "https://bricky.invalid/"
-"""Private origin the page is served from; the ``.invalid`` domain never resolves."""
+"""The private origin the renderer serves its page from; the ``.invalid`` domain never resolves."""
 
 _TYPES: Final = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8"}
-_LAUNCH_ARGS: Final = ("--enable-unsafe-swiftshader",)
+_LAUNCH_ARGUMENTS: Final = ("--enable-unsafe-swiftshader",)
 
 
 class Renderer:
     """Draws scenes with three.js in headless Chromium.
 
-    Launching the browser and compiling shaders are the slow parts, so a renderer keeps one page
-    open and reuses it for every render. Start a renderer once and reuse it, as an async context
-    manager or with :meth:`start` and :meth:`close`. Renders on one renderer run one at a time.
+    Launching the browser and compiling shaders take the most time, so a renderer keeps one page
+    open for every render. A renderer starts once and serves many renders, as an async context
+    manager or through :meth:`start` and :meth:`close`. Renders on one renderer run one at a time.
     """
 
     def __init__(self, browser: Path | None = None) -> None:
         """Create a renderer.
 
         Args:
-            browser: Chromium executable to use; Playwright's own browser when ``None``.
+            browser: The Chromium executable to use; Playwright's own browser when ``None``.
         """
         self._executable = browser
         self._playwright: Playwright | None = None
@@ -63,7 +63,7 @@ class Renderer:
         playwright = await async_playwright().start()
         try:
             self._browser = await playwright.chromium.launch(
-                executable_path=self._executable, args=list(_LAUNCH_ARGS)
+                executable_path=self._executable, args=list(_LAUNCH_ARGUMENTS)
             )
         except PlaywrightError as error:
             await playwright.stop()
@@ -106,7 +106,7 @@ class Renderer:
                     )
                     images.append(await page.locator("#sheet").screenshot(type="png"))
             except PlaywrightError as error:
-                # A page that failed once is not trusted again.
+                # The renderer discards a page that failed once.
                 await page.close()
                 self._page = None
                 detail = "; ".join(self._problems) or str(error).strip().splitlines()[0]
