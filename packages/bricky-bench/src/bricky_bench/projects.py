@@ -4,10 +4,11 @@ Each project is a folder under ``bench/projects``, named ``NN-name``:
 
 - ``project.toml``: the title, difficulty (1 to 10), prompt and budget, and any inputs to generate
   from the reference (see :class:`ProjectFile`).
-- ``inputs/``: everything the agent is given besides the prompt: pictures, descriptions,
+- ``inputs/``: everything the agent receives besides the prompt: pictures, descriptions,
   blueprints, scripts. The runner copies this folder into the agent's workspace.
-- ``reference.py``: optional. A build script for the model the project asks for. The agent never
-  sees it; a project with a reference is scored by comparing voxels (see :mod:`bricky_bench.score`).
+- ``reference.py``, optional: a build script for the model the project asks for. The agent never
+  sees the reference. The runner scores a project with a reference by comparing voxels (see
+  :mod:`bricky_bench.score`).
 """
 
 import tomllib
@@ -25,11 +26,13 @@ REFERENCE_FILE: Final = "reference.py"
 INPUTS_DIR: Final = "inputs"
 
 
-class _Spec(BaseModel):
+class _FileModel(BaseModel):
+    """A part of ``project.toml``: frozen, and rejecting keys it does not define."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
-class Render(_Spec):
+class Render(_FileModel):
     """A picture of the reference, drawn by bricky's renderer."""
 
     kind: Literal["render"]
@@ -44,7 +47,7 @@ class Render(_Spec):
     height: int = Field(default=1200, ge=200, le=4096)
 
 
-class Layers(_Spec):
+class Layers(_FileModel):
     """The reference's voxels as text: one plan per plate level, with a color legend."""
 
     kind: Literal["layers"]
@@ -57,7 +60,7 @@ class Layers(_Spec):
 type Generated = Annotated[Render | Layers, Field(discriminator="kind")]
 
 
-class ProjectFile(_Spec):
+class ProjectFile(_FileModel):
     """What ``project.toml`` holds."""
 
     title: str = Field(description="A short name, such as 'A brick wall'.")
@@ -116,21 +119,21 @@ def load_project(path: Path) -> Project:
     """
     file = path / PROJECT_FILE
     try:
-        spec = ProjectFile.model_validate(tomllib.loads(file.read_text(encoding="utf-8")))
+        project_file = ProjectFile.model_validate(tomllib.loads(file.read_text(encoding="utf-8")))
     except FileNotFoundError:
         message = f"{path} has no {PROJECT_FILE}"
         raise BrickyError(message) from None
     except (tomllib.TOMLDecodeError, ValidationError) as error:
         message = f"{file} is not a valid project file:\n{error}"
         raise BrickyError(message) from None
-    return Project(id=path.name, path=path, spec=spec)
+    return Project(id=path.name, path=path, spec=project_file)
 
 
 def load_projects(root: Path, wanted: tuple[str, ...] = ()) -> list[Project]:
     """Read every project under a folder, sorted by name, or just the wanted ones.
 
-    A wanted project may be named by its folder name or its number, so ``"4"`` and ``"04"`` both
-    find ``04-house-plans``.
+    A wanted name is a folder name or a project number, so ``"4"`` and ``"04"`` both find
+    ``04-house-plans``.
 
     Raises:
         BrickyError: If the folder holds no projects, or a wanted project is missing.
@@ -146,15 +149,16 @@ def load_projects(root: Path, wanted: tuple[str, ...] = ()) -> list[Project]:
         return projects
     chosen: list[Project] = []
     for name in wanted:
-        matches = [p for p in projects if _named(p, name)]
+        matches = [project for project in projects if _named(project, name)]
         if not matches:
-            known = ", ".join(p.id for p in projects)
+            known = ", ".join(project.id for project in projects)
             message = f"no project {name!r}; projects: {known}"
             raise BrickyError(message)
-        chosen.extend(m for m in matches if m not in chosen)
+        chosen.extend(match for match in matches if match not in chosen)
     return chosen
 
 
 def _named(project: Project, name: str) -> bool:
+    """Whether ``name`` is the project's folder name or its number."""
     number, _, _ = project.id.partition("-")
     return name == project.id or (name.isdigit() and number.isdigit() and int(name) == int(number))

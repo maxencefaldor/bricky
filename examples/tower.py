@@ -1,6 +1,6 @@
 """A 4 x 4 tower of interlocking 2 x 4 bricks, capped with tiles.
 
-Each level rotates the bricks a quarter turn, so every brick bridges the two below it.
+Each level rotates its bricks by 90 degrees, so every brick bridges the two below it.
 
 Run: ``uv run bricky build examples/tower.py``
 """

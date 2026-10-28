@@ -3,9 +3,9 @@
 Each run gets a fresh workspace in the system's temporary folder, outside the repository, so the
 agent cannot read the references. The workspace is a uv project that installs bricky from a wheel
 built for the run, with the build-model skill, the examples and the project's inputs. Claude Code
-runs there in print mode, within the project's turn and time budget. When it stops, the runner
-builds the agent's final script in the same workspace, exactly as the agent would, scores it, and
-keeps the workspace, the transcript and the score in the run folder.
+runs there in print mode, within the project's turn and time budget. When Claude Code stops, the
+runner builds the agent's final script in the same workspace, exactly as the agent would, scores
+it, and keeps the workspace, the transcript and the score in the run folder.
 """
 
 import asyncio
@@ -49,7 +49,7 @@ you like. When you stop, the last version of that file is your answer.
 
 _BUILD_MINUTES: Final = 10
 _STOP_GRACE_SECONDS: Final = 10
-_PINNED: Final = ("playwright", "pydantic", "pydantic-settings")
+_PINNED_PACKAGES: Final = ("playwright", "pydantic", "pydantic-settings")
 
 
 class Agent(BaseModel):
@@ -66,7 +66,7 @@ class Agent(BaseModel):
 
     def argv(self, prompt: str, max_turns: int) -> list[str]:
         """The command line that starts the agent on a prompt."""
-        argv = [
+        arguments = [
             *self.command,
             "-p",
             prompt,
@@ -84,14 +84,16 @@ class Agent(BaseModel):
             "--no-session-persistence",
         ]
         if self.model is not None:
-            argv += ["--model", self.model]
-        return argv
+            arguments += ["--model", self.model]
+        return arguments
 
 
 class AgentRun(BaseModel):
     """What the agent's process did."""
 
-    exit_code: int | None = Field(description="Exit code, or None if stopped at the time limit.")
+    exit_code: int | None = Field(
+        description="Exit code; null when the runner stopped the agent at its time limit."
+    )
     minutes: float
     turns: int | None = Field(default=None, description="Turns, from Claude Code's result event.")
     cost_usd: float | None = Field(default=None, description="Claude Code's own cost estimate.")
@@ -110,7 +112,7 @@ class Record(BaseModel):
     repeat: int
     started: datetime
     bricky: str = Field(default_factory=lambda: version("bricky"))
-    model: str | None = Field(description="The model the agent was asked to use, if any.")
+    model: str | None = Field(description="The model the runner asked the agent to use, if any.")
     agent: AgentRun
     score: Score
 
@@ -140,7 +142,8 @@ async def run_projects(  # noqa: PLR0913 - keyword-only options, one per concern
     """Run every project ``repeats`` times, at most ``jobs`` at once, and score each run.
 
     Raises:
-        BrickyError: If the repository lacks the skill or bricky's wheel cannot be built.
+        BrickyError: If the repository lacks the skill or the examples, a reference does not
+            build, or bricky's wheel fails to build.
     """
     for needed in (SKILL, EXAMPLES):
         if not (repository / needed).is_dir():
@@ -156,7 +159,7 @@ async def run_projects(  # noqa: PLR0913 - keyword-only options, one per concern
     with tempfile.TemporaryDirectory(prefix="bricky-bench-wheel-") as scratch:
         wheel = await build_wheel(repository, Path(scratch))
 
-        async def one(project: Project, repeat: int) -> Record:
+        async def run_one(project: Project, repeat: int) -> Record:
             async with gate:
                 return await run_project(
                     project,
@@ -171,7 +174,7 @@ async def run_projects(  # noqa: PLR0913 - keyword-only options, one per concern
 
         async with asyncio.TaskGroup() as group:
             tasks = [
-                group.create_task(one(project, repeat))
+                group.create_task(run_one(project, repeat))
                 for project in projects
                 for repeat in range(1, repeats + 1)
             ]
@@ -199,10 +202,12 @@ async def run_project(  # noqa: PLR0913 - keyword-only options, one per concern
             make_workspace, workspace, project, wheel=wheel, repository=repository
         )
         await _setup(workspace)
-        spec = project.spec
-        prompt = spec.prompt.strip() + footer(project)
+        project_file = project.spec
+        prompt = project_file.prompt.strip() + footer(project)
         done = await execute(
-            agent.argv(prompt, spec.max_turns), cwd=workspace, seconds=spec.minutes * 60
+            agent.argv(prompt, project_file.max_turns),
+            folder=workspace,
+            seconds=project_file.minutes * 60,
         )
         await asyncio.to_thread(write_file, output / "transcript.jsonl", done.stdout)
         await asyncio.to_thread(write_file, output / "agent.log", done.stderr)
@@ -236,10 +241,13 @@ def footer(project: Project) -> str:
 def make_workspace(workspace: Path, project: Project, *, wheel: Path, repository: Path) -> None:
     """Lay out a workspace: a uv project using bricky's wheel, the skill, examples and inputs.
 
-    Versions of bricky's own dependencies are pinned to the runner's, so renders find the same
-    Playwright browser.
+    The workspace pins bricky's own dependencies to the runner's versions, so renders find the
+    same Playwright browser.
     """
-    dependencies = [f"bricky @ {wheel.as_uri()}", *(f"{name}=={version(name)}" for name in _PINNED)]
+    dependencies = [
+        f"bricky @ {wheel.as_uri()}",
+        *(f"{name}=={version(name)}" for name in _PINNED_PACKAGES),
+    ]
     pyproject = "\n".join(
         [
             "[project]",
@@ -268,9 +276,9 @@ async def build_wheel(repository: Path, output: Path) -> Path:
     Raises:
         BrickyError: If the build fails.
     """
-    argv = ["uv", "build", "--quiet", "--package", "bricky", "--wheel", "--out-dir", str(output)]
+    command = ["uv", "build", "--quiet", "--package", "bricky", "--wheel", "--out-dir", str(output)]
     done = await execute(
-        argv, cwd=repository, seconds=_BUILD_MINUTES * 60, environment=_clean_environment()
+        command, folder=repository, seconds=_BUILD_MINUTES * 60, environment=_clean_environment()
     )
     wheels = await asyncio.to_thread(lambda: sorted(output.glob("bricky-*.whl")))
     if done.code != 0 or not wheels:
@@ -289,9 +297,18 @@ async def score_workspace(
     script = Path("models") / f"{project.slug}.py"
     if not await asyncio.to_thread((workspace / script).is_file):
         return Score(built=False, failure=f"the agent wrote no {script.as_posix()}")
-    argv = ["uv", "run", "--quiet", "bricky", "build", script.as_posix(), "--output-format", "json"]
+    command = [
+        "uv",
+        "run",
+        "--quiet",
+        "bricky",
+        "build",
+        script.as_posix(),
+        "--output-format",
+        "json",
+    ]
     done = await execute(
-        argv, cwd=workspace, seconds=_BUILD_MINUTES * 60, environment=_clean_environment()
+        command, folder=workspace, seconds=_BUILD_MINUTES * 60, environment=_clean_environment()
     )
     if done.code is None:
         return Score(built=False, failure=f"building {script.as_posix()} did not finish")
@@ -349,9 +366,9 @@ def summary_table(records: Sequence[Record]) -> str:
         "Builds",
         "Minutes",
     ]
-    head = ["| " + " | ".join(columns) + " |", "|" + " --- |" * len(columns)]
+    header = ["| " + " | ".join(columns) + " |", "|" + " --- |" * len(columns)]
     rows = []
-    for record in sorted(records, key=lambda r: (r.difficulty, r.project, r.repeat)):
+    for record in sorted(records, key=lambda item: (item.difficulty, item.project, item.repeat)):
         score, agent = record.score, record.agent
         fidelity = score.fidelity
         rows.append(
@@ -372,24 +389,24 @@ def summary_table(records: Sequence[Record]) -> str:
             )
             + " |"
         )
-    return "\n".join([*head, *rows]) + "\n"
+    return "\n".join([*header, *rows]) + "\n"
 
 
 async def execute(
-    argv: Sequence[str],
+    command: Sequence[str],
     *,
-    cwd: Path,
+    folder: Path,
     seconds: float,
     environment: dict[str, str] | None = None,
 ) -> Completed:
-    """Run a process to its end, or stop it after ``seconds``, and return what it wrote.
+    """Run a command in ``folder`` to its end, or stop it after ``seconds``, and return its output.
 
     A cancelled caller stops the process before the cancellation goes on.
     """
     started = time.monotonic()
     process = await asyncio.create_subprocess_exec(
-        *argv,
-        cwd=cwd,
+        *command,
+        cwd=folder,
         env=environment if environment is not None else _clean_environment(),
         stdin=asyncio.subprocess.DEVNULL,
         stdout=asyncio.subprocess.PIPE,
@@ -432,7 +449,7 @@ async def _stop(process: asyncio.subprocess.Process) -> None:
 
 async def _setup(workspace: Path) -> None:
     """Create the workspace's environment, so the agent's first build starts at once."""
-    done = await execute(["uv", "sync", "--quiet"], cwd=workspace, seconds=_BUILD_MINUTES * 60)
+    done = await execute(["uv", "sync", "--quiet"], folder=workspace, seconds=_BUILD_MINUTES * 60)
     if done.code != 0:
         message = f"could not set up {workspace}:\n{done.stderr.decode(errors='replace')}"
         raise BrickyError(message)
@@ -440,14 +457,16 @@ async def _setup(workspace: Path) -> None:
 
 def _clean_environment() -> dict[str, str]:
     """The environment of this process, without the repository's virtual environment."""
-    venv = str(Path(sys.prefix) / "bin")
+    executables = str(Path(sys.prefix) / "bin")
     environment = {
         key: value
         for key, value in os.environ.items()
         if key not in {"VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONPATH"}
     }
     path = environment.get("PATH", "")
-    environment["PATH"] = os.pathsep.join(p for p in path.split(os.pathsep) if p != venv)
+    environment["PATH"] = os.pathsep.join(
+        folder for folder in path.split(os.pathsep) if folder != executables
+    )
     return environment
 
 
@@ -467,6 +486,7 @@ def _keep(workspace: Path, destination: Path) -> None:
 
 
 def _bash_commands(event: dict[str, object]) -> list[str]:
+    """The commands of the Bash tool calls in an assistant event."""
     message = event.get("message")
     content = message.get("content") if isinstance(message, dict) else None
     if not isinstance(content, list):
