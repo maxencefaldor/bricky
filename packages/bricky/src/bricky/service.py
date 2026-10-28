@@ -626,8 +626,8 @@ class RenderRequest(BaseModel):
         default_factory=list,
         description=(
             "Elements to highlight, rendering the rest faintly: uid patterns such as "
-            "'lintel*', or '@' and a function, file or file:line of the build script, "
-            "such as '@horseshoe'."
+            "'sign*', or '@' and a function, file or file:line of the build script, "
+            "such as '@roof'."
         ),
     )
     clip: list[str] = Field(

@@ -33,14 +33,6 @@ The examples in [`examples/`](https://github.com/maxencefaldor/bricky/tree/main/
 
     [Open in 3D](gallery/cottage.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/cottage.py)
 
--   ![The Stonehenge example](images/gallery-stonehenge.png)
-
-    **[Stonehenge](gallery/stonehenge.html)** · 283 elements
-
-    The sarsen circle, the horseshoe of trilithons and the bluestones, from measurements of the monument.
-
-    [Open in 3D](gallery/stonehenge.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/stonehenge.py)
-
 -   ![The Elizabeth Tower example](images/gallery-elizabeth-tower.png)
 
     **[Elizabeth Tower](gallery/elizabeth-tower.html)** · 1,526 elements
@@ -59,9 +51,9 @@ The examples in [`examples/`](https://github.com/maxencefaldor/bricky/tree/main/
 
 </div>
 
-To build an example and write its viewer, `examples/stonehenge.html`:
+To build an example and write its viewer, `examples/cottage.html`:
 
 ```sh
-uv run bricky build examples/stonehenge.py
-uv run bricky render examples/stonehenge.bricky.json --html
+uv run bricky build examples/cottage.py
+uv run bricky render examples/cottage.bricky.json --html
 ```

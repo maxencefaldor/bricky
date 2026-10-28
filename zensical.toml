@@ -15,6 +15,7 @@ nav = [
   { "Home" = "index.md" },
   { "Get started" = "get-started.md" },
   { "Guide" = [
+    "guide/index.md",
     { "Coordinates" = "guide/coordinates.md" },
     { "Build scripts" = "guide/scripts.md" },
     { "Parts and colors" = "guide/parts.md" },
@@ -24,11 +25,13 @@ nav = [
     { "Catalog" = "guide/catalog.md" },
   ] },
   { "Agents" = [
+    "agents/index.md",
     { "Connect an agent" = "agents/connect.md" },
     { "Benchmark" = "agents/benchmark.md" },
   ] },
   { "Gallery" = "gallery.md" },
   { "Reference" = [
+    "reference/index.md",
     { "Command line" = "reference/cli.md" },
     { "Diagnostic codes" = "reference/codes.md" },
     { "Configuration" = "reference/configuration.md" },
@@ -48,6 +51,8 @@ logo = "assets/logo.svg"
 favicon = "assets/logo.svg"
 features = [
   "content.code.copy",
+  "navigation.tabs",
+  "navigation.tabs.sticky",
   "content.tooltips",
   "navigation.footer",
   "navigation.indexes",

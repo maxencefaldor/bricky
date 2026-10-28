@@ -109,8 +109,20 @@ The model has no errors, and the sheet outlines the changed brick in purple:
 
 ## Next steps
 
-- [Coordinates](guide/coordinates.md): studs, plates, the `at` corner and rotations.
-- [Build scripts](guide/scripts.md): components, instances, filling voxels and building sideways.
-- [Parts and colors](guide/parts.md): finding parts and the shape of each family.
-- [Connect an agent](agents/connect.md): the command line, the MCP server and the skill.
-- [Gallery](gallery.md): every example in 3D, from a tower to the Colosseum.
+The wall used every step of the loop; three paths lead on from here, one per part of the docs.
+
+<div class="grid cards bricky-links" markdown>
+
+-   📘 **[Learn each concept](guide/index.md)**
+
+    The guide takes the steps above one at a time, starting with coordinates.
+
+-   🤖 **[Hand the loop to an agent](agents/connect.md)**
+
+    Connect Claude Code or any harness through the command line, MCP or the skill.
+
+-   🖼️ **[See finished models](gallery.md)**
+
+    The gallery shows every example in 3D, from a tower to the Colosseum.
+
+</div>

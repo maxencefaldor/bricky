@@ -5,8 +5,7 @@ Run from the repository root: ``uv run python docs/illustrate.py``, or name figu
 render only those. Each figure is a small model built below, or an example script,
 rendered into ``docs/images``. Figures use the sample catalog, so anyone can render them
 again; the figures of converted LDraw parts need an imported catalog and are skipped
-without one. The turntable, the README's animation, shows one example rotating 360
-degrees.
+without one. Bare figures, for cards and the home page, carry no text at all.
 """
 
 import asyncio
@@ -14,8 +13,10 @@ import base64
 import os
 import shutil
 import sys
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import AsyncGenerator, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from functools import partial
 from importlib.resources import files
 from math import hypot
 from pathlib import Path
@@ -28,7 +29,7 @@ from bricky.analysis import build_world, diff_worlds
 from bricky.catalog import IMPORTED_CATALOG, SAMPLE_CATALOG, Catalog, load_catalog
 from bricky.model import Model
 from bricky.provenance import Provenance
-from bricky.render import Clip, Renderer, View, build_scene
+from bricky.render import Clip, Renderer, Scene, View, build_scene
 from bricky.service import run_script
 
 ROOT: Final = Path(__file__).resolve().parent.parent
@@ -65,6 +66,9 @@ class Figure:
 
     The script warns when a buildable model has some.
     """
+
+    bare: bool = False
+    """Render a perspective with no text on it: no title, caption, compass or labels."""
 
 
 # --------------------------------------------------------------------------------------
@@ -366,6 +370,9 @@ def voxelized(catalog: Catalog) -> ModelBuilder:
     return builder
 
 
+card: Final = partial(Figure, view=View.PERSPECTIVE, size=(1200, 900), bare=True)
+"""Make the figure of a card's image: a bare perspective in a 4:3 frame."""
+
 FIGURES: Final = (
     # Home and getting started
     Figure("elizabeth-tower", EXAMPLES / "elizabeth_tower.py"),
@@ -400,7 +407,6 @@ FIGURES: Final = (
     Figure("colonnade", EXAMPLES / "colonnade.py", highlight=("i2/*",)),
     Figure("cottage", EXAMPLES / "cottage.py"),
     Figure("fill", filled, view=View.PERSPECTIVE, size=(1000, 1000)),
-    Figure("stonehenge", EXAMPLES / "stonehenge.py"),
     Figure(
         "colosseum-north-west",
         EXAMPLES / "colosseum.py",
@@ -421,36 +427,36 @@ FIGURES: Final = (
         before=tower_before,
     ),
     # Images
-    Figure("highlight", EXAMPLES / "stonehenge.py", highlight=("@horseshoe",)),
+    Figure("highlight", EXAMPLES / "cottage.py", highlight=("@roof",)),
     Figure("clip", EXAMPLES / "cottage.py", view=View.PERSPECTIVE, clips=("y>4",)),
     Figure("front", EXAMPLES / "cottage.py", view=View.FRONT, size=(1200, 900)),
     # Voxels
     Figure(
         "voxels", voxelized, view=View.PERSPECTIVE, size=(1200, 900), buildable=False
     ),
-    # Cards on the home page, one perspective each in a 4:3 frame
+    # The home page and the cards: bare perspectives, with no text on them
     Figure(
-        "card-checks",
-        EXAMPLES / "broken.py",
-        view=View.PERSPECTIVE,
-        size=(1200, 900),
-        check=True,
+        "hero",
+        EXAMPLES / "colosseum.py",
+        view=View.PERSPECTIVE_NORTH_WEST,
+        size=(1600, 1000),
+        bare=True,
     ),
-    Figure(
-        "card-images",
-        EXAMPLES / "stonehenge.py",
-        view=View.PERSPECTIVE,
-        size=(1200, 900),
-        highlight=("@horseshoe",),
-    ),
-    # The gallery's cards
+    card("card-coordinates", rotations, highlight=("R*",)),
+    card("card-scripts", filled),
+    card("card-parts", families, highlight=tuple(family for family, _, _ in FAMILIES)),
+    card("card-checks", EXAMPLES / "broken.py", check=True),
+    card("card-images", EXAMPLES / "cottage.py", highlight=("@roof",)),
+    card("card-voxels", voxelized, buildable=False),
+    card("card-catalog", converted, imported=True),
     *(
-        Figure(f"gallery-{name}", EXAMPLES / script, view=view, size=(1200, 900))
+        Figure(
+            f"gallery-{name}", EXAMPLES / script, view=view, size=(1200, 900), bare=True
+        )
         for name, script, view in (
             ("tower", "tower.py", View.PERSPECTIVE),
             ("colonnade", "colonnade.py", View.PERSPECTIVE),
             ("cottage", "cottage.py", View.PERSPECTIVE),
-            ("stonehenge", "stonehenge.py", View.PERSPECTIVE),
             ("elizabeth-tower", "elizabeth_tower.py", View.PERSPECTIVE),
             ("colosseum", "colosseum.py", View.PERSPECTIVE_NORTH_WEST),
         )
@@ -484,7 +490,9 @@ async def model_of(
     return builder.build(), builder.provenance()
 
 
-async def render(figure: Figure, renderer: Renderer, settings: Settings) -> Path | None:
+async def render(
+    figure: Figure, renderer: Renderer, page: Page, settings: Settings
+) -> Path | None:
     """Render one figure into the images folder and return its path."""
     if figure.imported and not IMPORTED_CATALOG.is_file():
         print(f"skipped {figure.name}: it needs an imported catalog")
@@ -514,57 +522,38 @@ async def render(figure: Figure, renderer: Renderer, settings: Settings) -> Path
         changed=changed,
     )
     width, height = figure.size
-    (image,) = await renderer.render(scene, [figure.view], width=width, height=height)
+    if figure.bare:
+        image = await photograph(page, scene, figure.size, figure.view)
+    else:
+        (image,) = await renderer.render(
+            scene, [figure.view], width=width, height=height
+        )
     path = IMAGES / f"{figure.name}.png"
     path.write_bytes(image)
     return path
 
 
 # --------------------------------------------------------------------------------------
-# Turntable: the README's animation
+# Studio: clean images for cards and the home page, with no text on them
 
 
-@dataclass(frozen=True, slots=True)
-class Turntable:
-    """An animation of a model rotating 360 degrees about the vertical axis.
-
-    The camera looks down from 30 degrees above the horizon, as in the perspective
-    views. The camera keeps one distance for the whole rotation, so the model keeps its
-    size. The animation loops forever.
-    """
-
-    name: str
-    script: Path
-    """The example script that builds the model."""
-
-    size: tuple[int, int] = (720, 420)
-    frames: int = 96
-    period: float = 7.2
-    """Seconds one full rotation takes."""
-
-    start: float = 35
-    """The first frame's azimuth, in degrees from the south toward the east.
-
-    The perspective view looks from 35, the south-east.
-    """
-
-    quality: float = 0.75
-    """The WebP quality of each frame, from 0 to 1."""
-
-    supersample: int = 2
-    """How many times larger each frame renders before it shrinks, to smooth edges."""
-
-
-TURNTABLE: Final = Turntable("turntable", EXAMPLES / "colosseum.py")
-
-TURNTABLE_ORIGIN: Final = "https://turntable.invalid/"
-"""The private origin the turntable's page loads bricky's render assets from."""
+STUDIO_ORIGIN: Final = "https://studio.invalid/"
+"""The private origin the studio's page loads bricky's render assets from."""
 
 RENDER_ASSETS: Final = files("bricky.render").joinpath("assets")
-BACKGROUND: Final = "#ffffff"
-WEBP_URL: Final = "data:image/webp;base64,"
+PNG_URL: Final = "data:image/png;base64,"
+SUPERSAMPLE: Final = 2
+"""How many times larger the studio renders an image before shrinking it."""
 
-TURNTABLE_PAGE: Final = """\
+AZIMUTHS: Final = {
+    View.PERSPECTIVE: 35,
+    View.PERSPECTIVE_SOUTH_WEST: -35,
+    View.PERSPECTIVE_NORTH_WEST: 215,
+    View.PERSPECTIVE_NORTH_EAST: 145,
+}
+"""Each perspective's azimuth, in degrees from the south toward the east."""
+
+STUDIO_PAGE: Final = """\
 import * as THREE from "three";
 import { buildModel } from "./viewer.js";
 
@@ -577,8 +566,6 @@ const SOUTH_EAST = THREE.MathUtils.degToRad(35);
 const UP = new THREE.Vector3(0, 1, 0);
 const FILL = 0.92;
 const STUD = 8; // millimeters
-
-let state = null;
 
 function aim(camera, target, azimuth, distance) {
   const across = Math.cos(ELEVATION);
@@ -600,12 +587,16 @@ function corners(box) {
   return points;
 }
 
-function setup(scene, { width, height, supersample, frames, start, background }) {
+// Render a scene from one azimuth, with no text, and return it as a PNG data URL.
+function photograph(scene, options) {
+  const { width, height, supersample, azimuth: degrees, background } = options;
+  const azimuth = THREE.MathUtils.degToRad(degrees);
   const renderer = new THREE.WebGLRenderer({
     antialias: true, preserveDrawingBuffer: true,
   });
   renderer.setPixelRatio(1);
   renderer.setSize(width * supersample, height * supersample, false);
+  renderer.localClippingEnabled = true;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.NeutralToneMapping;
@@ -613,7 +604,7 @@ function setup(scene, { width, height, supersample, frames, start, background })
   const three = new THREE.Scene();
   const sun = new THREE.DirectionalLight(0xffffff, 2.1);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(4096, 4096);
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.6;
   three.add(new THREE.HemisphereLight(0xffffff, 0x8d949e, 1.45), sun, sun.target);
@@ -621,6 +612,8 @@ function setup(scene, { width, height, supersample, frames, start, background })
   three.add(model.root);
   const center = model.bounds.getCenter(new THREE.Vector3());
   const radius = model.bounds.getSize(new THREE.Vector3()).length();
+  const light = SUN.clone().applyAxisAngle(UP, azimuth - SOUTH_EAST).normalize();
+  sun.position.copy(center).addScaledVector(light, radius * 1.5);
   sun.target.position.copy(center);
   Object.assign(sun.shadow.camera, {
     left: -radius, right: radius, top: radius, bottom: -radius,
@@ -636,98 +629,70 @@ function setup(scene, { width, height, supersample, frames, start, background })
   ground.receiveShadow = true;
   three.add(ground);
 
-  // One distance for every frame keeps the model's size as it rotates. The target moves
-  // only along the axis of rotation, which stays in the middle of the frame.
+  // Frame the model: move the target to center it, then the camera to fill the image.
   const camera = new THREE.PerspectiveCamera(
     LENS, width / height, radius / 100, radius * 100,
-  );
-  const azimuths = Array.from(
-    { length: frames }, (_, i) => THREE.MathUtils.degToRad(start + (360 * i) / frames),
   );
   const half = Math.tan(THREE.MathUtils.degToRad(LENS) / 2);
   const target = center.clone();
   let distance = radius * 4;
   for (let step = 0; step < 12; step++) {
-    let across = 0, low = Infinity, high = -Infinity;
-    for (const azimuth of azimuths) {
-      aim(camera, target, azimuth, distance);
-      for (const corner of corners(model.bounds)) {
-        const point = corner.project(camera);
-        across = Math.max(across, Math.abs(point.x));
-        low = Math.min(low, point.y);
-        high = Math.max(high, point.y);
-      }
+    aim(camera, target, azimuth, distance);
+    let left = Infinity, right = -Infinity, low = Infinity, high = -Infinity;
+    for (const corner of corners(model.bounds)) {
+      const point = corner.project(camera);
+      left = Math.min(left, point.x);
+      right = Math.max(right, point.x);
+      low = Math.min(low, point.y);
+      high = Math.max(high, point.y);
     }
+    const sideways = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    const shift = ((left + right) / 2) * distance * half * camera.aspect;
+    target.addScaledVector(sideways, shift);
     target.y += ((low + high) / 2) * distance * half / Math.cos(ELEVATION);
-    distance *= 0.4 + 0.6 * (Math.max(across, (high - low) / 2) / FILL);
+    distance *= 0.4 + 0.6 * (Math.max((right - left) / 2, (high - low) / 2) / FILL);
   }
+  aim(camera, target, azimuth, distance);
   // Edges fade when studs are small on screen, as in the renderer's images.
   const pixelsPerStud = (STUD / (2 * distance * half)) * height * supersample;
   const opacity = Math.min(0.42, Math.max(0.07, 0.03 * pixelsPerStud));
   model.edgeMaterials.plain.opacity = opacity;
+  renderer.render(three, camera);
   const output = document.createElement("canvas");
   output.width = width;
   output.height = height;
   const context = output.getContext("2d", { alpha: false });
   context.imageSmoothingQuality = "high";
-  state = { renderer, three, camera, sun, center, radius, target, distance, azimuths };
-  Object.assign(state, { output, context });
+  context.drawImage(renderer.domElement, 0, 0, width, height);
+  renderer.dispose();
+  renderer.forceContextLoss();
+  return output.toDataURL("image/png");
 }
 
-// Render one frame and return it as a data URL, in WebP when Chromium encodes WebP.
-function frame(index, quality) {
-  const { renderer, three, camera, sun, center, radius, output, context } = state;
-  const azimuth = state.azimuths[index];
-  aim(camera, state.target, azimuth, state.distance);
-  const light = SUN.clone().applyAxisAngle(UP, azimuth - SOUTH_EAST).normalize();
-  sun.position.copy(center).addScaledVector(light, radius * 1.5);
-  renderer.render(three, camera);
-  context.drawImage(renderer.domElement, 0, 0, output.width, output.height);
-  return output.toDataURL("image/webp", quality);
-}
-
-window.turntable = { setup, frame };
+window.studio = { photograph };
 """
-"""A module that renders the turntable's frames with ``buildModel`` of ``viewer.js``."""
+"""A module that renders a clean image of a scene with ``viewer.js``."""
 
 
 async def serve(route: Route) -> None:
-    """Answer the turntable page's requests from bricky's render assets."""
+    """Answer the studio page's requests from bricky's render assets."""
     url = route.request.url
-    name = url.removeprefix(TURNTABLE_ORIGIN)
+    name = url.removeprefix(STUDIO_ORIGIN)
     asset = RENDER_ASSETS.joinpath(*name.split("/"))
-    if not url.startswith(TURNTABLE_ORIGIN) or not asset.is_file():
+    if not url.startswith(STUDIO_ORIGIN) or not asset.is_file():
         await route.abort()
         return
     kind = "text/html" if name.endswith(".html") else "text/javascript"
     await route.fulfill(body=asset.read_bytes(), content_type=kind)
 
 
-async def frame(page: Page, index: int, quality: float) -> bytes:
-    """Render one frame of the turntable on its page and return it in WebP."""
-    url = await page.evaluate(
-        "([index, quality]) => window.turntable.frame(index, quality)",
-        [index, quality],
-    )
-    if not isinstance(url, str) or not url.startswith(WEBP_URL):
-        message = "the browser cannot encode WebP"
-        raise RuntimeError(message)
-    return base64.b64decode(url.removeprefix(WEBP_URL))
+@asynccontextmanager
+async def studio(settings: Settings) -> AsyncGenerator[Page]:
+    """Open the studio's page in headless Chromium, and close it when done.
 
-
-async def spin(turntable: Turntable, settings: Settings) -> Path:
-    """Render a turntable's frames in Chromium and write them as one animated WebP."""
-    run = await run_script(turntable.script, settings)
-    scene = build_scene(run.model, default_catalog())
-    width, height = turntable.size
-    options = {
-        "width": width,
-        "height": height,
-        "supersample": turntable.supersample,
-        "frames": turntable.frames,
-        "start": turntable.start,
-        "background": BACKGROUND,
-    }
+    Raises:
+        RuntimeError: If the page reports an error.
+    """
     problems: list[str] = []
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(
@@ -743,109 +708,61 @@ async def spin(turntable: Turntable, settings: Settings) -> Path:
             ),
         )
         await page.route("**/*", serve)
-        await page.goto(TURNTABLE_ORIGIN + "render.html")
-        await page.add_script_tag(type="module", content=TURNTABLE_PAGE)
-        await page.wait_for_function("() => window.turntable !== undefined")
-        await page.evaluate(
-            "([scene, options]) => window.turntable.setup(scene, options)",
-            [scene.model_dump(mode="json"), options],
-        )
-        images = [
-            await frame(page, index, turntable.quality)
-            for index in range(turntable.frames)
-        ]
-        await browser.close()
+        await page.goto(STUDIO_ORIGIN + "render.html")
+        await page.add_script_tag(type="module", content=STUDIO_PAGE)
+        await page.wait_for_function("() => window.studio !== undefined")
+        try:
+            yield page
+        finally:
+            await browser.close()
     if problems:
-        message = f"the turntable's page failed: {'; '.join(problems)}"
+        message = f"the studio's page failed: {'; '.join(problems)}"
         raise RuntimeError(message)
-    duration = round(1000 * turntable.period / turntable.frames)
-    path = IMAGES / f"{turntable.name}.webp"
-    path.write_bytes(animated_webp(images, turntable.size, duration))
-    return path
 
 
-# The WebP container: https://developers.google.com/speed/webp/docs/riff_container
-_FRAME_CHUNKS: Final = frozenset({b"ALPH", b"VP8 ", b"VP8L"})
-"""The chunks of a still WebP that an animation frame keeps: its pixels."""
-
-_ANIMATION: Final = 0b10
-_ALPHA: Final = 0b10000
-_NO_BLENDING: Final = 0b10
-"""A frame's flags: replace the canvas under it, and leave it in place after."""
-
-_FOREVER: Final = 0
-"""The loop count of an animation that never stops."""
-
-
-def animated_webp(
-    images: Sequence[bytes], size: tuple[int, int], duration: int
+async def photograph(
+    page: Page, scene: Scene, size: tuple[int, int], view: View
 ) -> bytes:
-    """Join WebP stills of one size into an animated WebP that loops forever.
+    """Render a scene in the studio with no text and return the image as PNG.
 
-    Each frame keeps its still's compressed pixels and shows for ``duration``
-    milliseconds. The animation leaves out the stills' color profiles, so browsers read
-    it as sRGB, the default.
+    Raises:
+        RuntimeError: If the view is not a perspective, or the page returns no PNG.
     """
+    if view not in AZIMUTHS:
+        message = f"the studio renders perspectives only, not {view}"
+        raise RuntimeError(message)
     width, height = size
-    canvas = _three_bytes(width - 1) + _three_bytes(height - 1)
-    alpha = False
-    frames = b""
-    for image in images:
-        kept = [(name, data) for name, data in _chunks(image) if name in _FRAME_CHUNKS]
-        alpha = alpha or any(name == b"ALPH" for name, _ in kept)
-        header = _three_bytes(0) + _three_bytes(0) + canvas + _three_bytes(duration)
-        pixels = b"".join(_chunk(name, data) for name, data in kept)
-        frames += _chunk(b"ANMF", header + bytes([_NO_BLENDING]) + pixels)
-    flags = _ANIMATION | (_ALPHA if alpha else 0)
-    white = bytes([0xFF, 0xFF, 0xFF, 0xFF])
-    content = (
-        b"WEBP"
-        + _chunk(b"VP8X", bytes([flags, 0, 0, 0]) + canvas)
-        + _chunk(b"ANIM", white + _FOREVER.to_bytes(2, "little"))
-        + frames
+    options = {
+        "width": width,
+        "height": height,
+        "supersample": SUPERSAMPLE,
+        "azimuth": AZIMUTHS[view],
+        "background": "#ffffff",
+    }
+    url = await page.evaluate(
+        "([scene, options]) => window.studio.photograph(scene, options)",
+        [scene.model_dump(mode="json"), options],
     )
-    return b"RIFF" + len(content).to_bytes(4, "little") + content
-
-
-def _chunks(image: bytes) -> Iterator[tuple[bytes, bytes]]:
-    """Yield the name and data of each chunk of a WebP file."""
-    if image[:4] != b"RIFF" or image[8:12] != b"WEBP":
-        message = "not a WebP file"
-        raise ValueError(message)
-    offset = 12
-    while offset + 8 <= len(image):
-        size = int.from_bytes(image[offset + 4 : offset + 8], "little")
-        yield image[offset : offset + 4], image[offset + 8 : offset + 8 + size]
-        offset += 8 + size + size % 2
-
-
-def _chunk(name: bytes, data: bytes) -> bytes:
-    """Return a chunk: its name, size and data, padded to an even size."""
-    return name + len(data).to_bytes(4, "little") + data + b"\0" * (len(data) % 2)
-
-
-def _three_bytes(value: int) -> bytes:
-    """Return a number in three bytes, little end first, as the container stores it."""
-    return value.to_bytes(3, "little")
+    if not isinstance(url, str) or not url.startswith(PNG_URL):
+        message = "the studio returned no PNG"
+        raise RuntimeError(message)
+    return base64.b64decode(url.removeprefix(PNG_URL))
 
 
 async def main() -> None:
-    """Render every figure and the turntable, then copy the benchmark inputs."""
+    """Render every figure, then copy the benchmark inputs."""
     # Example scripts use the sample catalog too.
     os.environ["BRICKY_CATALOG"] = str(SAMPLE_CATALOG)
     IMAGES.mkdir(parents=True, exist_ok=True)
     settings = Settings()
     wanted = set(sys.argv[1:])
-    async with Renderer(settings.render_browser) as renderer:
+    async with Renderer(settings.render_browser) as renderer, studio(settings) as page:
         for figure in FIGURES:
             if wanted and figure.name not in wanted:
                 continue
-            path = await render(figure, renderer, settings)
+            path = await render(figure, renderer, page, settings)
             if path is not None:
                 print(f"rendered {path.relative_to(ROOT)}")
-    if not wanted or TURNTABLE.name in wanted:
-        path = await spin(TURNTABLE, settings)
-        print(f"rendered {path.relative_to(ROOT)}")
     for name, source in COPIES.items():
         shutil.copyfile(source, IMAGES / name)
         print(f"copied {source.relative_to(ROOT)}")

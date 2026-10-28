@@ -49,15 +49,15 @@ A selector is a uid pattern, or `@` followed by a function, file or line of the 
 
 | Selector | Highlights |
 | --- | --- |
-| `--highlight "lintel*"` | Elements whose uids match the pattern |
-| `--highlight "tower/*"` | Every element inside the instance `tower` |
-| `--highlight @horseshoe` | Every element the function `horseshoe` placed |
-| `--highlight @stonehenge.py:249` | Every element line 249 placed |
+| `--highlight "sign*"` | Elements whose uids match the pattern |
+| `--highlight "i2/*"` | Every element inside the instance `i2` |
+| `--highlight @roof` | Every element the function `roof` placed |
+| `--highlight @cottage.py:151` | Every element line 151 placed |
 
 Script selectors read the source map the build wrote.
-Stonehenge with `--highlight @horseshoe`:
+The cottage with `--highlight @roof`:
 
-![Stonehenge with the horseshoe of trilithons highlighted](../images/highlight.png)
+![The cottage with its roof highlighted](../images/highlight.png)
 
 ## Clips
 

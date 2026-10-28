@@ -43,7 +43,7 @@ Render images of a model file.
 | `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
 | `MODEL` | required | Path to a .bricky.json model file. |
 | `--views` | `sheet` | Views to render: sheet (perspective, front, right and top on one image), perspective (from the south-east), perspective-south-west, perspective-north-west, perspective-north-east, front, back, left, right or top. |
-| `--highlight` |  | Elements to highlight, rendering the rest faintly: uid patterns such as 'lintel*', or '@' and a function, file or file:line of the build script, such as '@horseshoe'. |
+| `--highlight` |  | Elements to highlight, rendering the rest faintly: uid patterns such as 'sign*', or '@' and a function, file or file:line of the build script, such as '@roof'. |
 | `--clip` |  | Clip the model to look inside: 'z&lt;130' keeps what lies below 130 plates; x and y are in studs. |
 | `--check`, `--no-check` | `True` | Mark the elements that diagnostics name. |
 | `--width` | `1600` | Image width in pixels. |

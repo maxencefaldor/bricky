@@ -238,10 +238,9 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
         provenance: The script lines that placed each element; ``@`` selectors need it.
         report: A report whose errors and warnings mark the elements they name.
         highlight: Selectors of the elements to highlight; the renderer shows the
-            rest faintly. A selector is a uid pattern such as ``"lintel*"`` or
-            ``"tower/*"``, or ``@`` followed by a function name, a file, or a file and
-            line of the build script, such as ``"@horseshoe"`` or
-            ``"@stonehenge.py:142"``.
+            rest faintly. A selector is a uid pattern such as ``"sign*"`` or
+            ``"i2/*"``, or ``@`` followed by a function name, a file, or a file and
+            line of the build script, such as ``"@roof"`` or ``"@cottage.py:151"``.
         clips: The clips that keep part of the model, to look inside it.
         changed: The uids of elements new or changed since the last build, to mark.
         cull: Whether to leave out faces pressed against opaque neighbors. A viewer that

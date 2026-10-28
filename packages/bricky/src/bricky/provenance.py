@@ -46,7 +46,7 @@ class Frame(BaseModel):
 
     @override
     def __str__(self) -> str:
-        """The frame as text, such as ``stonehenge.py:142 in sarsen_circle()``."""
+        """The frame as text, such as ``cottage.py:151 in garden()``."""
         where = (
             "at module level"
             if self.function == "<module>"
