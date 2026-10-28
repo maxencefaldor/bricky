@@ -281,11 +281,14 @@ class Catalog:
         A part's text is its id, alternate ids, name, category and family. A word matches when the
         text contains it. A size matches a whole size of the text only, in either order and either
         spelling: ``"1x2"``, ``"2x1"`` and ``"1 x 2"`` all find ``Plate 1 x 2`` and not
-        ``Plate 1 x 12``. Parts with a shape come first, shorter names before longer ones. Parts
-        without a shape appear only when ``shapeless`` is set.
+        ``Plate 1 x 12``. Parts without a shape appear only when ``shapeless`` is set.
+
+        Parts with a shape come first. DUPLO, Quatro, Primo and Modulex parts, which belong to
+        other building systems, follow the rest unless the query names their system. Plain parts
+        come before printed ones, and shorter names before longer ones.
         """
         words = _SIZE.sub(r"\1x\2", query.casefold()).split()
-        hits: list[tuple[bool, int, int, str]] = []
+        hits: list[tuple[bool, bool, bool, int, int, str]] = []
         for order, (key, entry) in enumerate(self._entries.items()):
             shape = self._raw_shape(key)
             if shape is None and not shapeless:
@@ -294,7 +297,9 @@ class Catalog:
             text = _search_text(key, name, _raw(entry, "category"), shape)
             text += " " + " ".join(_raw_list(entry, "alternates")).casefold()
             if all(_matches(word, text) for word in words):
-                hits.append((shape is None, len(name), order, key))
+                elsewhere = any(system in text and system not in words for system in _SYSTEMS)
+                printed = bool(_raw(entry, "base"))
+                hits.append((shape is None, elsewhere, printed, len(name), order, key))
         hits.sort()
         return [self._entry(key) for *_, key in hits]
 
@@ -361,6 +366,8 @@ def default_catalog() -> Catalog:
 _RGB: Final = re.compile(r"#?[0-9A-Fa-f]{6}")
 _NEAREST_COLORS: Final = 5
 _SIZE: Final = re.compile(r"(\d+)\s*x\s*(\d+)")
+_SYSTEMS: Final = ("duplo", "quatro", "primo", "modulex")
+"""Building systems other than the one bricks and plates belong to, as search text spells them."""
 _SIZE_WORD: Final = re.compile(r"(\d+)x(\d+)")
 
 

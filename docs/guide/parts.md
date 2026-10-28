@@ -14,9 +14,10 @@ uv run bricky catalog show 3039 --render
 
 `bricky parts` matches every word of the query against each part's id, name, category and family.
 A size such as `2x4`, `4x2` or `2 x 4` matches whole sizes only, so `plate 1x2` finds
-`Plate 1 x 2` and not `Plate 1 x 12`. Parts with a shape come first, and plainer names before
-longer ones. Each row gives the family, the footprint, the height and the studs, then how the
-part sits when unrotated, where that matters:
+`Plate 1 x 2` and not `Plate 1 x 12`. Parts with a shape come first. DUPLO, Quatro, Primo and
+Modulex parts follow the rest unless the query names their system, plain parts come before printed
+ones, and shorter names before longer ones. Each row gives the family, the footprint, the height
+and the studs, then how the part sits when unrotated, where that matters:
 
 ```text
 id    name            family  x by y  height    studs
