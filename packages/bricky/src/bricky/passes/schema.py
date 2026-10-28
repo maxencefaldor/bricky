@@ -1,5 +1,6 @@
-"""Schema: unknown parts and colors, and parts below the ground plane."""
+"""Schema: unknown parts and colors, parts below the ground plane, and colors never made."""
 
+from collections import defaultdict
 from collections.abc import Iterator
 from typing import ClassVar
 
@@ -8,10 +9,12 @@ from bricky.diagnostics import Code, Diagnostic, Region
 
 
 class SchemaPass:
-    """Report parts and colors the catalog cannot resolve, and parts below the ground plane."""
+    """Report what the catalog cannot resolve, parts below the ground, and colors never made."""
 
     name: ClassVar[str] = "schema"
-    summary: ClassVar[str] = "Unknown parts and colors, and parts below the ground plane."
+    summary: ClassVar[str] = (
+        "Unknown parts and colors, parts below the ground plane, and colors a part never came in."
+    )
     codes: ClassVar[tuple[Code, ...]] = (
         Code(
             code="E101",
@@ -32,6 +35,14 @@ class SchemaPass:
             rule="The element's body reaches below the ground plane, z = 0. The ground plane is "
             "the table the model stands on.",
         ),
+        Code(
+            code="W104",
+            title="Color never made",
+            rule="The catalog lists the colors a part has come in, and the element's color is not "
+            "among them: the part and the color both exist, but never together. The pass reports "
+            "each part and color once, with every element that uses them. Parts the catalog lists "
+            "without colors are not checked.",
+        ),
     )
 
     def run(self, context: Context) -> Iterator[Diagnostic]:
@@ -49,6 +60,7 @@ class SchemaPass:
                 message=f"{unknown.uid} uses part {unknown.part!r} {what}",
                 elements=(unknown.uid,),
             )
+        yield from self._colors_never_made(context)
         for element in context.world.elements:
             if context.catalog.color(element.color) is None:
                 yield Diagnostic(
@@ -67,3 +79,22 @@ class SchemaPass:
                     elements=(element.uid,),
                     region=Region.of(element.bounds),
                 )
+
+    def _colors_never_made(self, context: Context) -> Iterator[Diagnostic]:
+        uses: defaultdict[tuple[str, int], list[str]] = defaultdict(list)
+        for element in context.world.elements:
+            entry = context.catalog.entry(element.part.id)
+            if entry is None or not entry.colors or element.color in entry.colors:
+                continue
+            if context.catalog.color(element.color) is not None:
+                uses[element.part.id, element.color].append(element.uid)
+        for (part_id, color_id), uids in uses.items():
+            color = context.catalog.color(color_id)
+            name = color.name if color is not None else str(color_id)
+            count = "1 element uses it" if len(uids) == 1 else f"{len(uids)} elements use it"
+            yield Diagnostic(
+                code="W104",
+                pass_name=self.name,
+                message=f"part {part_id} never came in {name}; {count}",
+                elements=tuple(uids),
+            )

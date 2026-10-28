@@ -221,8 +221,8 @@ class _Placer:
         """Fill voxels with bricks and plates, and return the elements' ids.
 
         Bricks go where three plate levels of a course share a color, plates everywhere else,
-        each part as large as fits, with joints staggered from level to level; see
-        :func:`bricky.fill.plan_fill`.
+        each part as large as fits and made in its color, with joints staggered from level to
+        level; see :func:`bricky.fill.plan_fill`.
 
         Args:
             voxels: The color of every voxel to fill, keyed ``(x, y, z)`` in studs, studs and
@@ -247,8 +247,19 @@ class _Placer:
                 rotation=placement.rotation,
                 id=None if id is None else ".".join(map(str, (id, *placement.at))),
             )
-            for placement in plan_fill(voxels)
+            for placement in plan_fill(voxels, made_in=self._made_in)
         ]
+
+    def _made_in(self, part: str, color: int | str) -> bool:
+        """Whether the catalog lists the part in the color, or lists no colors for it."""
+        catalog = self._scope.catalog
+        entry = catalog.entry(part)
+        if entry is None or not entry.colors:
+            return True
+        try:
+            return catalog.resolve_color(color).id in entry.colors
+        except ValueError:
+            return True  # place() reports the unknown color
 
 
 class ComponentBuilder(_Placer):

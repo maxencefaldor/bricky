@@ -193,6 +193,11 @@ class BoxesShape(BaseModel):
         default=(), description="Each anti-stud: its x, y on the bottom face, z = 0."
     )
     source: str = Field(description="Where the shape was converted from, such as 'LDraw 3001.dat'.")
+    rotation: Literal["R0", "R90", "R180", "R270"] = Field(
+        default="R0",
+        description="A rotation about the vertical axis that turns the source's orientation into "
+        "the one the part's name describes, where the import found one.",
+    )
 
     @model_validator(mode="after")
     def _within(self) -> Self:

@@ -64,8 +64,8 @@ The picture marks the same elements, so the agent sees where they are:
 - **Real parts.** The catalog holds every part and color BrickLink lists. Bricks, plates, tiles,
   slopes, round parts, arches, jumpers and bricks with side studs get exact shapes from their
   names; the LDraw.org Parts Library shapes thousands more.
-- **Checks that state facts.** Overlaps, blocked studs, floating groups and parts below the
-  ground, each with its region, its elements and their script lines.
+- **Checks that state facts.** Overlaps, blocked studs, floating groups, parts below the ground and
+  colors a part never came in, each with its elements and their script lines.
 - **Pictures that measure.** Every build draws a perspective view and three orthographic views with
   rulers. Highlights select elements by id or by script function; clips open models up.
 - **Changes between builds.** Each build counts what changed since the last one, by script line,

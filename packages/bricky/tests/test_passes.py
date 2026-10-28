@@ -1,6 +1,14 @@
 import pytest
 
-from bricky import BrickyError, Element, Model, ModelBuilder, Settings, check_model
+from bricky import (
+    BrickyError,
+    Element,
+    Model,
+    ModelBuilder,
+    Settings,
+    check_model,
+    default_catalog,
+)
 from bricky.passes import installed_passes
 from bricky.settings import DIGITAL
 
@@ -70,6 +78,21 @@ def test_schema_errors():
         )
     )
     assert codes(model, passes=["schema"]) == ["E101", "E102", "E103"]
+
+
+def test_colors_a_part_never_came_in_are_reported_once_per_part_and_color():
+    catalog = default_catalog()
+    brick = catalog.entry("3001")
+    assert brick is not None
+    made = catalog.resolve_color(brick.colors[0])
+    never = next(color for color in catalog.colors if color.id not in brick.colors)
+    builder = ModelBuilder("colors")
+    builder.place("3001", at=(0, 0, 0), color=made.id, id="made")
+    builder.place("3001", at=(4, 0, 0), color=never.id, id="never")
+    builder.place("3001", at=(8, 0, 0), color=never.id, id="again")
+    report = check_model(builder.build(), passes=["schema"])
+    assert [(d.code, d.elements) for d in report.diagnostics] == [("W104", ("never", "again"))]
+    assert report.ok
 
 
 def test_reports_cap_diagnostics_but_count_everything():

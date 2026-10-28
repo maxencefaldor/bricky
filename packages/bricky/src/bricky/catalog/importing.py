@@ -30,7 +30,15 @@ from bricky.catalog import SAMPLE_CATALOG, Catalog, CatalogFile
 from bricky.catalog.bricklink import Downloads, bricklink_parts, downloaded
 from bricky.catalog.families import build_part
 from bricky.catalog.ldraw import Library, ldraw_parts, ldraw_shape
-from bricky.catalog.models import CatalogPart, Color, Connector, ConnectorKind, Part, Shape
+from bricky.catalog.models import (
+    BoxesShape,
+    CatalogPart,
+    Color,
+    Connector,
+    ConnectorKind,
+    Part,
+    Shape,
+)
 from bricky.errors import BrickyError
 from bricky.geometry import ALIASES, Box, Pose, Rotation, Vector
 
@@ -137,7 +145,10 @@ class _Shaping:
         difference = _difference(entry, entry.shape, converted)
         if difference:
             self.disagreements.append(f"{key} {entry.name}: {difference}")
-            entries[key] = entry.model_copy(update={"shape": converted})
+            rotation = _closest_rotation(entry, entry.shape, converted)
+            entries[key] = entry.model_copy(
+                update={"shape": converted.model_copy(update={"rotation": rotation})}
+            )
             self.origin[key] = "LDraw"
 
     def coverage(
@@ -209,6 +220,18 @@ def _difference(entry: CatalogPart, named: Shape, converted: Shape) -> str:
     facts = [_facts(a), _facts(b)]
     where = " in other places" if facts[0] == facts[1] else ""
     return f"its name gives {_describe(facts[0])}; LDraw gives {_describe(facts[1])}{where}"
+
+
+def _closest_rotation(entry: CatalogPart, named: Shape, converted: BoxesShape) -> str:
+    """The rotation of LDraw's shape that best matches the name's: its size, then connectors."""
+    a, b = build_part(entry, named), build_part(entry, converted)
+    target_size, target_connectors = _placed(a, "R0")
+
+    def closeness(rotation: str) -> tuple[bool, int]:
+        size, connectors = _placed(b, rotation)
+        return size == target_size, len(connectors & target_connectors)
+
+    return max(ALIASES, key=closeness)
 
 
 def _placed(part: Part, rotation: str) -> tuple[Vector, frozenset[Connector]]:
