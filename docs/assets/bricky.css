@@ -1,4 +1,4 @@
-/* bricky's docs: LEGO® colors, headings with character, and cards built like bricks. */
+/* bricky's docs: LEGO® colors, one text column on every page, and cards built like bricks. */
 
 @import url("https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700&display=swap");
 
@@ -13,6 +13,8 @@
   --bricky-blue: #196bcf;
   --bricky-green: #009d48;
   --bricky-panel: #ffffff;
+  --bricky-line: #d0d7de;
+  --bricky-line-strong: #8c959f;
   --bricky-stud: rgb(216 36 36 / 7%);
   --bricky-terminal: #16181d;
   --bricky-terminal-ink: #e6edf3;
@@ -43,6 +45,8 @@
 
 /* The dark scheme lightens the red and the blue of text and links, which would lack contrast on slate. */
 [data-md-color-scheme="slate"] {
+  --bricky-line: #3d444d;
+  --bricky-line-strong: #6e7681;
   --bricky-stud: rgb(255 255 255 / 5%);
   --md-typeset-a-color: #ff6b5e;
 }
@@ -52,8 +56,34 @@
   --md-accent-fg-color--transparent: rgb(110 168 255 / 12%);
 }
 
-/* A stripe of the four colors under the header. */
-.md-header::after {
+/*
+ * Every page keeps the space of both sidebars, even a page that hides them,
+ * so the text column has the same width and position on every page.
+ */
+@media screen and (min-width: 60em) {
+  .md-sidebar--secondary[hidden] {
+    display: block;
+    visibility: hidden;
+  }
+
+  .md-content > .md-content__inner {
+    margin-right: 1.2rem;
+  }
+}
+
+@media screen and (min-width: 76.25em) {
+  .md-sidebar--primary[hidden] {
+    display: block;
+    visibility: hidden;
+  }
+
+  .md-content > .md-content__inner {
+    margin-left: 1.2rem;
+  }
+}
+
+/* A stripe of the four colors tops the header; a plain line separates the header from the page. */
+.md-header::before {
   content: "";
   display: block;
   height: 4px;
@@ -66,9 +96,14 @@
   );
 }
 
-/* The tab of the current part of the docs is underlined in red. */
+.md-header,
+.md-header--shadow {
+  box-shadow: 0 1px 0 var(--bricky-line);
+}
+
+/* The tab of the current section sits on the line, underlined in red. */
 .md-tabs__item--active {
-  border-bottom: 3px solid var(--bricky-red);
+  border-bottom: 2px solid var(--md-typeset-a-color);
 }
 
 /* Headings */
@@ -85,16 +120,16 @@
 }
 
 /*
- * The sidebar names the part of the docs it lists, with a brick before the name.
- * The theme hides that name when tabs show; the name links to the part's overview page.
+ * A section's sidebar opens with the section's name, after a brick, linked to its overview page.
+ * The theme hides that name when tabs show; a single page, such as Get started, needs no name.
  */
 @media screen and (min-width: 76.25em) {
-  .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link {
+  .md-nav--lifted > .md-nav__list > .md-nav__item--active.md-nav__item--nested > .md-nav__link {
     display: flex;
     margin-bottom: 0.4rem;
   }
 
-  .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link > a {
+  .md-nav--lifted > .md-nav__list > .md-nav__item--active.md-nav__item--nested > .md-nav__link > a {
     gap: 0.5rem;
     align-items: center;
     font-family: Rubik, var(--md-text-font-family), sans-serif;
@@ -103,7 +138,7 @@
     color: var(--md-default-fg-color);
   }
 
-  .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link > a::before {
+  .md-nav--lifted > .md-nav__list > .md-nav__item--active.md-nav__item--nested > .md-nav__link > a::before {
     content: "";
     flex: none;
     width: 0.8rem;
@@ -112,12 +147,16 @@
     mask: var(--bricky-brick-icon) center / contain no-repeat;
   }
 
-  .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link > a.md-nav__link--active {
+  .md-nav--lifted
+    > .md-nav__list
+    > .md-nav__item--active.md-nav__item--nested
+    > .md-nav__link
+    > a.md-nav__link--active {
     color: var(--md-typeset-a-color);
   }
 }
 
-/* A group inside a part, such as the Python API, reads as a small label above its pages. */
+/* A group inside a section, such as the Python API, reads as a small label above its pages. */
 .md-nav__item--section .md-nav__item--section > .md-nav__link {
   margin-top: 0.8rem;
   font-size: 0.6rem;
@@ -131,30 +170,41 @@
 .md-typeset p > img,
 .md-typeset .tabbed-block img {
   background: var(--bricky-panel);
-  border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 0.75rem;
+  border: 1px solid var(--bricky-line);
+  border-radius: 0.4rem;
 }
 
 /* Reports read like a terminal, in both color schemes. */
 .md-typeset .language-text.highlight pre > code {
   background: var(--bricky-terminal);
   color: var(--bricky-terminal-ink);
-  border-radius: 0.6rem;
 }
 
 .md-typeset .language-text.highlight .md-clipboard {
   color: rgb(230 237 243 / 45%);
 }
 
-/* The home page's hero: text beside the Colosseum, on a field of studs. */
+/* Diagrams sit centered in the column and use the page's colors: plain boxes, gray lines and the text color. */
+.md-typeset .mermaid {
+  display: flex;
+  justify-content: center;
+}
+
+:root > * {
+  --md-mermaid-font-family: var(--md-text-font-family), sans-serif;
+  --md-mermaid-node-bg-color: var(--md-default-bg-color);
+  --md-mermaid-node-fg-color: var(--bricky-line-strong);
+  --md-mermaid-edge-color: var(--bricky-line-strong);
+  --md-mermaid-label-bg-color: var(--md-default-bg-color);
+  --md-mermaid-label-fg-color: var(--md-default-fg-color);
+}
+
+/* The home page's hero: the name, the pitch and the Colosseum, on a baseplate of studs. */
 .bricky-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  gap: 2rem;
-  align-items: center;
-  margin: 0 0 2.5rem;
-  padding: 2.5rem 2.25rem;
-  border-radius: 1.25rem;
+  margin: 0 0 2rem;
+  padding: 2rem 2rem 2.2rem;
+  border: 1px solid var(--bricky-line);
+  border-radius: 0.4rem;
   background:
     radial-gradient(circle, var(--bricky-stud) 6px, transparent 6.5px) 0 0 / 24px 24px,
     var(--md-code-bg-color);
@@ -162,7 +212,7 @@
 
 .md-typeset .bricky-hero h1 {
   margin: 0 0 0.25rem;
-  font-size: 3.4rem;
+  font-size: 3rem;
   line-height: 1;
   color: var(--bricky-red);
 }
@@ -174,38 +224,50 @@
 .md-typeset .bricky-tagline {
   margin-top: 0.5rem;
   font-family: Rubik, var(--md-text-font-family), sans-serif;
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 500;
   line-height: 1.35;
   color: var(--md-default-fg-color);
 }
 
 .md-typeset .bricky-hero .md-button {
-  margin: 0.5rem 0.5rem 0 0;
+  margin: 0.2rem 0.5rem 0 0;
+}
+
+/* A secondary button is outlined in the text color, so it reads as a button and not as a disabled one. */
+.md-typeset .md-button:not(.md-button--primary) {
+  color: var(--md-default-fg-color);
+  background: var(--md-default-bg-color);
+  box-shadow: inset 0 0 0 1px var(--bricky-line-strong);
+}
+
+.md-typeset .md-button:not(.md-button--primary):is(:hover, :focus) {
+  box-shadow: inset 0 0 0 1px var(--md-default-fg-color);
 }
 
 .md-typeset .bricky-hero-image {
   display: block;
   width: 100%;
-  border-radius: 1rem;
-  background: var(--bricky-panel);
-  box-shadow: 0 10px 30px rgb(0 0 0 / 12%);
+  margin-top: 1.6rem;
 }
 
-@media screen and (max-width: 59.9375em) {
+@media screen and (max-width: 44.9375em) {
   .bricky-hero {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 1.75rem 1.25rem;
+    padding: 1.4rem 1rem 1.6rem;
   }
 
   .md-typeset .bricky-hero h1 {
-    font-size: 2.6rem;
+    font-size: 2.4rem;
+  }
+
+  .md-typeset .bricky-tagline {
+    font-size: 1.05rem;
   }
 }
 
 /*
- * Cards are bricks: a plate of color along the top, with studs on it.
- * The colors cycle red, blue, yellow and green; on hover a card lifts and keeps every edge.
+ * Cards are bricks: a plate of color along the top, with studs on it, and a visible edge.
+ * The colors cycle red, blue, yellow and green; on hover a card lifts and its edge darkens.
  */
 .md-typeset .grid.cards:is(.bricky-cards, .bricky-links) {
   gap: calc(var(--bricky-stud-height) + 1rem) 0.8rem;
@@ -216,10 +278,12 @@
   --bricky-brick: var(--bricky-red);
 
   position: relative;
+  border: 1px solid var(--bricky-line);
   border-top: var(--bricky-band) solid var(--bricky-brick);
-  border-radius: 3px;
+  border-radius: 0.2rem;
   transition:
     transform 0.15s ease,
+    border-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 
@@ -247,13 +311,19 @@
 }
 
 .md-typeset .grid.cards:is(.bricky-cards, .bricky-links) > ul > li:is(:hover, :focus-within) {
-  border-color: var(--md-default-fg-color--lightest);
+  border-color: var(--bricky-line-strong);
   border-top-color: var(--bricky-brick);
-  box-shadow: 0 12px 28px rgb(0 0 0 / 14%);
+  box-shadow: 0 10px 24px rgb(0 0 0 / 12%);
   transform: translateY(-3px);
 }
 
 /* The title links the whole card. */
+.md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(2),
+.md-typeset .grid.cards.bricky-links > ul > li > p:first-child {
+  font-family: Rubik, var(--md-text-font-family), sans-serif;
+  font-size: 1.05em;
+}
+
 .md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(2) a,
 .md-typeset .grid.cards.bricky-links > ul > li > p:first-child a {
   color: var(--md-default-fg-color);
@@ -267,26 +337,37 @@
   inset: 0;
 }
 
-/* A card with an image shows it in a fixed frame on top, so every card lines up. */
+/*
+ * A card with an image is a row: the image in a fixed 4:3 frame on the left, the text centered on the right.
+ * The rows stack in one column, so any number of cards lines up; on a phone the image goes on top.
+ */
+.md-typeset .grid.cards.bricky-cards {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .md-typeset .grid.cards.bricky-cards > ul > li {
-  display: flex;
-  flex-direction: column;
-  padding: 0 0 0.6rem;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  grid-template-rows: 1fr auto auto auto 1fr;
+  padding: 0;
 }
 
 .md-typeset .grid.cards.bricky-cards > ul > li > p {
-  margin: 0.6rem 1rem 0;
+  grid-column: 2;
+  margin: 0 1rem;
 }
 
 .md-typeset .grid.cards.bricky-cards > ul > li > p:first-child {
   display: flex;
+  grid-row: 1 / -1;
+  grid-column: 1;
   align-items: center;
   justify-content: center;
   margin: 0;
   aspect-ratio: 4 / 3;
   overflow: hidden;
   background: var(--bricky-panel);
-  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  border-right: 1px solid var(--bricky-line);
 }
 
 .md-typeset .grid.cards.bricky-cards > ul > li > p:first-child img {
@@ -298,29 +379,50 @@
   border-radius: 0;
 }
 
-.md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(2),
-.md-typeset .grid.cards.bricky-links > ul > li > p:first-child {
-  font-family: Rubik, var(--md-text-font-family), sans-serif;
-  font-size: 1.05em;
+.md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(2) {
+  grid-row: 2;
+  margin-top: 1rem;
 }
 
-/* Links after the title, such as a gallery card's "Open in 3D", stay clickable above the card's link. */
-.md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(n + 4) {
+.md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(3) {
+  grid-row: 3;
+  margin-top: 0.4rem;
+}
+
+.md-typeset .grid.cards.bricky-cards > ul > li > p:last-child {
+  margin-bottom: 1rem;
+}
+
+/* Links after the text, such as a gallery card's "Open in 3D", stay clickable above the card's link. */
+.md-typeset .grid.cards.bricky-cards > ul > li > p:nth-child(4) {
   position: relative;
   z-index: 1;
-  margin-top: auto;
-  padding-top: 0.6rem;
+  grid-row: 4;
+  margin-top: 0.6rem;
   font-size: 0.9em;
 }
 
-/* Text cards that lead to other pages, two by two. */
-.md-typeset .grid.cards.bricky-links {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+@media screen and (max-width: 44.9375em) {
+  .md-typeset .grid.cards.bricky-cards > ul > li {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .md-typeset .grid.cards.bricky-cards > ul > li > p,
+  .md-typeset .grid.cards.bricky-cards > ul > li > p:first-child {
+    grid-row: auto;
+    grid-column: 1;
+  }
+
+  .md-typeset .grid.cards.bricky-cards > ul > li > p:first-child {
+    border-right: 0;
+    border-bottom: 1px solid var(--bricky-line);
+  }
 }
 
-/* The first card of a lead grid, such as the home page's tutorial, spans both columns. */
-.md-typeset .grid.cards.bricky-links.bricky-lead > ul > li:first-child {
-  grid-column: 1 / -1;
+/* Text cards that lead to other pages, two by two; on a phone, one per row. */
+.md-typeset .grid.cards.bricky-links {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 @media screen and (max-width: 44.9375em) {

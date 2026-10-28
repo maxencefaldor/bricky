@@ -109,20 +109,24 @@ The model has no errors, and the sheet outlines the changed brick in purple:
 
 ## Next steps
 
-The wall used every step of the loop; three paths lead on from here, one per part of the docs.
+Four sections of the docs go further than the tutorial:
 
 <div class="grid cards bricky-links" markdown>
 
--   📘 **[Learn each concept](guide/index.md)**
+-   📘 **[Guide](guide/index.md)**
 
-    The guide takes the steps above one at a time, starting with coordinates.
+    Each step of the tutorial in depth, one concept per page, starting with coordinates.
 
--   🤖 **[Hand the loop to an agent](agents/connect.md)**
+-   🤖 **[Agents](agents/index.md)**
 
-    Connect Claude Code or any harness through the command line, MCP or the skill.
+    Hand the loop to an agent through the command line, the MCP server or the skill.
 
--   🖼️ **[See finished models](gallery.md)**
+-   🖼️ **[Gallery](gallery.md)**
 
-    The gallery shows every example in 3D, from a tower to the Colosseum.
+    Larger models in a 3D viewer, from a tower to the Colosseum, each with its script.
+
+-   📚 **[Reference](reference/index.md)**
+
+    Every command, diagnostic code and setting, including the ones the tutorial used.
 
 </div>

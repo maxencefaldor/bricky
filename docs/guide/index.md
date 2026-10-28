@@ -1,6 +1,6 @@
 # Guide
 
-The guide explains each part of a build, one page per concept, in the order a build meets them.
+The guide covers one concept per page, in the order a build meets them.
 
 <div class="grid cards bricky-cards" markdown>
 

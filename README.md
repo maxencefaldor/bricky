@@ -6,8 +6,8 @@ A compiler-style toolkit that lets AI agents design buildable LEGO® models.
 
 An AI agent can describe a castle, but it cannot tell whether the castle's bricks hold together.
 
-The fix is a compiler and a camera.
-The agent writes its model as a Python build script, and bricky places every part in exact geometry, checks the model and renders it.
+With bricky, the agent writes its model as a Python build script.
+Each build places every part in exact geometry, checks that the model holds together, and renders it.
 
 Each diagnostic names the script line behind it, and the orthographic views carry rulers in studs and plates.
 The agent therefore knows what is wrong, where, and which line placed it.
@@ -21,7 +21,7 @@ The quick start needs [uv](https://docs.astral.sh/uv/), which installs Python 3.
 ```sh
 git clone https://github.com/maxencefaldor/bricky && cd bricky
 uv sync
-uv run playwright install chromium       # the browser bricky renders in, once per machine
+uv run playwright install chromium       # the browser bricky renders in
 uv run bricky build examples/cottage.py  # build, check and render the cottage
 ```
 

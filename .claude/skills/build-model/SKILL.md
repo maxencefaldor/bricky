@@ -5,7 +5,7 @@ description: Design a buildable LEGO® model with bricky. Use when asked to buil
 
 # Build a model with bricky
 
-Work like a programmer with a compiler and a camera: write a build script, build it, read the report and look at the images, fix, and repeat.
+Work in a loop: write a build script, build it, read the report and look at the images, fix the script, and build again.
 Stop when the report says `0 errors` and the images show what you meant.
 The report alone cannot tell you the second part.
 

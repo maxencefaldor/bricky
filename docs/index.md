@@ -8,48 +8,21 @@ hide:
 
 <div class="bricky-hero" markdown>
 
-<div class="bricky-hero-text" markdown>
-
 # bricky
 
 A compiler-style toolkit that lets AI agents design buildable LEGO® models.
 { .bricky-tagline }
 
 An agent writes a model as a Python build script.
-In return, bricky places every part in exact geometry, checks that the model holds together, and renders it.
+Each build places every part in exact geometry, reports each error with the script line behind it, and renders the model in four views.
 
 [Get started](get-started.md){ .md-button .md-button--primary } [Gallery in 3D](gallery.md){ .md-button }
-
-</div>
 
 ![The Colosseum example: 44,968 elements on a plaza of baseplates](images/hero.png){ .bricky-hero-image }
 
 </div>
 
-## The loop
-
-An agent builds like a programmer with a compiler and a camera: it writes, builds, reads and fixes.
-The loop ends when the report says `0 errors` and the images show the intended model.
-
-```mermaid
-flowchart LR
-    script["Build script"] -->|bricky build| model["Model"]
-    model --> report["Report<br/>diagnostics by script line"]
-    model --> image["Images<br/>four views with rulers"]
-    report --> fix["The agent edits the script"]
-    image --> fix
-    fix --> script
-```
-
-## The docs
-
-The docs come in five parts: start with the tutorial, then read the guide or jump to the part you need.
-
-<div class="grid cards bricky-links bricky-lead" markdown>
-
--   🚀 **[Get started](get-started.md)**
-
-    A tutorial: build a wall, break it and fix it, in five minutes.
+<div class="grid cards bricky-links" markdown>
 
 -   📘 **[Guide](guide/index.md)**
 
@@ -61,13 +34,25 @@ The docs come in five parts: start with the tutorial, then read the guide or jum
 
 -   🖼️ **[Gallery](gallery.md)**
 
-    Every example in 3D, from a tower to the Colosseum.
+    Every example in a 3D viewer, from a tower of 20 elements to the Colosseum.
 
 -   📚 **[Reference](reference/index.md)**
 
     Every command, diagnostic code, setting and Python function.
 
 </div>
+
+## How it works
+
+Each build saves the model the script describes, checks it and renders it.
+The agent reads the report and the images, edits the script and builds again, until the report says `0 errors` and the images show the intended model.
+
+```mermaid
+flowchart LR
+    write("Write the<br/>build script") --> build("Run<br/>bricky build")
+    build --> read("Read the report<br/>and the images")
+    read -->|until 0 errors| write
+```
 
 ## Install
 
@@ -76,6 +61,6 @@ Installing bricky takes [uv](https://docs.astral.sh/uv/), which installs Python 
 ```sh
 git clone https://github.com/maxencefaldor/bricky && cd bricky
 uv sync
-uv run playwright install chromium       # the browser bricky renders in, once per machine
+uv run playwright install chromium       # the browser bricky renders in
 uv run bricky build examples/cottage.py  # build, check and render the cottage
 ```
