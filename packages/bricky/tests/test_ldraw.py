@@ -69,6 +69,7 @@ def test_an_import_from_ldraw_alone_names_parts_as_ldraw_does():
     assert list(ldraw_parts(LIBRARY)) == [
         "3004",
         "3004p01",
+        "3005",
         "3024",
         "3700",
         "3867",
@@ -81,7 +82,7 @@ def test_an_import_from_ldraw_alone_names_parts_as_ldraw_does():
     assert parts["3004"].name == "Brick 1 x 2"
     assert parts["3004p01"].base == "3004"
     assert parts["990001"].category == "Sticker"
-    assert coverage.by_source == {"LDraw": 5, "printed": 1}
+    assert coverage.by_source == {"LDraw": 6, "printed": 1}
     assert coverage.ldraw_failures == {
         "encloses no volume": 1,
         "the LDraw library has no file missing.dat, which a part uses": 1,
@@ -123,10 +124,25 @@ def test_an_import_from_both_shapes_by_name_then_by_ldraw_and_ldraw_wins_a_disag
     assert coverage.compared == 3
     assert coverage.disagreements == (
         (
-            "3867 Baseplate 16 x 16: its name gives 320 x 320 x 4 units, 256 studs, 0 anti-studs; "
-            "LDraw gives 40 x 40 x 4 units, 4 studs, 0 anti-studs"
+            "3867 Baseplate 16 x 16 takes LDraw's shape: its name gives 320 x 320 x 4 units, "
+            "256 studs, 0 anti-studs; LDraw gives 40 x 40 x 4 units, 4 studs, 0 anti-studs"
         ),
     )
     assert parts["3867"].shape is not None
     assert parts["3867"].shape.family is Family.BOXES  # LDraw's shape, where they disagree
     assert coverage.sources[1].startswith("LDraw.org Parts Library, CC BY, release 2025-01, at ")
+
+
+def test_a_part_whose_ldraw_shape_only_lacks_anti_studs_keeps_its_name_s_shape(tmp_path):
+    shutil.copy(DATA / "bricklink" / "Colors.xml", tmp_path / "Colors.xml")
+    (tmp_path / "parts.xml").write_text(parts_download([("3005", "Brick 1 x 1")]))
+    catalog_file, coverage = import_catalog(read_downloads(tmp_path), LIBRARY)
+    (brick,) = catalog_file.parts
+    assert brick.shape is not None
+    assert brick.shape.family is Family.BRICK  # LDraw's solid underside finds no room for a stud
+    assert coverage.disagreements == (
+        (
+            "3005 Brick 1 x 1 keeps its name's shape: its name gives 20 x 20 x 24 units, 1 stud, "
+            "1 anti-stud; LDraw gives 20 x 20 x 24 units, 1 stud, 0 anti-studs"
+        ),
+    )

@@ -27,9 +27,14 @@ flowchart LR
   a stud.
 
 Where a part has both a family shape and an LDraw file, the import compares their sizes, studs and
-anti-studs. They agree for almost every part, which checks both; where they disagree, the name has
-hidden a detail that changes the part, so the part takes LDraw's shape, and the import reports the
-disagreement.
+anti-studs. They agree for almost every part, which checks both, and the import reports every
+disagreement:
+
+- Where LDraw's shape only lacks anti-studs the name gives, the part keeps its name's shape. The
+  conversion finds anti-studs by the room under a body on a 0.8 mm grid, which misses sockets under
+  thin and curved bodies, such as those of curved slopes.
+- Otherwise the name has hidden a detail that changes the part, so the part takes LDraw's shape,
+  rotated to the name's orientation where a rotation brings the two closer.
 
 ## Importing
 
@@ -60,8 +65,8 @@ imported 97,099 parts and 214 colors from:
   LDraw.org Parts Library, CC BY, release 2026-10
 
 47,682 parts have a shape and can be placed; 49,417 have none
-shapes by source: printed 41,975, LDraw 5,510, name 197
-shapes by family: boxes 28,451, tile 10,098, brick 3,840, slope 1,859, round 1,779, ...
+shapes by source: printed 41,975, LDraw 5,503, name 204
+shapes by family: boxes 28,062, tile 10,098, brick 3,840, slope 1,971, round 1,779, ...
 
 parts without a shape, by category (most first):
   Minifigure, Torso Assembly, Decor.: 7,415
@@ -73,9 +78,11 @@ parts without a shape, by category (most first):
 LDraw files that could not be converted, by reason:
   encloses no volume: 28
 
-compared 179 named shapes with LDraw: 13 disagreements, which take LDraw's shape
-  13965 Arch 1 x 3 x 3: its name gives 20 x 60 x 72 units, 3 studs, 2 anti-studs;
-    LDraw gives 20 x 60 x 72 units, 3 studs, 1 anti-stud
+compared 179 named shapes with LDraw: 20 disagreements
+  2875 Slope 45 2 x 6 x 2/3 takes LDraw's shape: its name gives 40 x 120 x 16 units,
+    6 studs, 12 anti-studs; LDraw gives 40 x 120 x 24 units, 6 studs, 10 anti-studs
+  15068 Slope, Curved 2 x 2 x 2/3 keeps its name's shape: its name gives 40 x 40 x 16 units,
+    0 studs, 4 anti-studs; LDraw gives 40 x 40 x 16 units, 0 studs, 2 anti-studs
   ...
 ```
 
@@ -85,8 +92,9 @@ surfaces without volume.
 
 ## Converted parts
 
-A converted part keeps LDraw's orientation, and its note says so. Its body is exact on the 0.8 mm
-grid, which holds every wall, height and stud of ordinary parts; curved surfaces become steps.
+A converted part keeps LDraw's orientation, or the name's orientation where it replaces a named
+shape; its note says which. Its body is exact on the 0.8 mm grid, which holds every wall, height
+and stud of ordinary parts; curved surfaces become steps.
 
 ![Parts converted from LDraw](../images/converted.png)
 

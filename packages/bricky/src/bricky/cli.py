@@ -5,14 +5,18 @@ command line therefore accepts exactly what the MCP tools accept and prints the 
 """
 
 import json
+import re
 import sys
 from collections.abc import Sequence
-from typing import Literal, override
+from enum import Enum
+from typing import Final, Literal, override
 
 from pydantic import BaseModel, Field
+from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
     CliApp,
+    CliSettingsSource,
     CliSubCommand,
     PydanticBaseSettingsSource,
     SettingsConfigDict,
@@ -230,6 +234,34 @@ class Bricky(BaseSettings):
         CliApp.run_subcommand(self)
 
 
+_ENUM_REPR: Final = re.compile(r"<\w+\.\w+: '([^']*)'>")
+"""An enum member as Python prints it, such as ``<View.SHEET: 'sheet'>``."""
+
+
+class _Source(CliSettingsSource[Bricky]):
+    """Writes enum members in help as the values the command line accepts, such as ``sheet``."""
+
+    @override
+    def _metavar_format_recurse(self, obj: object) -> str:
+        if isinstance(obj, type) and issubclass(obj, Enum):
+            return self._metavar_format_choices([str(member.value) for member in obj])
+        return super()._metavar_format_recurse(obj)
+
+    @override
+    def _help_format(
+        self,
+        field_name: str,
+        field_info: FieldInfo,
+        model_default: object,
+        is_model_suppressed: bool,
+        env_var_names: tuple[str, ...] = (),
+    ) -> str:
+        text = super()._help_format(
+            field_name, field_info, model_default, is_model_suppressed, env_var_names
+        )
+        return _ENUM_REPR.sub(r"\1", text)
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     """Run the command line.
 
@@ -237,7 +269,11 @@ def main(argv: Sequence[str] | None = None) -> None:
     arguments are invalid or a command fails with a :class:`~bricky.BrickyError`.
     """
     try:
-        CliApp.run(Bricky, cli_args=None if argv is None else list(argv))
+        CliApp.run(
+            Bricky,
+            cli_args=None if argv is None else list(argv),
+            cli_settings_source=_Source(Bricky),
+        )
     except BrickyError as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(2) from None
