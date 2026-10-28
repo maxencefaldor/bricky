@@ -1,7 +1,7 @@
 """Catalog data types: catalog parts and their shapes, generated parts, connectors and colors.
 
-A catalog part pairs what BrickLink says about a part (its id, name, category and the colors it
-comes in) with the shape bricky generates its geometry from, when bricky has one for it.
+A catalog part pairs BrickLink's facts about a part (its id, name, category and the colors it comes
+in) with the shape bricky generates its geometry from, when bricky has one.
 """
 
 from dataclasses import dataclass
@@ -15,30 +15,30 @@ from bricky.units import STUD
 
 
 class ConnectorKind(StrEnum):
-    """The kinds of connection point bricky understands."""
+    """The kinds of connector: studs and anti-studs."""
 
     STUD = "stud"
-    """A stud, on top of a part or on one of its sides."""
+    """A stud, on a part's top or on one of its sides."""
 
     ANTI_STUD = "anti_stud"
-    """A socket, under a part, that a stud connects with."""
+    """The socket under a part that a stud fits."""
 
     @property
     def mate(self) -> ConnectorKind:
-        """The kind this one connects to."""
+        """The kind that fits this one."""
         return ConnectorKind.ANTI_STUD if self is ConnectorKind.STUD else ConnectorKind.STUD
 
 
 @dataclass(frozen=True, slots=True)
 class Connector:
-    """A connection point, in its part's local frame or in world space."""
+    """A stud or an anti-stud, in its part's local frame or in world space."""
 
     kind: ConnectorKind
     position: Vector
-    """Center of the interface, on the part's face."""
+    """The connector's center, on the part's face."""
 
     normal: Vector
-    """Outward unit axis."""
+    """The outward unit axis."""
 
     def transformed(self, pose: Pose) -> Connector:
         """Return this connector placed by a pose."""
@@ -46,7 +46,7 @@ class Connector:
 
 
 class Family(StrEnum):
-    """Part families whose geometry bricky generates."""
+    """The families: generators that convert a part's shape into its geometry."""
 
     BRICK = "brick"
     PLATE = "plate"
@@ -60,7 +60,7 @@ class Family(StrEnum):
     JUMPER = "jumper"
     ARCH = "arch"
     BOXES = "boxes"
-    """Any part, its body given as boxes and its connectors one by one, as converted from LDraw."""
+    """Any part, with its body as boxes and its connectors one by one, as converted from LDraw."""
 
 
 type Side = Literal["-x", "+x", "-y", "+y"]
@@ -76,11 +76,13 @@ class _Shape(BaseModel):
 
 
 class BlockShape(_Shape):
-    """A brick, plate or tile: a box with a stud on top (but not tiles) at every position."""
+    """A brick, plate or tile: a box with a stud at every position on top, except on a tile."""
 
     family: Literal[Family.BRICK, Family.PLATE, Family.TILE]
     height: int | None = Field(
-        default=None, ge=1, description="Plates tall; 3 for a brick and 1 for a plate or tile."
+        default=None,
+        ge=1,
+        description="Plates tall; by default 3 for a brick, 1 for a plate or tile.",
     )
 
 
@@ -91,7 +93,7 @@ class BaseplateShape(_Shape):
 
 
 class SlopeShape(_Shape):
-    """A slope falling toward the front (local -y), studs on its flat top at the back."""
+    """A slope falling toward the front (local -y), with studs on its flat top at the back."""
 
     family: Literal[Family.SLOPE]
     height: int = Field(default=3, ge=1, description="Plates tall.")
@@ -100,7 +102,7 @@ class SlopeShape(_Shape):
 
 
 class InvertedSlopeShape(_Shape):
-    """A slope underneath, rising toward the front (local -y), studs all over its flat top."""
+    """A slope underneath, rising toward the front (local -y), with studs all over its top."""
 
     family: Literal[Family.INVERTED_SLOPE]
     height: int = Field(default=3, ge=1, description="Plates tall.")
@@ -135,7 +137,7 @@ class SideStudsShape(_Shape):
 
     family: Literal[Family.SIDE_STUDS]
     height: int = Field(default=3, ge=1, description="Plates tall.")
-    sides: tuple[Side, ...] = Field(min_length=1, description="Faces carrying studs.")
+    sides: tuple[Side, ...] = Field(min_length=1, description="The faces that carry studs.")
 
 
 class JumperShape(_Shape):
@@ -143,7 +145,7 @@ class JumperShape(_Shape):
 
     family: Literal[Family.JUMPER]
     center_anti_stud: bool = Field(
-        default=False, description="Whether its underside also grips a stud in the middle."
+        default=False, description="Whether the underside also has an anti-stud in the middle."
     )
 
 
@@ -172,23 +174,23 @@ type Corners = tuple[int, int, int, int, int, int]
 class BoxesShape(BaseModel):
     """Any part, given explicitly: its body as boxes, its studs and its anti-studs.
 
-    Coordinates are base units in the part's frame, the minimum corner of its body at the origin.
+    Coordinates are base units in the part's frame, with the part's minimum corner at the origin.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     family: Literal[Family.BOXES]
     size: tuple[int, int, int] = Field(
-        description="The part's bounding box, from the origin, which the body lies within."
+        description="The part's bounding box, from the origin; the body lies within it."
     )
     boxes: tuple[Corners, ...] = Field(
         min_length=1, description="The body: boxes as x0, y0, z0, x1, y1, z1."
     )
     studs: tuple[tuple[int, int, int, Axis], ...] = Field(
-        default=(), description="Each stud: where its base sits, x, y, z, and the axis it points."
+        default=(), description="Each stud: the x, y, z of its base, and the axis it points along."
     )
     anti_studs: tuple[tuple[int, int], ...] = Field(
-        default=(), description="Each anti-stud on the bottom face, z = 0: x, y."
+        default=(), description="Each anti-stud: its x, y on the bottom face, z = 0."
     )
     source: str = Field(description="Where the shape was converted from, such as 'LDraw 3001.dat'.")
 
@@ -222,26 +224,26 @@ class CatalogPart(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    id: str = Field(pattern=r"^\S+$", description="BrickLink item number, such as '3001'.")
-    name: str = Field(description="BrickLink item name, such as 'Brick 2 x 4'.")
+    id: str = Field(pattern=r"^\S+$", description="BrickLink id, such as '3001'.")
+    name: str = Field(description="BrickLink name, such as 'Brick 2 x 4'.")
     category: str | None = Field(
         default=None, description="BrickLink category, such as 'Brick, Round'."
     )
     alternates: tuple[str, ...] = Field(
-        default=(), description="Other item numbers BrickLink lists for the part."
+        default=(), description="Other ids BrickLink lists for the part."
     )
     colors: tuple[int, ...] = Field(
-        default=(), description="BrickLink color ids the part is known in, when the source says."
+        default=(),
+        description="BrickLink ids of the colors the part comes in, when the source lists them.",
     )
     shape: Shape | None = Field(
         default=None,
         description="The shape bricky generates the part's geometry from; null when bricky has "
-        "none for it, or when the part takes its shape from its base.",
+        "none, or when the part takes its base's shape.",
     )
     base: str | None = Field(
         default=None,
-        description="For a printed part, the item number of the part it is printed on, whose "
-        "shape it has.",
+        description="For a printed part, the id of the part it is printed on, its base.",
     )
 
 
@@ -278,8 +280,8 @@ class Part:
     """A catalog part with its geometry in its local frame.
 
     The local frame puts the bounding box's minimum corner at the origin, with x along the part's
-    width, y along its length and z up. The body is a union of solids. Studs are connectors, not
-    solids, and stand outside the bounding box.
+    width, y along its length and z up. The body is a union of solids. Studs are connectors and
+    stand outside the bounding box.
     """
 
     id: str
@@ -296,7 +298,7 @@ class Part:
 
     @property
     def stud_count(self) -> int:
-        """Number of studs on the part."""
+        """The number of studs on the part."""
         return sum(1 for c in self.connectors if c.kind is ConnectorKind.STUD)
 
     @property

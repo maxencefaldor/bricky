@@ -1,15 +1,15 @@
 """Read a part's shape from its BrickLink name.
 
-BrickLink names the ordinary building parts by a strict pattern: the kind of part, its size in
-studs, its height when that is not the usual one, then any details. "Brick 1 x 2 x 2" is a brick
-one stud wide, two long and two bricks tall; "Slope 45 2 x 4" a slope two studs deep and four wide;
-"Plate, Round 2 x 2 with Axle Hole" a round plate.
+BrickLink names ordinary building parts by a strict pattern: the kind of part, its size in studs,
+its height when it differs from the usual one, then any details. "Brick 1 x 2 x 2" is a brick one
+stud wide, two long and two bricks tall; "Slope 45 2 x 4" is a slope two studs deep and four wide;
+"Plate, Round 2 x 2 with Axle Hole" is a round plate.
 
 :func:`shape_from_name` returns the shape of every name that follows a pattern bricky has a family
-for, and ``None`` for every other name rather than guess. A name may carry details that leave the
-outer shape and the connectors as bricky models them, such as a groove along the bottom edge or
-the tubes underneath; any other detail, such as "Double", "with Cutout" or "with Handle", means the
-part is not the plain shape, and the name gets no shape.
+for, and ``None`` for every other name, rather than guess. Some details leave the outer shape and
+the connectors as bricky models them, such as a groove along the bottom edge or the tubes
+underneath. Any other detail, such as "Double", "with Cutout" or "with Handle", marks a part that
+differs from the plain shape, and the name gets no shape.
 """
 
 import math
@@ -59,11 +59,11 @@ _NEUTRAL: Final = frozenset(
 _STUD_KINDS: Final = frozenset(
     {"Open Stud", "Open Studs", "Hollow Stud", "Hollow Studs", "Solid Stud", "Solid Studs"}
 )
-"""Details that say how a part's studs are made: neutral for a part with studs on top, but a tile
-or a curved slope with a stud is not the plain part."""
+"""Details that say how a part's studs are made: neutral for a part with studs on top, and the
+mark of a different part on a tile or a curved slope."""
 
 _ROUND_DETAILS: Final = frozenset({"Axle Hole", "Straight Side"})
-"""Details of round parts: an axle hole through the middle, or a straight-sided plate."""
+"""Details neutral for round parts only: an axle hole through the middle, or a straight side."""
 
 _SIZE: Final = r"(?P<a>\d+) x (?P<b>\d+)"
 _HEIGHT: Final = r"(?: x (?P<height>\d+ \d/3|\d/3|\d+))?"
@@ -94,10 +94,12 @@ _SIDES_OF_ONE: Final[dict[tuple[int, bool], tuple[Side, ...]]] = {
     (3, False): ("-y", "+x", "+y"),
     (4, False): ("-y", "+x", "+y", "-x"),
 }
-"""The faces of a 1 x 1 brick with studs on n sides: the first faces front, -y."""
+"""The studded faces of a 1 x 1 brick, by the number of sides and whether they are adjacent.
+
+The first face is the front, -y."""
 
 _SIDES_OF_LONG: Final[dict[int, tuple[Side, ...]]] = {1: ("-y",), 2: ("-y", "+y")}
-"""The faces of a longer brick with studs on n sides: its long sides."""
+"""The studded faces of a longer brick, by the number of sides: its long sides."""
 
 _BLOCKS: Final[dict[str, Literal[Family.BRICK, Family.PLATE, Family.TILE]]] = {
     "Brick": Family.BRICK,
@@ -126,7 +128,9 @@ def shape_from_name(name: str) -> Shape | None:
 def plates(height: str | None, default: int) -> int | None:
     """Convert a BrickLink height in bricks, such as ``"2"``, ``"2/3"`` or ``"1 1/3"``, to plates.
 
-    Returns ``default`` when there is no height, and ``None`` for heights off the plate grid.
+    Returns:
+        The height in plates; ``default`` when ``height`` is ``None``; ``None`` for a height off
+        the plate grid.
     """
     if height is None:
         return default
@@ -140,9 +144,9 @@ def plates(height: str | None, default: int) -> int | None:
 
 
 def _neutral(detail: str | None, *, studs: bool, allowed: frozenset[str] = frozenset()) -> bool:
-    """Whether every fragment of a detail is neutral, splitting it at "with", "and" and commas.
+    """Whether every fragment of a detail is neutral, splitting at "with", "and", commas and dashes.
 
-    Details about studs are neutral only for a part with studs on top; ``allowed`` adds details
+    Details about studs are neutral only for a part with studs on top. ``allowed`` adds the details
     neutral for one kind of part.
     """
     if detail is None:
@@ -176,11 +180,11 @@ def _baseplate(name: str) -> Shape | None:
 
 
 def _slope(name: str) -> Shape | None:
-    """Slopes are named by angle, then depth (front to back) and width, then height in bricks.
+    """Read a slope's name: its angle, its depth (front to back) and width, then its height.
 
-    The slope rises from the lip at the front to the full height, at the angle in the name, so it
-    covers the rows that rise needs; the rows behind it are flat on top and carry studs. A slope
-    as deep as it covers, such as a cheese slope, is all slope and has no studs.
+    The slope rises from the lip at the front to the full height at the angle in the name, and
+    covers the rows that rise needs. The rows behind it are flat on top and carry studs. A slope
+    that covers its whole depth, such as a cheese slope, has no studs.
     """
     match = _SLOPE.match(name)
     if match is None:
@@ -198,13 +202,13 @@ def _slope(name: str) -> Shape | None:
 
 
 def _inverted_slope(name: str) -> Shape | None:
-    """Inverted slopes rise toward the front, as slopes fall; the rows behind grip studs below."""
+    """Read an inverted slope's name: the underside rises toward the front, as a slope falls."""
     match = _INVERTED.match(name)
     if match is None or not _neutral(match["detail"], studs=True):
         return None
     depth, width = int(match["a"]), int(match["b"])
     height = plates(match["height"], 3)
-    if height is None or depth < 2:  # noqa: PLR2004 - the flat back row grips the studs below
+    if height is None or depth < 2:  # noqa: PLR2004 - the flat back row holds the anti-studs
         return None
     run = min(_run(int(match["angle"]), height, depth), depth - 1)
     return InvertedSlopeShape(
@@ -213,11 +217,11 @@ def _inverted_slope(name: str) -> Shape | None:
 
 
 def _run(angle: int, height: int, depth: int) -> int:
-    """The rows a slope of this angle and height in plates covers: its rise over its gradient.
+    """Return the rows a slope covers, from its angle in degrees and its height in plates.
 
-    It rises from the lip to the full height, ``height * PLATE - LIP``, which at ``angle``
-    degrees takes that rise over the angle's tangent across, rounded to whole rows, from one row
-    to the part's depth.
+    The slope rises ``height * PLATE - LIP``, from the lip to the full height. The rows it covers
+    are that rise divided by the angle's tangent, rounded to whole rows and kept between one row
+    and the part's depth.
 
     Example:
         >>> _run(45, 3, 2), _run(33, 3, 3), _run(18, 3, 4), _run(30, 2, 1)
@@ -228,7 +232,10 @@ def _run(angle: int, height: int, depth: int) -> int:
 
 
 def _curved_slope(name: str) -> Shape | None:
-    """Curved slopes come in several heights, so only names that give the height have a shape."""
+    """Read a curved slope's name, which gets a shape only when it gives the slope's height.
+
+    Curved slopes come in several heights, so a name without one describes no single shape.
+    """
     match = _CURVED.match(name)
     if match is None or match["height"] is None or not _neutral(match["detail"], studs=False):
         return None
@@ -240,7 +247,10 @@ def _curved_slope(name: str) -> Shape | None:
 
 
 def _round(name: str) -> Shape | None:
-    """Round bricks, plates and tiles, one or two studs across: bigger ones have studs set in."""
+    """Read the name of a round brick, plate or tile one or two studs across.
+
+    Bigger round parts have their studs set in, so their names get no shape.
+    """
     match = _ROUND.match(name)
     if match is None:
         return None
@@ -261,9 +271,9 @@ def _round(name: str) -> Shape | None:
 
 
 def _side_studs(name: str) -> Shape | None:
-    """Bricks one stud wide with studs on their sides: one stud per position along each face.
+    """Read the name of a brick one stud wide with studs on its sides, one per position along each.
 
-    Unrotated, the brick runs along x and its first studded side faces front, -y.
+    The brick runs along x when unrotated, and its first studded side faces the front, -y.
     """
     match = _SIDE_STUDS.match(name)
     if match is None:
@@ -296,7 +306,7 @@ def _jumper(name: str) -> Shape | None:
 
 
 def _arch(name: str) -> Shape | None:
-    """Plain arches: one stud wide, a one-stud leg at each end, the opening between them."""
+    """Read a plain arch's name: one stud wide, with a one-stud leg at each end of the opening."""
     match = _ARCH.match(name)
     if match is None or not _neutral(match["detail"], studs=True):
         return None
