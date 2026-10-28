@@ -19,7 +19,7 @@ Run a build script, then save, check and render its model.
 | `--output` |  | Where to save the model; defaults to &lt;script&gt;.bricky.json. |
 | `--check`, `--no-check` | `True` | Check the model after building it. |
 | `--render`, `--no-render` | `True` | Render the model after checking it. |
-| `--views` | `sheet` | Views to draw: sheet (perspective, front, right and top on one image), perspective, front, back, left, right or top. |
+| `--views` | `sheet` | Views to draw: sheet (perspective, front, right and top on one image), perspective (from the south-east), perspective-south-west, perspective-north-west, perspective-north-east, front, back, left, right or top. |
 | `--profile` |  | Profile to run, such as 'digital' or 'physical'; defaults to the configured one. |
 | `--passes` |  | Pass names to run instead of a profile. |
 | `--max-diagnostics` |  | Maximum diagnostics to return; defaults to the configured cap. |
@@ -44,7 +44,7 @@ Render pictures of a model file.
 | --- | --- | --- |
 | `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
 | `MODEL` | required | Path to a .bricky.json model file. |
-| `--views` | `sheet` | Views to draw: sheet (perspective, front, right and top on one image), perspective, front, back, left, right or top. |
+| `--views` | `sheet` | Views to draw: sheet (perspective, front, right and top on one image), perspective (from the south-east), perspective-south-west, perspective-north-west, perspective-north-east, front, back, left, right or top. |
 | `--highlight` |  | Elements to highlight, drawing the rest faintly: uid patterns such as 'lintel*', or '@' and a function, file or file:line of the build script, such as '@horseshoe'. |
 | `--clip` |  | Clip the model to look inside: 'z&lt;130' keeps what lies below 130 plates; x and y are in studs. |
 | `--check`, `--no-check` | `True` | Mark the elements that diagnostics name. |

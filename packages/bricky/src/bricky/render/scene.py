@@ -38,6 +38,15 @@ class View(StrEnum):
     PERSPECTIVE = "perspective"
     """In perspective, from above the south-east."""
 
+    PERSPECTIVE_SOUTH_WEST = "perspective-south-west"
+    """In perspective, from above the south-west."""
+
+    PERSPECTIVE_NORTH_WEST = "perspective-north-west"
+    """In perspective, from above the north-west."""
+
+    PERSPECTIVE_NORTH_EAST = "perspective-north-east"
+    """In perspective, from above the north-east."""
+
     FRONT = "front"
     """Orthographic, looking north, with x and z rulers."""
 

@@ -65,7 +65,8 @@ _PROFILE_HELP: Final = (
 _PASSES_HELP: Final = "Pass names to run instead of a profile."
 _MAX_DIAGNOSTICS_HELP: Final = "Maximum diagnostics to return; defaults to the configured cap."
 _VIEWS_HELP: Final = (
-    "Views to draw: sheet (perspective, front, right and top on one image), perspective, front, "
+    "Views to draw: sheet (perspective, front, right and top on one image), perspective (from the "
+    "south-east), perspective-south-west, perspective-north-west, perspective-north-east, front, "
     "back, left, right or top."
 )
 _WIDTH: Final = 1600

@@ -29,6 +29,25 @@ def test_an_overhang_takes_a_part_that_reaches_back_over_its_support():
     assert check_model(model).ok
 
 
+def test_a_ledge_inside_a_course_turns_the_bricks_beside_it_into_plates():
+    ledge = {(0, 0, z): "Tan" for z in range(3)} | {(1, 0, 1): "Tan"}
+    builder = ModelBuilder("ledge")
+    builder.fill(ledge)
+    model = builder.build()
+    assert {element.part for element in model.elements} == {PLATES[1, 1], PLATES[1, 2]}
+    assert check_model(model).ok
+
+
+def test_a_floor_between_two_walls_rests_on_both_across_the_gap():
+    walls = {(x, y, z): "Tan" for x in (0, 1, 8, 9) for y in range(4) for z in range(6)}
+    floor = {(x, y, 6): "Tan" for x in range(10) for y in range(4)}
+    builder = ModelBuilder("floor")
+    builder.fill(walls | floor)
+    model = builder.build()
+    assert set(voxels(model)) == set(walls | floor)
+    assert check_model(model).ok
+
+
 def test_colors_are_never_mixed_within_a_part():
     stripes = {(x, 0, 0): "Red" if x < 2 else "Blue" for x in range(4)}
     builder = ModelBuilder("stripes")

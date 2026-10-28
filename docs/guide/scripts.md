@@ -67,7 +67,9 @@ instance. The colonnade below highlights `i2/*`, its second column:
 Many shapes are easiest to draw as voxels: which color fills each stud square, one plate tall.
 `builder.fill(voxels)` covers such a drawing with bricks and plates. Bricks go where three plate
 levels of a course share a color, plates everywhere else, each part as large as fits. Courses
-alternate direction, so joints stagger, and every part rests on the level below.
+alternate direction, so joints stagger, and every part rests on the level below. Overhangs, and
+the squares beside them, take plates that reach back to what holds them, so floors span between
+walls and cornices stand out from them.
 
 ```python
 from math import hypot
@@ -85,6 +87,7 @@ builder.fill(tower, id="tower")  # ids such as tower.4.-2.9: the prefix, then th
 ![A round tower drawn as voxels and filled with bricks and plates](../images/fill.png)
 
 `plan_fill` in `bricky.fill` returns the same parts as data, to inspect or adjust before placing.
+[The Colosseum](../examples.md#colosseum) fills 242,576 voxels this way.
 
 ## Building sideways
 

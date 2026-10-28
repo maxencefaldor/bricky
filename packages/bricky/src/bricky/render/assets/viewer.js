@@ -22,7 +22,10 @@ const MARGIN = { left: 60, right: 16, top: 34, bottom: 44 };
 const FONT = "12px system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 const VIEWS = {
-  perspective: { title: "PERSPECTIVE", note: "from the south-east" },
+  perspective: { title: "PERSPECTIVE", note: "from the south-east", azimuth: 35 },
+  "perspective-south-west": { title: "PERSPECTIVE", note: "from the south-west", azimuth: -35 },
+  "perspective-north-west": { title: "PERSPECTIVE", note: "from the north-west", azimuth: 215 },
+  "perspective-north-east": { title: "PERSPECTIVE", note: "from the north-east", azimuth: 145 },
   front: { title: "FRONT", note: "looking north", direction: [0, 0, 1], up: [0, 1, 0], u: { vector: [1, 0, 0], axis: "x", sign: 1 }, v: { vector: [0, 1, 0], axis: "z", sign: 1 } },
   back: { title: "BACK", note: "looking south", direction: [0, 0, -1], up: [0, 1, 0], u: { vector: [-1, 0, 0], axis: "x", sign: -1 }, v: { vector: [0, 1, 0], axis: "z", sign: 1 } },
   right: { title: "RIGHT", note: "looking west", direction: [1, 0, 0], up: [0, 1, 0], u: { vector: [0, 0, -1], axis: "y", sign: 1 }, v: { vector: [0, 1, 0], axis: "z", sign: 1 } },
@@ -528,12 +531,14 @@ function drawPanel(view, width, height) {
   const center = model.bounds.getCenter(new THREE.Vector3());
 
   let camera, pixelsPerStud, orthographic = null;
-  if (view === "perspective") {
-    const perspective = perspectiveCamera(model.bounds, width, height);
+  const azimuth = VIEWS[view].azimuth;
+  if (azimuth !== undefined) {
+    const perspective = perspectiveCamera(model.bounds, width, height, azimuth);
     camera = perspective.camera;
     pixelsPerStud = perspective.pixelsPerStud;
     const radius = size.length();
-    const light = new THREE.Vector3(-0.55, 1.1, 0.75).normalize();
+    // The sun stands to the camera's left, as it does from the south-east.
+    const light = new THREE.Vector3(-0.55, 1.1, 0.75).applyAxisAngle(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(azimuth - 35)).normalize();
     sun.position.copy(center).addScaledVector(light, radius * 1.5);
     sun.target.position.copy(center);
     sun.castShadow = true;
@@ -558,7 +563,7 @@ function drawPanel(view, width, height) {
     renderer.setClearColor(0x000000, 0);
     drawGrid(context, view, orthographic, width, height);
   }
-  hemisphere.intensity = view === "perspective" ? 1.45 : 1.7;
+  hemisphere.intensity = azimuth !== undefined ? 1.45 : 1.7;
   // Fainter edges when elements are small on screen, so outlines never swamp the colors.
   const opacity = Math.min(0.42, Math.max(0.07, 0.03 * pixelsPerStud));
   model.edgeMaterials.plain.opacity = opacity;
@@ -573,7 +578,7 @@ function drawPanel(view, width, height) {
 
   svg.append(text(12, 20, `${VIEWS[view].title}`, { weight: 700, fill: INK.text }));
   svg.append(text(12 + measure(VIEWS[view].title, 700) + 8, 20, VIEWS[view].note, { fill: INK.quiet }));
-  if (view === "perspective") drawCompass(svg, camera, center, width);
+  if (VIEWS[view].azimuth !== undefined) drawCompass(svg, camera, center, width);
   else drawRulers(svg, view, orthographic, width, height);
   drawLabels(svg, camera, width, height);
   panel.append(canvas, svg);
@@ -808,8 +813,8 @@ export async function mount(element, scene) {
   const look = (view) => {
     const width = element.clientWidth, height = element.clientHeight;
     camera.aspect = width / height;
-    if (view === "perspective") {
-      const perspective = perspectiveCamera(model.bounds, width, height);
+    if (VIEWS[view].azimuth !== undefined) {
+      const perspective = perspectiveCamera(model.bounds, width, height, VIEWS[view].azimuth);
       camera.position.copy(perspective.camera.position);
       controls.target.copy(perspective.target);
     } else {
