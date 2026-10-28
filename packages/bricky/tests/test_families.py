@@ -33,7 +33,7 @@ def test_every_part_sits_in_its_box_with_connectors_on_its_faces(p):
         assert c.normal in AXES.values()
         if c.normal == UP:
             assert c.position.z == p.size.z
-        else:  # a side stud: on a vertical face, half way up
+        else:  # a side stud: on a vertical face, halfway up
             assert c.normal.z == 0
             assert c.position.z == p.size.z // 2
             face = {AXES["-x"]: 0, AXES["+x"]: p.size.x, AXES["-y"]: 0, AXES["+y"]: p.size.y}

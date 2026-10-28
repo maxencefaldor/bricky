@@ -25,12 +25,14 @@ from bricky_bench.projects import load_projects
 from bricky_bench.run import Agent, run_projects, summary_table
 
 _PROJECTS_HELP = "Folder holding the projects."
-_WANTED_HELP = "Projects to use, by folder name or number, such as '04-house-plans' or '4'."
+_PROJECT_HELP = "Projects to use, by folder name or number, such as '04-house-plans' or '4'."
 
 
 class _Selection(BaseModel):
+    """The projects a command works on."""
+
     projects_dir: Path = Field(default=Path("bench/projects"), description=_PROJECTS_HELP)
-    project: tuple[str, ...] = Field(default=(), description=_WANTED_HELP)
+    project: tuple[str, ...] = Field(default=(), description=_PROJECT_HELP)
 
 
 class ListCommand(_Selection):
@@ -126,7 +128,7 @@ class BrickyBench(BaseSettings):
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    """Run the command line; exit 2 on errors."""
+    """Run the command line, exiting with status 2 on an error."""
     try:
         CliApp.run(BrickyBench, cli_args=None if argv is None else list(argv))
     except BrickyError as error:

@@ -1,10 +1,10 @@
 """Scores: what is true of the model an agent ends with, and how closely it matches a reference.
 
 A score has two parts. The facts come from building the agent's final script with bricky: whether
-it builds, how many elements it has, and its errors and warnings. Fidelity, for projects with a
-reference, compares the voxels the two models fill (see :func:`bricky.voxels`). Position is free:
-the agent's model is rotated about the vertical axis and shifted to line up with the reference,
-and the best match counts.
+the script builds, how many elements the model has, and its errors and warnings. Fidelity, for
+projects with a reference, compares the voxels the two models fill (see :func:`bricky.voxels`).
+Position is free: the comparison rotates the agent's model about the vertical axis and shifts it
+to line up with the reference, and the best match counts.
 """
 
 from collections import Counter
@@ -24,7 +24,7 @@ ROTATIONS: Final[dict[str, Rotate]] = {
     "R180": lambda x, y: (-x, -y),
     "R270": lambda x, y: (y, -x),
 }
-"""The four rotations about the vertical axis, counter-clockwise seen from above."""
+"""The four rotations about the vertical axis, counterclockwise seen from above."""
 
 
 class Fidelity(BaseModel):
@@ -48,7 +48,9 @@ class Score(BaseModel):
     """What is true of an agent's final model."""
 
     built: bool = Field(description="Whether the final script built a model.")
-    failure: str | None = Field(default=None, description="Why it did not, if it did not.")
+    failure: str | None = Field(
+        default=None, description="Why the final script built no model; null when it built one."
+    )
     elements: int = 0
     errors: int = 0
     warnings: int = 0
@@ -62,7 +64,7 @@ class Score(BaseModel):
 
 def facts(report: Report, elements: int) -> Score:
     """Score a model that built, from its check report."""
-    codes = Counter(d.code for d in report.diagnostics)
+    codes = Counter(diagnostic.code for diagnostic in report.diagnostics)
     return Score(
         built=True,
         elements=elements,
@@ -75,8 +77,10 @@ def facts(report: Report, elements: int) -> Score:
 def compare(model: Mapping[VoxelKey, Voxel], reference: Mapping[VoxelKey, Voxel]) -> Fidelity:
     """Match a model's voxels against a reference's, over each rotation and three ways to line up.
 
-    For each rotation, the rotated model is shifted so its bounding box's low corner, high corner or
-    center meets the reference's, and the shift that matches most voxels wins. Color breaks ties.
+    For each rotation, the comparison shifts the rotated model so its bounding box's low corner,
+    high corner or center meets the reference's; levels always line up by the low corner. The
+    candidate with the most voxels filled in the same color in both models wins, and the most
+    voxels filled in both breaks ties.
     """
     ours = {key: voxel.color for key, voxel in model.items()}
     theirs = {key: voxel.color for key, voxel in reference.items()}
@@ -97,7 +101,9 @@ def compare(model: Mapping[VoxelKey, Voxel], reference: Mapping[VoxelKey, Voxel]
                 shared, matched = _overlap(rotated, theirs, shift)
                 yield matched, shared, name, shift
 
-    matched, shared, name, shift = max(candidates(), key=lambda c: (c[0], c[1]))
+    matched, shared, name, shift = max(
+        candidates(), key=lambda candidate: (candidate[0], candidate[1])
+    )
     union = len(ours) + len(theirs) - shared
     return Fidelity(
         shape=shared / union,
@@ -119,11 +125,13 @@ def _shifts(
 ) -> set[tuple[int, int, int]]:
     """The shifts that line up the two models' low corners, high corners or centers."""
     (low, high), (reference_low, reference_high) = _bounds(rotated), _bounds(reference)
-    by_low = tuple(r - o for r, o in zip(reference_low, low, strict=True))
-    by_high = tuple(r - o for r, o in zip(reference_high, high, strict=True))
+    by_low = tuple(theirs - ours for theirs, ours in zip(reference_low, low, strict=True))
+    by_high = tuple(theirs - ours for theirs, ours in zip(reference_high, high, strict=True))
     by_center = tuple(
-        (r0 + r1) // 2 - (o0 + o1) // 2
-        for r0, r1, o0, o1 in zip(reference_low, reference_high, low, high, strict=True)
+        (their_low + their_high) // 2 - (our_low + our_high) // 2
+        for their_low, their_high, our_low, our_high in zip(
+            reference_low, reference_high, low, high, strict=True
+        )
     )
     # The ground stays the ground: levels line up by the low corner.
     return {(shift[0], shift[1], by_low[2]) for shift in (by_low, by_high, by_center)}
@@ -134,10 +142,11 @@ def _overlap(
     reference: Mapping[VoxelKey, int],
     shift: tuple[int, int, int],
 ) -> tuple[int, int]:
-    dx, dy, dz = shift
+    """Count the shifted voxels the reference also fills, and those of them in the same color."""
+    shift_x, shift_y, shift_z = shift
     shared = matched = 0
     for (x, y, z), color in rotated.items():
-        other = reference.get((x + dx, y + dy, z + dz))
+        other = reference.get((x + shift_x, y + shift_y, z + shift_z))
         if other is not None:
             shared += 1
             matched += other == color
