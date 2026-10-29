@@ -23,17 +23,17 @@ wrote examples/cottage.instructions.html: 23 steps for 110 elements, 4.8 a step 
 
 ## Build order
 
-An order is buildable when every element can go on with a straight move, and the order follows three rules.
-Each element goes on along its approach: downward onto studs below it, or sideways onto side studs.
-An element held from above only goes on attached under the element that holds it, and the two move as one.
+An order is buildable when every element goes on with straight moves, so the order follows three rules.
 
 1. Something holds each element as it goes on: the ground, or an element it presses onto.
-1. Each connection forms as its second element goes on, so that element's approach points at the first.
-1. Nothing stands in an element's way: the space its solids sweep as they arrive.
+1. Each connection forms as its second element goes on, so that element moves toward the first.
+1. Nothing already placed stands in an element's way: the space its solids sweep as they arrive.
 
 An element going on downward arrives from above the model.
 An element going on sideways drops from above to a stud's height away from its place, then slides in.
+An element held from above is pushed up from a brick's height below its place.
 The sweeps are exact, slopes included, since every solid is convex with integer corners.
+Every step thus leaves what is built joined to the ground, and nothing floats.
 The module `bricky.instructions` gives the steps to Python: here a plate goes on after the brick whose side stud holds it, moving north.
 
 ```python
@@ -51,17 +51,28 @@ steps = build_instructions(builder.build(), default_catalog()).steps
 [((0, 1), (Vector(x=0, y=0, z=-1), Vector(x=0, y=1, z=0)))]
 ```
 
+## Approaches
+
+Each element has a natural approach toward the ground, and the order keeps to it while it can.
+An element rests on what lies below it wherever it can, and otherwise goes on sideways or hangs from what lies above.
+An element that hangs, with no room below to push it up, goes on attached under the element it hangs from, the two moving as one.
+The order never closes the last natural approach of an element still to go on.
+When no element can go on naturally, one goes on along another approach the rules allow, as a builder sometimes must.
+A sail of plates hanging from a yard thus goes on from the yard down, one plate under the next, joined to the ship at every step.
+
 ## Locked elements
 
 Elements that lock one another in leave no order that follows every rule, and the command says which rule each step breaks.
 Two overlapping bricks, for instance, stand in each other's way.
 The order still places every element: it takes the one that breaks the fewest rules, lowest first, and notes what that breaks.
-A model that passes the checks rarely locks, so a note usually points at a problem in the model:
+When elements lock, a second order also lets them slide in across from a side before the last stud's height, and the order with fewer notes wins.
+A note means a builder angles that element in, or builds part of the model apart and joins it on.
 
 ```text
-wrote locked.instructions.html: 1 step for 2 elements, 2.0 a step on average
-1 step breaks the build order, where elements lock one another in:
+wrote locked.instructions.html: 2 steps for 2 elements, 1.0 a step on average
+2 steps break the build order, where elements lock one another in:
   step 1: first goes on into the way of second
+  step 2: second goes on though first stands in its way
 ```
 
 ## In the viewer

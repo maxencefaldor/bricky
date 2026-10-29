@@ -9,11 +9,12 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from bricky import ModelBuilder, default_catalog
+from bricky import Model, ModelBuilder, default_catalog
 from bricky.analysis import build_world
+from bricky.analysis.connections import anti_stud_index, find_connections
 from bricky.cli import main
 from bricky.files import save_model
-from bricky.geometry import AXES, DOWN, Box, Vector
+from bricky.geometry import AXES, DOWN, UP, Box, Vector
 from bricky.instructions import (
     Instructions,
     Reason,
@@ -26,6 +27,28 @@ from bricky.instructions import (
 
 def order(instructions: Instructions) -> list[int]:
     return [i for step in instructions.steps for i in step.elements]
+
+
+def floating_after(model: Model, instructions: Instructions) -> list[int]:
+    """The steps, from 1, after which some placed element has no path to the ground."""
+    world = build_world(model, default_catalog())
+    links: dict[int, set[int]] = {i: set() for i in range(len(world.elements))}
+    for connection in find_connections(world, anti_stud_index(world)):
+        links[connection.a].add(connection.b)
+        links[connection.b].add(connection.a)
+    placed: set[int] = set()
+    floating: list[int] = []
+    for k, step in enumerate(instructions.steps, start=1):
+        placed.update(step.elements)
+        reached = {i for i in placed if world.elements[i].bounds.min.z == 0}
+        stack = list(reached)
+        while stack:
+            for j in links[stack.pop()] & placed - reached:
+                reached.add(j)
+                stack.append(j)
+        if placed - reached:
+            floating.append(k)
+    return floating
 
 
 def test_steps_place_every_element_once_after_the_bricks_below_it() -> None:
@@ -49,20 +72,63 @@ def test_steps_place_every_element_once_after_the_bricks_below_it() -> None:
                 assert position[j] < position[i]
 
 
-def test_an_element_held_from_above_goes_on_attached_under_its_holder() -> None:
+def overhang(*, below: bool) -> ModelBuilder:
+    """A beam on a post, a plate hanging under its free end, and maybe a plate below."""
     builder = ModelBuilder("overhang")
     builder.place("3003", at=(0, 0, 0), color="Red", id="post")
     builder.place("3020", at=(0, 0, 3), color="Blue", rotation="R90", id="beam")
     builder.place("3022", at=(2, 0, 2), color="Yellow", id="hanging")
-    model = builder.build()
+    if below:
+        builder.place("3022", at=(2, 0, 0), color="Green", id="below")
+    return builder
+
+
+def approaches_of(model: Model, instructions: Instructions) -> dict[str, Vector]:
+    world = build_world(model, default_catalog())
+    return {
+        world.elements[i].uid: approach
+        for step in instructions.steps
+        for i, approach in zip(step.elements, step.approaches, strict=True)
+    }
+
+
+def test_an_element_held_from_above_goes_on_after_it_pushed_up() -> None:
+    model = overhang(below=False).build()
+    instructions = build_instructions(model, default_catalog())
+    world = build_world(model, default_catalog())
+    uids = [world.elements[i].uid for i in order(instructions)]
+    assert uids == ["post", "beam", "hanging"]
+    assert approaches_of(model, instructions)["hanging"] == UP
+    assert floating_after(model, instructions) == []
+
+
+def test_an_element_held_from_above_with_no_room_below_goes_on_under_its_holder() -> (
+    None
+):
+    model = overhang(below=True).build()
+    instructions = build_instructions(model, default_catalog())
     world = build_world(model, default_catalog())
     index = {element.uid: i for i, element in enumerate(world.elements)}
-    instructions = build_instructions(model, default_catalog())
     (step,) = [s for s in instructions.steps if index["hanging"] in s.elements]
     assert index["beam"] in step.elements
-    assert set(step.approaches) == {DOWN}
-    placed = order(instructions)
-    assert placed.index(index["post"]) < placed.index(index["beam"])
+    assert approaches_of(model, instructions)["hanging"] == DOWN
+    assert not instructions.forced
+    assert floating_after(model, instructions) == []
+
+
+def test_a_column_that_hangs_from_a_beam_never_floats() -> None:
+    # A sail: plates hanging one under another from a beam, as on the pirate ship.
+    builder = ModelBuilder("sail")
+    builder.place("3003", at=(0, 0, 0), color="Dark Brown")
+    for level in range(1, 7):
+        builder.place("3003", at=(0, 0, 3 * level), color="Dark Brown")
+    builder.place("3020", at=(0, 0, 21), color="Dark Brown", rotation="R90")
+    for level in range(6):
+        builder.place("3023", at=(2, 0, 20 - level), color="White", rotation="R90")
+    model = builder.build()
+    instructions = build_instructions(model, default_catalog())
+    assert not instructions.forced
+    assert floating_after(model, instructions) == []
 
 
 def test_an_element_on_side_studs_goes_on_sideways_after_its_brick() -> None:
@@ -80,14 +146,13 @@ def test_elements_that_lock_each_other_in_are_placed_and_noted() -> None:
     builder.place("3001", at=(0, 0, 0), color="Red", id="first")
     builder.place("3001", at=(1, 0, 0), color="Blue", id="second")
     instructions = build_instructions(builder.build(), default_catalog())
-    assert sorted(order(instructions)) == [0, 1]
-    (forced,) = instructions.forced
-    assert forced.pending == ((1 - forced.element, Reason.WAY),)
+    assert order(instructions) == [0, 1]
+    first, second = instructions.forced
+    assert first.pending == ((1, Reason.WAY),)
+    assert second.pending == ((0, Reason.BLOCKED),)
     uids = ["first", "second"]
-    other = uids[1 - forced.element]
-    assert forced.describe(uids) == (
-        f"{uids[forced.element]} goes on into the way of {other}"
-    )
+    assert first.describe(uids) == "first goes on into the way of second"
+    assert second.describe(uids) == "second goes on though first stands in its way"
 
 
 def test_steps_keep_to_one_section_of_the_build_script() -> None:
@@ -155,6 +220,7 @@ def test_every_element_goes_on_after_what_holds_it(
     position = {i: k for k, i in enumerate(placed)}
     assert sorted(placed) == list(range(len(world.elements)))
     assert not instructions.forced
+    assert floating_after(model, instructions) == []
     for i, element in enumerate(world.elements):
         for j, other in enumerate(world.elements):
             same_column = element.bounds.min.x == other.bounds.min.x and (
@@ -209,9 +275,10 @@ def test_the_instructions_command_writes_a_page_and_states_what_breaks_the_order
     main(["instructions", str(model)])
     page = tmp_path / "locked.instructions.html"
     assert capsys.readouterr().out == (
-        f"wrote {page}: 1 step for 2 elements, 2.0 a step on average\n"
-        "1 step breaks the build order, where elements lock one another in:\n"
+        f"wrote {page}: 2 steps for 2 elements, 1.0 a step on average\n"
+        "2 steps break the build order, where elements lock one another in:\n"
         "  step 1: first goes on into the way of second\n"
+        "  step 2: second goes on though first stands in its way\n"
     )
     assert '"mode": "instructions"' in page.read_text()
     output = tmp_path / "pages" / "locked.html"
@@ -219,8 +286,9 @@ def test_the_instructions_command_writes_a_page_and_states_what_breaks_the_order
         ["instructions", str(model), "--output", str(output), "--output-format", "json"]
     )
     result = json.loads(capsys.readouterr().out)
-    assert result["steps"] == 1
+    assert result["steps"] == 2
     assert result["notes"] == [
-        {"step": 1, "message": "first goes on into the way of second"}
+        {"step": 1, "message": "first goes on into the way of second"},
+        {"step": 2, "message": "second goes on though first stands in its way"},
     ]
     assert output.is_file()

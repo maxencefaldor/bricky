@@ -1,40 +1,48 @@
 # Copyright 2026 Maxence Faldor
 """Instructions: the order to build a model in, a few elements per step.
 
-Each element goes on along one direction, its approach. Elements resting on the ground
-or on studs below them go on downward. An element held from above only goes on attached
-under the element that holds it, and the two move as one. Other elements go on along
-the side where they join the most studs.
-
-An element going on downward arrives straight from above the model. An element going
-on sideways drops from above to a stud's height away from its place, then slides in.
+Each element goes on along one direction, its approach, onto an element already placed
+or onto the ground. Downward, it arrives from above the model. Sideways, it drops from
+above to a stud's height away from its place, then slides in. Upward, a hand pushes it
+up from a brick's height below its place.
 
 Three rules make an order buildable with these moves:
 
 1. Something holds each element as it goes on: the ground, or an element it presses
    onto along its approach.
-2. Each connection forms as its second element goes on, so that element's approach
-   points at the first.
-3. An element goes on before every element in its way: the space its solids sweep as
-   they arrive.
+2. Each connection forms as its second element goes on, so every element already
+   placed that it joins lies along its approach.
+3. Nothing already placed stands in its way: the space its solids sweep as they arrive.
 
 The sweeps are exact, slopes included, since every solid is convex with integer corners.
+Every step thus leaves what is built joined to the ground, and nothing floats.
 
-Among the elements the rules allow next, the order keeps to one section of the build
-script, the outermost function that placed them, and goes bottom up. A step takes up
-to six elements of its section, about one brick high and within 8 studs of one another,
-nearest first.
+Each element has a natural approach toward the ground: it rests on what lies below it
+wherever it can, and otherwise goes on sideways, or hangs from what lies above. An
+element that hangs, with no room below to push it up, goes on attached under the
+element it hangs from, the two moving as one.
+
+The order places elements along their natural approaches, and never closes the last
+natural approach of an element still to go on. When no element can go on that way, an
+element goes on along another approach the rules allow, leaving every element still to
+go on at least one approach. Among the elements that may go on, the order keeps to one
+section of the build script, the function that ``build()`` called, and goes bottom up.
+A step takes up to six elements of its section, about one brick high and within 8 studs
+of one another, nearest first.
 
 Elements that lock one another in leave no order that follows every rule. The order
-then places the element that breaks the fewest, and notes what it breaks.
+then places the element that breaks the fewest, and notes what it breaks. When some
+lock in, a second order also lets elements slide in across from a side before the last
+stud's height, and the order that breaks fewer rules wins.
 """
 
 from __future__ import annotations
 
+import heapq
 import math
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Iterator, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
@@ -57,20 +65,24 @@ STEP_RISE: Final = BRICK
 
 _SCRIPT_ROOTS: Final = frozenset({"build", "<module>"})
 
-_AXIS_ORDER: Final = tuple(AXES.values())
-
 _GRID_AXES: Final = (AXES["+x"], AXES["+y"], AXES["+z"])
 """The face normals and edge directions of every box."""
 
+_SIDES: Final = (AXES["+x"], AXES["-x"], AXES["+y"], AXES["-y"])
+"""The directions elements can slide across in, level."""
+
+_PREFERENCE: Final = (DOWN, AXES["+x"], AXES["-x"], AXES["+y"], AXES["-y"], UP)
+"""The approaches in the order an element takes them, when several are open."""
+
 
 class Reason(StrEnum):
-    """Why an element should have gone on later."""
-
-    HELD = "held"
-    """An element that holds it was still to go on."""
+    """Which rule an element placed out of order breaks."""
 
     WAY = "way"
-    """It stands in the way of an element still to go on."""
+    """It closes the last approach of an element still to go on."""
+
+    BLOCKED = "blocked"
+    """An element already placed stands in its way, or joins it off its approach."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,18 +110,18 @@ class Forced:
     """Index of the step that places it."""
 
     pending: tuple[tuple[int, Reason], ...]
-    """The elements it should have followed, each with why."""
+    """The elements involved, each with the rule the placement breaks."""
 
     def describe(self, uids: Sequence[str]) -> str:
-        """Say what the element breaks, such as ``"e7 goes on before e3, which..."``."""
-        holders = [uids[j] for j, reason in self.pending if reason is Reason.HELD]
-        blocked = [uids[j] for j, reason in self.pending if reason is Reason.WAY]
+        """Say what the element breaks, such as ``"e7 goes on into the way of e3"``."""
+        closed = [uids[j] for j, reason in self.pending if reason is Reason.WAY]
+        blocking = [uids[j] for j, reason in self.pending if reason is Reason.BLOCKED]
         clauses: list[str] = []
-        if holders:
-            verb = "holds" if len(holders) == 1 else "hold"
-            clauses.append(f"before {_names(holders)}, which {verb} it")
-        if blocked:
-            clauses.append(f"into the way of {_names(blocked)}")
+        if blocking:
+            verb = "stands" if len(blocking) == 1 else "stand"
+            clauses.append(f"though {_names(blocking)} {verb} in its way")
+        if closed:
+            clauses.append(f"into the way of {_names(closed)}")
         if not clauses:
             clauses.append("before anything holds it")
         return f"{uids[self.element]} goes on {' and '.join(clauses)}"
@@ -142,34 +154,54 @@ def build_instructions(
     world = build_world(model, catalog)
     if not world.elements:
         return Instructions(steps=(), forced=())
-    units, of = _units(world)
-    _constrain(world, units, of)
+    ways = _Ways(world)
     sections = _sections(model, world, provenance)
-    schedule = _Schedule(units, [sections[unit.members[0]] for unit in units])
-    return schedule.run(elements_per_step)
+    best: Instructions | None = None
+    # Elements first arrive from above; if that locks some in, they may also slide in
+    # across from a side, and the order that breaks fewer rules wins.
+    for slides in (False, True):
+        units = _units(world, ways, slides=slides)
+        schedule = _Schedule(units, [sections[unit.members[0]] for unit in units])
+        attempt = schedule.run(elements_per_step)
+        if best is None or len(attempt.forced) < len(best.forced):
+            best = attempt
+        if not best.forced:
+            break
+    assert best is not None  # noqa: S101 - the loop runs at least once
+    return best
+
+
+@dataclass(frozen=True, slots=True)
+class _Option:
+    """One approach a unit may take, with what holds it and what rules it out."""
+
+    approach: Vector
+    holders: frozenset[int]
+    """The units it presses onto along the approach: one placed holds it."""
+
+    spoilers: frozenset[int]
+    """The units that rule the approach out once placed: in its way, or off its axis."""
+
+    held: bool
+    """Whether it is held from the start: grounded, or with nothing to hold onto."""
+
+    natural: bool
+    """Whether it goes on along the unit's natural approach, toward the ground."""
 
 
 @dataclass(slots=True)
 class _Unit:
-    """Elements that go on as one: an element and those attached under it."""
+    """Elements that go on as one: an element and those that hang under it."""
 
     members: list[int]
     """Element indices; the first holds the rest."""
 
-    approach: Vector
     bounds: Box
     bottom: int
     """The bottom of the first member, where the unit lands."""
 
-    grounded: bool = False
-    before: dict[int, Reason] = field(default_factory=dict)
-    """The units that go on before this one, with why."""
-
-    after: set[int] = field(default_factory=set)
-    """The units that go on after this one."""
-
-    holders: set[int] = field(default_factory=set)
-    """The units this one presses onto along its approach."""
+    options: tuple[_Option, ...] = ()
+    """The approaches the unit may take, in order of preference."""
 
 
 type _Joins = list[defaultdict[Vector, Counter[int]]]
@@ -190,31 +222,16 @@ def _joins(world: World) -> _Joins:
     return joins
 
 
-def _units(world: World) -> tuple[list[_Unit], list[int]]:
-    """Group elements into units, and return each element's unit."""
+def _units(world: World, ways: _Ways, *, slides: bool) -> list[_Unit]:
+    """Group elements into units, each with the approaches it may take.
+
+    With ``slides``, each approach also lets its unit slide in across from a side.
+    """
     elements = world.elements
     joins = _joins(world)
     grounded = [element.bounds.min.z == 0 for element in elements]
-    depth = _depths(joins, grounded)
-    approach = [
-        _approach(sides, depth, grounded=down)
-        for sides, down in zip(joins, grounded, strict=True)
-    ]
-    # An element going on upward hangs under an element above, which carries it: the
-    # one nearest the ground, then the one it joins most. Carriers sit higher, so
-    # following them always ends.
-    carrier: list[int] = list(range(len(elements)))
-    for i, sides in enumerate(joins):
-        if approach[i] == UP:
-            above = sides[UP]
-            carrier[i] = min(above, key=lambda j: (depth[j], -above[j], j))
-
-    roots: list[int] = []
-    for i in range(len(elements)):
-        top = i
-        while carrier[top] != top:
-            top = carrier[top]
-        roots.append(top)
+    toward, anchor = _anchors(joins, grounded)
+    roots = _roots(joins, toward, anchor, ways)
     index_of: dict[int, int] = {}
     units: list[_Unit] = []
     for i in sorted(range(len(elements)), key=lambda i: (roots[i] != i, i)):
@@ -222,80 +239,187 @@ def _units(world: World) -> tuple[list[_Unit], list[int]]:
         if top not in index_of:
             index_of[top] = len(units)
             bounds = elements[top].bounds
-            units.append(_Unit([], approach[top], bounds, bounds.min.z))
+            units.append(_Unit([], bounds, bounds.min.z))
         unit = units[index_of[top]]
         unit.members.append(i)
         unit.bounds = Box.bounding((unit.bounds, elements[i].bounds))
-        unit.grounded = unit.grounded or grounded[i]
     of = [index_of[top] for top in roots]
     for u, unit in enumerate(units):
-        unit.holders = {
-            of[j]
-            for i in unit.members
-            for j in joins[i].get(unit.approach, ())
-            if of[j] != u
-        }
-    _connect(joins, units, of)
-    return units, of
-
-
-def _depths(joins: _Joins, grounded: Sequence[bool]) -> list[float]:
-    """How many connections separate each element from one on the ground."""
-    depth: list[float] = [0 if down else math.inf for down in grounded]
-    frontier = [i for i, down in enumerate(grounded) if down]
-    while frontier:
-        following: list[int] = []
-        for i in frontier:
-            for neighbors in joins[i].values():
-                for j in neighbors:
-                    if depth[j] == math.inf:
-                        depth[j] = depth[i] + 1
-                        following.append(j)
-        frontier = following
-    return depth
-
-
-def _approach(
-    sides: dict[Vector, Counter[int]], depth: Sequence[float], *, grounded: bool
-) -> Vector:
-    """The direction an element goes on along, before units group elements.
-
-    An element goes on downward when it rests on the ground or on studs below it, and
-    otherwise toward the side nearest the ground, so it joins the standing structure
-    first. Ties go to the side with more studs, then to the earlier axis.
-    """
-    if grounded or not sides or DOWN in sides:
-        return DOWN
-    return min(
-        sides,
-        key=lambda side: (
-            min(depth[j] for j in sides[side]),
-            -sides[side].total(),
-            _AXIS_ORDER.index(side),
-        ),
-    )
-
-
-def _precede(units: Sequence[_Unit], first: int, then: int, reason: Reason) -> None:
-    units[then].before.setdefault(first, reason)
-    units[first].after.add(then)
-
-
-def _connect(joins: _Joins, units: Sequence[_Unit], of: Sequence[int]) -> None:
-    """Order the units of each connection so its second unit moves toward the first."""
-    for i, sides in enumerate(joins):
-        for direction, neighbors in sides.items():
-            for j in neighbors:
-                u, v = of[i], of[j]
-                if j < i or u == v:
+        sides = _sides(unit.members, joins, of, u)
+        on_ground = any(grounded[i] for i in unit.members)
+        # Every side with something to press onto is an approach; the natural one
+        # leads toward the ground along the anchor's chain.
+        approaches = set(sides) | ({DOWN} if on_ground or not sides else set())
+        natural = toward[unit.members[0]]
+        if natural not in approaches:
+            natural = DOWN
+        options: list[_Option] = []
+        for approach in _PREFERENCE:
+            if approach not in approaches:
+                continue
+            off_axis = set().union(
+                *(near for side, near in sides.items() if side != approach)
+            )
+            seen: set[frozenset[int]] = set()
+            for motion in _motions(approach)[: None if slides else 1]:
+                crossed = {of[j] for j in ways.crossed(unit.members, motion)}
+                spoilers = frozenset((crossed | off_axis) - {u})
+                if spoilers in seen:
                     continue
-                # Unit u meets v moving along direction; v meets u moving back.
-                u_moves = units[u].approach == direction
-                v_moves = units[v].approach == -direction
-                if u_moves and not v_moves:
-                    _precede(units, v, u, Reason.HELD)
-                elif v_moves and not u_moves:
-                    _precede(units, u, v, Reason.HELD)
+                seen.add(spoilers)
+                options.append(
+                    _Option(
+                        approach,
+                        frozenset(sides.get(approach, ())),
+                        spoilers,
+                        held=(approach == DOWN and on_ground) or not sides,
+                        natural=approach == natural,
+                    )
+                )
+        unit.options = tuple(sorted(options, key=lambda option: not option.natural))
+    return units
+
+
+def _sides(
+    members: Iterable[int], joins: _Joins, of: Sequence[int], u: int
+) -> dict[Vector, set[int]]:
+    """The units that a unit's members join outside it, by the direction they lie in."""
+    sides: defaultdict[Vector, set[int]] = defaultdict(set)
+    for i in members:
+        for direction, neighbors in joins[i].items():
+            outside = {of[j] for j in neighbors if of[j] != u}
+            if outside:
+                sides[direction] |= outside
+    return dict(sides)
+
+
+def _roots(
+    joins: _Joins,
+    approach: Sequence[Vector],
+    anchor: Sequence[int | None],
+    ways: _Ways,
+) -> list[int]:
+    """The element each element goes on with: itself, or one it hangs from.
+
+    A group of elements that only hangs from what lies above goes on pushed up from a
+    brick's height below. When something that does not hang from the group stands
+    there, the group goes on attached under the element it hangs from, before that
+    goes on, and the larger group faces the same test.
+    """
+    count = len(approach)
+    children: list[list[int]] = [[] for _ in range(count)]
+    for i, above in enumerate(anchor):
+        if above is not None:
+            children[above].append(i)
+    carrier = list(range(count))
+    changed = True
+    while changed:
+        changed = False
+        of = [_root(carrier, i) for i in range(count)]
+        groups: defaultdict[int, list[int]] = defaultdict(list)
+        for i, top in enumerate(of):
+            groups[top].append(i)
+        for top, members in groups.items():
+            above = anchor[top]
+            if approach[top] != UP or above is None:
+                continue
+            if set(_sides(members, joins, of, top)) != {UP}:
+                continue
+            if ways.crossed(members, _motion(UP)) - _hanging_from(children, members):
+                carrier[top] = above
+                changed = True
+    return [_root(carrier, i) for i in range(count)]
+
+
+def _root(carrier: list[int], start: int) -> int:
+    """The element at the end of an element's chain of carriers."""
+    path = [start]
+    while carrier[path[-1]] != path[-1]:
+        path.append(carrier[path[-1]])
+    return path[-1]
+
+
+def _hanging_from(children: Sequence[Sequence[int]], start: Iterable[int]) -> set[int]:
+    """The elements that anchor through some of the given ones, and those ones."""
+    found: set[int] = set()
+    stack = list(start)
+    while stack:
+        j = stack.pop()
+        if j not in found:
+            found.add(j)
+            stack.extend(children[j])
+    return found
+
+
+def _anchors(
+    joins: _Joins, grounded: Sequence[bool]
+) -> tuple[list[Vector], list[int | None]]:
+    """Each element's approach toward the ground, and the element it goes on onto.
+
+    Every element anchors to the ground through a chain of connections, each from an
+    element to the one it goes on onto. The chain keeps to the fewest elements that
+    hang under the next, then to the fewest that go on sideways, so elements rest on
+    what lies below them wherever they can. Ties go to more studs, then the lower
+    index. An element no chain reaches, which floats, goes on downward.
+    """
+    count = len(grounded)
+    best: list[tuple[int, int, int, int] | None] = [
+        (0, 0, 0, i) if down else None for i, down in enumerate(grounded)
+    ]
+    approach = [DOWN] * count
+    anchor: list[int | None] = [None] * count
+    done = [False] * count
+    heap = [(0, 0, 0, i, i) for i, down in enumerate(grounded) if down]
+    while heap:
+        hanging, sideways, _, _, i = heapq.heappop(heap)
+        if done[i]:
+            continue
+        done[i] = True
+        # Whatever meets i moving along a direction goes on onto i along it.
+        for direction, neighbors in joins[i].items():
+            toward = -direction
+            for j, studs in neighbors.items():
+                if done[j]:
+                    continue
+                cost = (
+                    hanging + int(toward == UP),
+                    sideways + int(toward not in {UP, DOWN}),
+                    -studs,
+                    i,
+                )
+                known = best[j]
+                if known is None or cost < known:
+                    best[j] = cost
+                    approach[j] = toward
+                    anchor[j] = i
+                    heapq.heappush(heap, (*cost, j))
+    return approach, anchor
+
+
+def _motion(approach: Vector) -> tuple[_Leg, ...]:
+    """The first of the moves that bring elements in along an approach.
+
+    Downward, they arrive from above. Sideways, they drop from above to a stud's height
+    away, then slide in. Upward, a hand pushes them up from a brick's height below.
+    """
+    return _motions(approach)[0]
+
+
+def _motions(approach: Vector) -> tuple[tuple[_Leg, ...], ...]:
+    """Every way to bring elements in along an approach, the most direct first.
+
+    Each way ends with the last stud's height along the approach, where studs engage.
+    Before that, the elements arrive at that point from above the model, or slide in
+    across from one side of it, or, sideways, straight along the approach.
+    """
+    back = -(approach * STUD_HEIGHT)
+    engage = _Leg(ORIGIN, approach, STUD_HEIGHT)
+    across = tuple((_Leg(back, side, None), engage) for side in _SIDES)
+    if approach == DOWN:
+        return ((_Leg(ORIGIN, DOWN, None),), *across)
+    if approach == UP:
+        return ((_Leg(ORIGIN, UP, BRICK),), *across)
+    return ((_Leg(back, DOWN, None), engage), (_Leg(ORIGIN, approach, None),))
 
 
 @dataclass(frozen=True, slots=True)
@@ -308,28 +432,11 @@ class _Leg:
     """How far the move runs, or None for a move from beyond the model."""
 
 
-def _motion(approach: Vector) -> tuple[_Leg, ...]:
-    """The moves that bring a unit to its place along its approach."""
-    if approach == DOWN:
-        return (_Leg(ORIGIN, DOWN, None),)
-    back = -(approach * STUD_HEIGHT)
-    return (_Leg(back, DOWN, None), _Leg(ORIGIN, approach, STUD_HEIGHT))
-
-
-def _constrain(world: World, units: Sequence[_Unit], of: Sequence[int]) -> None:
-    """Order each unit before every unit in its way."""
-    ways = _Ways(world, of)
-    for u, unit in enumerate(units):
-        for v in ways.blocked(u, unit):
-            _precede(units, u, v, Reason.WAY)
-
-
 class _Ways:
-    """Find the units in the way of each unit's moves, with a spatial index."""
+    """Find the elements in the way of moving elements, with a spatial index."""
 
-    def __init__(self, world: World, of: Sequence[int]) -> None:
+    def __init__(self, world: World) -> None:
         self.elements = world.elements
-        self.of = of
         self.index: SpatialHash[int] = SpatialHash()
         for i, element in enumerate(self.elements):
             for solid in element.solids:
@@ -337,21 +444,21 @@ class _Ways:
         self.reach = Box.bounding(element.bounds for element in self.elements)
         self.solids = _Solids()
 
-    def blocked(self, u: int, unit: _Unit) -> set[int]:
-        """The units that a unit's solids pass through on their way in."""
+    def crossed(self, moving: Iterable[int], motion: Iterable[_Leg]) -> set[int]:
+        """The other elements that moving elements pass through on their way in."""
+        moving = set(moving)
         found: set[int] = set()
-        for leg in _motion(unit.approach):
-            for i in unit.members:
+        for leg in motion:
+            for i in moving:
                 for solid in self.elements[i].solids:
                     sweep = _Sweep(solid, leg, self.reach, self.solids)
                     for j in self.index.query(sweep.path):
-                        v = self.of[j]
                         if (
-                            v != u
-                            and v not in found
+                            j not in moving
+                            and j not in found
                             and sweep.crosses_any(self.elements[j].solids)
                         ):
-                            found.add(v)
+                            found.add(j)
         return found
 
 
@@ -594,37 +701,59 @@ class _Ready:
 
 
 class _Schedule:
-    """Place units one by one, gathering them into steps."""
+    """Place units one by one, gathering them into steps.
+
+    Each unit tracks which of its approaches stay open and which are held. A unit goes
+    on along its natural approach while it can, leaving every other unit its natural
+    approaches. When no unit can, a unit goes on along any approach, leaving every
+    other unit at least one approach. The danger counts track both conditions.
+    """
 
     def __init__(self, units: Sequence[_Unit], sections: Sequence[str]) -> None:
         self.units = units
         self.sections = sections
+        count = len(units)
         self.footprints = [
             _Footprint(u.bounds.min.x, u.bounds.min.y, u.bounds.max.x, u.bounds.max.y)
             for u in units
         ]
-        self.waiting = [len(unit.before) for unit in units]
-        self.held = [unit.grounded or not unit.holders for unit in units]
-        self.holds: list[list[int]] = [[] for _ in units]
-        for u, unit in enumerate(units):
-            for v in unit.holders:
-                self.holds[v].append(u)
-        self.placed = [False] * len(units)
-        self.released = [False] * len(units)
-        self.unplaced = set(range(len(units)))
+        self.open = [[True] * len(unit.options) for unit in units]
+        self.held = [[option.held for option in unit.options] for unit in units]
+        # closes[w]: the approaches that w closes once placed; holds[w]: those it holds.
+        self.closes: list[list[tuple[int, int]]] = [[] for _ in units]
+        self.holds: list[list[tuple[int, int]]] = [[] for _ in units]
+        for v, unit in enumerate(units):
+            for k, option in enumerate(unit.options):
+                for w in option.spoilers:
+                    self.closes[w].append((v, k))
+                for w in option.holders:
+                    self.holds[w].append((v, k))
+        # dangers[t][w]: how many units w would leave with no open natural approach
+        # (t = 0) or no open approach at all (t = 1); guarding[t][v]: the units that
+        # would do that to v.
+        self.dangers = ([0] * count, [0] * count)
+        self.guarding: tuple[list[frozenset[int]], list[frozenset[int]]] = (
+            [frozenset()] * count,
+            [frozenset()] * count,
+        )
+        self.placed = [False] * count
+        self.pooled = [False] * count
+        self.unplaced = set(range(count))
         self.ready = _Ready()
-        for u in range(len(units)):
-            self._release(u)
+        for v in range(count):
+            self._guard(v)
+            if any(self.held[v]):
+                self._pool(v)
 
     def run(self, limit: int) -> Instructions:
-        """Place every unit; a step closes when no ready unit joins it."""
+        """Place every unit; a step closes when no unit that may go on joins it."""
         steps: list[Step] = []
         forced: list[Forced] = []
-        step: list[int] = []
+        step: list[_Placed] = []
         section: str | None = None
         while self.unplaced:
             u = (
-                self._nearest(section, step, limit)
+                self._nearest(section, [placed.unit for placed in step], limit)
                 if step and section is not None
                 else None
             )
@@ -632,64 +761,129 @@ class _Schedule:
                 if step:
                     steps.append(self._step(step))
                     step = []
-                if section is None or not self.ready.heights(section):
-                    section = self._lowest_section()
-                if section is None:
+                section, u = self._start(section)
+                if u is None:
                     u = self._force()
                     first = self.units[u].members[0]
-                    forced.append(Forced(first, len(steps), self._pending(u)))
+                    forced.append(Forced(first, len(steps), self._broken(u)))
                     section = self.sections[u]
-                else:
-                    u = self._lowest(section)
-            self._place(u)
-            step.append(u)
+            step.append(self._place(u))
         steps.append(self._step(step))
         return Instructions(steps=tuple(steps), forced=tuple(forced))
 
-    def _step(self, units: Sequence[int]) -> Step:
-        members = tuple(i for u in units for i in self.units[u].members)
+    def _start(self, section: str | None) -> tuple[str | None, int | None]:
+        """The unit that starts the next step, and its section: naturally if any can."""
+        for tier in (0, 1):
+            if section is not None:
+                u = self._lowest(section, tier)
+                if u is not None:
+                    return section, u
+            chosen = self._lowest_section(tier)
+            if chosen is not None:
+                return chosen, self._lowest(chosen, tier)
+        return section, None
+
+    def _step(self, placed: Sequence[_Placed]) -> Step:
+        members = tuple(i for item in placed for i in self.units[item.unit].members)
         approaches = tuple(
-            self.units[u].approach for u in units for _ in self.units[u].members
+            item.approach for item in placed for _ in self.units[item.unit].members
         )
-        return Step(members, approaches, self.sections[units[0]])
+        return Step(members, approaches, self.sections[placed[0].unit])
 
-    def _release(self, u: int) -> None:
-        if self.released[u] or self.placed[u] or self.waiting[u] or not self.held[u]:
-            return
-        self.released[u] = True
-        self.ready.add(self.sections[u], self.units[u].bottom, u, self.footprints[u])
+    def _may(self, u: int, tier: int = 0) -> bool:
+        """Whether a unit may go on: naturally (tier 0), or along any approach (1)."""
+        if self.placed[u] or self.dangers[1][u]:
+            return False
+        options = self.units[u].options
+        if tier == 0:
+            return self.dangers[0][u] == 0 and any(
+                self.open[u][k] and self.held[u][k] and option.natural
+                for k, option in enumerate(options)
+            )
+        return any(self.open[u][k] and self.held[u][k] for k in range(len(options)))
 
-    def _place(self, u: int) -> None:
-        if self.released[u]:
+    def _guard(self, v: int) -> None:
+        """Track the units that would close v's natural approaches, or all of them.
+
+        Those units lie in the way of, or off the axis of, every approach of the kind v
+        has left, so placing one before v would close them all.
+        """
+        options = self.units[v].options
+        for tier in (0, 1):
+            wanted = frozenset[int]()
+            if not self.placed[v]:
+                left = [
+                    option.spoilers
+                    for k, option in enumerate(options)
+                    if self.open[v][k] and (tier == 1 or option.natural)
+                ]
+                if left:
+                    wanted = left[0].intersection(*left[1:])
+            current = self.guarding[tier][v]
+            if wanted == current:
+                continue
+            dangers = self.dangers[tier]
+            for w in current - wanted:
+                dangers[w] -= 1
+            for w in wanted - current:
+                dangers[w] += 1
+            self.guarding[tier][v] = wanted
+
+    def _pool(self, v: int) -> None:
+        if not self.pooled[v] and not self.placed[v]:
+            self.pooled[v] = True
+            self.ready.add(
+                self.sections[v], self.units[v].bottom, v, self.footprints[v]
+            )
+
+    def _place(self, u: int) -> _Placed:
+        """Place a unit along its best open, held approach, and update the others."""
+        options = self.units[u].options
+        k = next(
+            (k for k in range(len(options)) if self.open[u][k] and self.held[u][k]),
+            next((k for k in range(len(options)) if self.open[u][k]), 0),
+        )
+        if self.pooled[u]:
             self.ready.remove(
                 self.sections[u], self.units[u].bottom, u, self.footprints[u]
             )
         self.placed[u] = True
         self.unplaced.discard(u)
-        for v in self.units[u].after:
-            self.waiting[v] -= 1
-            self._release(v)
-        for v in self.holds[u]:
-            self.held[v] = True
-            self._release(v)
+        self._guard(u)
+        for v, j in self.closes[u]:
+            if not self.placed[v] and self.open[v][j]:
+                self.open[v][j] = False
+                self._guard(v)
+        for v, j in self.holds[u]:
+            if not self.placed[v] and not self.held[v][j]:
+                self.held[v][j] = True
+                self._pool(v)
+        return _Placed(u, options[k].approach)
 
-    def _lowest(self, section: str) -> int:
-        return min(self.ready.levels[section][self.ready.heights(section)[0]])
+    def _lowest(self, section: str, tier: int) -> int | None:
+        for z in self.ready.heights(section):
+            u = min(
+                (u for u in self.ready.levels[section][z] if self._may(u, tier)),
+                default=None,
+            )
+            if u is not None:
+                return u
+        return None
 
-    def _lowest_section(self) -> str | None:
+    def _lowest_section(self, tier: int) -> str | None:
         best: tuple[int, int] | None = None
         chosen: str | None = None
         for section in list(self.ready.levels):
-            heights = self.ready.heights(section)
-            if not heights:
+            u = self._lowest(section, tier)
+            if u is None:
                 continue
-            key = (heights[0], min(self.ready.levels[section][heights[0]]))
+            key = (self.units[u].bottom, u)
             if best is None or key < best:
                 best, chosen = key, section
         return chosen
 
     def _nearest(self, section: str, step: Sequence[int], limit: int) -> int | None:
-        """The ready unit of the section that joins the step best, if any may."""
+        """The section's unit that joins the step best, if any goes on naturally."""
         size = sum(len(self.units[u].members) for u in step)
         if size >= limit:
             return None
@@ -709,7 +903,7 @@ class _Schedule:
             for u in self.ready.near(
                 section, z, (x1 - reach, y1 - reach), (x0 + reach, y0 + reach)
             ):
-                if size + len(self.units[u].members) > limit:
+                if size + len(self.units[u].members) > limit or not self._may(u):
                     continue
                 p = self.footprints[u]
                 span = max(reach, p.width)
@@ -724,23 +918,44 @@ class _Schedule:
         return chosen
 
     def _force(self) -> int:
-        """The unplaced unit that breaks the fewest rules, lowest first."""
-        return min(
-            self.unplaced,
-            key=lambda u: (
-                self.waiting[u],
-                not self.held[u],
+        """The unit to place against a rule: held if any is, then endangering fewest."""
+
+        def key(u: int) -> tuple[bool, bool, int, int, int]:
+            pairs = list(zip(self.open[u], self.held[u], strict=True))
+            return (
+                not any(is_open and held for is_open, held in pairs),
+                not any(held for _, held in pairs),
+                self.dangers[1][u],
                 self.units[u].bottom,
                 u,
-            ),
-        )
+            )
 
-    def _pending(self, u: int) -> tuple[tuple[int, Reason], ...]:
-        return tuple(
-            (self.units[v].members[0], reason)
-            for v, reason in sorted(self.units[u].before.items())
-            if not self.placed[v]
-        )
+        return min(self.unplaced, key=key)
+
+    def _broken(self, u: int) -> tuple[tuple[int, Reason], ...]:
+        """The elements whose rules placing a unit now breaks, each with the rule."""
+        units = self.units
+        broken: dict[int, Reason] = {}
+        options = units[u].options
+        usable = [k for k in range(len(options)) if self.open[u][k] and self.held[u][k]]
+        if not usable:
+            # Its held approaches are closed: what closed the best one is in its way.
+            held = [k for k in range(len(options)) if self.held[u][k]] or [0]
+            for w in sorted(options[held[0]].spoilers):
+                if self.placed[w]:
+                    broken.setdefault(units[w].members[0], Reason.BLOCKED)
+        for v in range(len(units)):
+            if not self.placed[v] and u in self.guarding[1][v]:
+                broken.setdefault(units[v].members[0], Reason.WAY)
+        return tuple(sorted(broken.items()))
+
+
+@dataclass(frozen=True, slots=True)
+class _Placed:
+    """A unit as it went on, along one approach."""
+
+    unit: int
+    approach: Vector
 
 
 def _names(uids: Iterable[str]) -> str:
