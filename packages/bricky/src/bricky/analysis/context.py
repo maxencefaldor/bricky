@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from functools import cached_property
+from types import MappingProxyType
 
 from bricky.analysis.connections import (
     AntiStudIndex,
@@ -16,22 +18,33 @@ from bricky.analysis.voxels import Voxel, VoxelKey, world_voxels
 from bricky.analysis.world import World, build_world
 from bricky.catalog import Catalog
 from bricky.model import Model
-from bricky.settings import Settings
+from bricky.settings import Level, Settings
 
 
 class Context:
     """One model under check, with analyses all passes share, computed on first use."""
 
     def __init__(
-        self, model: Model, catalog: Catalog, settings: Settings | None = None
+        self,
+        model: Model,
+        catalog: Catalog,
+        settings: Settings | None = None,
+        levels: Mapping[str, Level] | None = None,
     ) -> None:
-        """Hold a model, its catalog and settings; derived data comes on first use.
+        """Hold a model, its catalog, settings and rule levels; the rest comes on use.
 
-        Settings are read from the environment and ``pyproject.toml`` by default.
+        Settings are read from the environment and the configuration file by default.
+        The levels are those of the check that runs the passes, by rule name; a pass
+        can skip the work of rules a check ignores, as ty's lints can.
         """
         self.model = model
         self.catalog = catalog
         self.settings = settings or Settings()
+        self.levels: Mapping[str, Level] = MappingProxyType(dict(levels or {}))
+
+    def checks(self, rule: str, default: Level) -> bool:
+        """Whether the check reports ``rule``, at the ``default`` level when unset."""
+        return self.levels.get(rule, default) is not Level.IGNORE
 
     @cached_property
     def world(self) -> World:

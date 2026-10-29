@@ -17,8 +17,9 @@ Playwright's Chromium renders the images.
 On Linux, `uv run playwright install --with-deps chromium` also installs the browser's system libraries.
 To render with a Chromium already on the machine, set `BRICKY_RENDER_BROWSER` to its executable instead (see [Configuration](reference/configuration.md)).
 
-With pip, run `pip install bricky` and then `playwright install chromium`.
 Installing bricky on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
+
+With pip, run `pip install bricky` and then `playwright install chromium`.
 To install bricky as a tool, run `uv tool install bricky --with-executables-from playwright`, then `playwright install chromium`.
 The command is then `bricky`, without `uv run`, wherever the docs write `uv run bricky`.
 

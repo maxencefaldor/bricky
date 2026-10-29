@@ -45,6 +45,9 @@ With Claude Code, one command does the same:
 claude mcp add bricky -- uvx bricky-mcp
 ```
 
+Installing the server on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
+The command `uvx --python 3.14 bricky-mcp` avoids that.
+
 The server renders in Chromium, which Playwright installs once per machine:
 
 ```sh

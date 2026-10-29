@@ -12,6 +12,7 @@ The [documentation](https://maxencefaldor.github.io/bricky/) explains every conc
 ## 🚀 Quick start
 
 The quick start needs [uv](https://docs.astral.sh/uv/), which installs Python 3.12 or newer if needed.
+Installing bricky on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
 A uv project holds your build scripts, and `uv add` installs bricky into it from PyPI:
 
 ```sh

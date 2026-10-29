@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Mapping
 
 from bricky.analysis import Context
@@ -42,8 +43,8 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
         BrickyError: If the settings or ``rules`` name a rule no installed pass checks.
     """
     settings = settings or Settings()
-    levels = resolve_levels(settings.rules, rules or {})
-    context = Context(model, catalog or default_catalog(), settings)
+    levels = resolve_levels(("settings", settings.rules), ("options", rules or {}))
+    context = Context(model, catalog or default_catalog(), settings, levels)
     diagnostics = run_passes(context, levels)
     order = {name: i for i, name in enumerate(levels)}
 
@@ -56,12 +57,14 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
     shown = diagnostics if max_diagnostics is None else diagnostics[:max_diagnostics]
     named = {uid for diagnostic in shown for uid in diagnostic.elements}
     errors = sum(levels[diagnostic.rule] is Level.ERROR for diagnostic in diagnostics)
+    counts = Counter(diagnostic.rule for diagnostic in diagnostics)
     return Report(
         model=model.name,
         rules=levels,
         element_count=len(context.world.elements) + len(context.world.unknown),
         errors=errors,
         warnings=len(diagnostics) - errors,
+        counts={name: counts[name] for name in levels if counts[name]},
         diagnostics=tuple(shown),
         omitted=len(diagnostics) - len(shown),
         elements=_describe(context, named, provenance),

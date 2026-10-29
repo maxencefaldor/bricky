@@ -210,12 +210,15 @@ async def check(request: CheckRequest, session: Session) -> Report:
         BrickyError: If the file is missing or invalid, or a rule is unknown or given
             two levels.
     """
+    rules = await asyncio.to_thread(
+        _levels, request.error, request.warn, request.ignore, session.settings
+    )
     model, provenance = await asyncio.to_thread(_load, request.model)
     return await asyncio.to_thread(
         _check,
         model,
         provenance=provenance,
-        rules=_levels(request.error, request.warn, request.ignore),
+        rules=rules,
         max_diagnostics=request.max_diagnostics,
         session=session,
     )
@@ -410,7 +413,9 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
             a rule is unknown or given two levels.
     """
     settings = session.settings
-    rules = _levels(request.error, request.warn, request.ignore)
+    rules = await asyncio.to_thread(
+        _levels, request.error, request.warn, request.ignore, settings
+    )
     started = time.perf_counter()
     run = await run_script(request.script, settings)
     path = request.output or request.script.with_name(request.script.stem + SUFFIX)
@@ -676,6 +681,9 @@ class RenderRequest(BaseModel):
     check: bool = Field(
         default=True, description="Mark the elements that diagnostics name."
     )
+    error: list[str] = Field(default_factory=list, description=_ERROR_HELP)
+    warn: list[str] = Field(default_factory=list, description=_WARN_HELP)
+    ignore: list[str] = Field(default_factory=list, description=_IGNORE_HELP)
     width: int = Field(
         default=_WIDTH, ge=200, le=4096, description="Image width in pixels."
     )
@@ -731,8 +739,11 @@ async def render(request: RenderRequest, session: Session) -> RenderResult:
 
     Raises:
         BrickyError: If the file is missing or invalid, a selector or clip is invalid,
-            or the render fails.
+            a rule is unknown or given two levels, or the render fails.
     """
+    rules = await asyncio.to_thread(
+        _levels, request.error, request.warn, request.ignore, session.settings
+    )
     model, provenance = await asyncio.to_thread(_load, request.model)
     clips = [Clip.parse(text) for text in request.clip]
     seconds = Timings()
@@ -743,7 +754,7 @@ async def render(request: RenderRequest, session: Session) -> RenderResult:
             _check,
             model,
             provenance=provenance,
-            rules={},
+            rules=rules,
             max_diagnostics=None,
             session=session,
         )
@@ -1655,8 +1666,10 @@ async def explain(request: ExplainRequest, session: Session) -> ExplainResult:
         BrickyError: If no installed pass checks the rule.
     """
     rules = await asyncio.to_thread(installed_rules)
-    levels = await asyncio.to_thread(resolve_levels, session.settings.rules)
-    wanted = request.rule.strip().lower()
+    levels = await asyncio.to_thread(
+        resolve_levels, ("settings", session.settings.rules)
+    )
+    wanted = request.rule.strip()
     if wanted and wanted not in rules:
         message = (
             f"no installed pass checks a rule named {wanted!r}; "
@@ -1699,12 +1712,18 @@ def _check(
 
 
 def _levels(
-    error: Sequence[str], warn: Sequence[str], ignore: Sequence[str]
+    error: Sequence[str],
+    warn: Sequence[str],
+    ignore: Sequence[str],
+    settings: Settings,
 ) -> dict[str, Level]:
     """Return the levels that a command's options give rules, as ty's options do.
 
+    The options and the settings are checked before the command does any work.
+
     Raises:
-        BrickyError: If the options give one rule, or ``all``, two levels.
+        BrickyError: If the options give one rule, or ``all``, two levels, or the
+            options or the settings name a rule that no installed pass checks.
     """
     levels: dict[str, Level] = {}
     for level, names in (
@@ -1718,6 +1737,7 @@ def _levels(
                     f"the options give {name!r} two levels: {levels[name]} and {level}"
                 )
                 raise BrickyError(message)
+    resolve_levels(("settings", settings.rules), ("options", levels))
     return levels
 
 

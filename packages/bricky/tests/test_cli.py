@@ -406,6 +406,18 @@ def test_check_options_take_a_rule_once(
     assert "give 'overlap' two levels" in capsys.readouterr().err
 
 
+def test_build_and_render_reject_unknown_rules_before_any_work(
+    tmp_path: Path, floating: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    script = tmp_path / "tower.py"
+    script.write_text(TOWER)
+    assert run("build", str(script), "--ignore", "colision", "--no-check") == 2
+    assert "which the options name" in capsys.readouterr().err
+    assert not (tmp_path / "tower.bricky.json").exists()
+    assert run("render", str(floating), "--warn", "colision") == 2
+    assert "which the options name" in capsys.readouterr().err
+
+
 def test_check_rejects_unknown_rules(
     floating: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -418,7 +430,7 @@ def test_check_rejects_unknown_rules(
 def test_explain_gives_the_exact_condition(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    assert run("explain", "Floating-Group") == 0
+    assert run("explain", "floating-group") == 0
     out = capsys.readouterr().out
     assert out.startswith("floating-group (error, pass connectivity)")
     assert "held only from above" in out

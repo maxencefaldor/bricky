@@ -5,7 +5,14 @@ from __future__ import annotations
 import ast
 import inspect
 
-from bricky import ModelBuilder, Settings, check_model, format_report
+from bricky import (
+    Level,
+    ModelBuilder,
+    Settings,
+    check_model,
+    default_catalog,
+    format_report,
+)
 from bricky.diagnostics import Diagnostic
 from bricky.passes import installed_passes, installed_rules
 
@@ -96,3 +103,40 @@ def test_script_lines_that_tie_list_in_the_order_diagnostics_name_them() -> None
         sites.append(f"  {source.site}: 1 diagnostic")
     text = format_report(report)
     assert text.index(sites[0]) < text.index(sites[1])
+
+
+def test_the_summary_names_ignored_rules_or_counts_many() -> None:
+    builder = ModelBuilder("m")
+    wall(builder, 0, 0)
+    model = builder.build()
+    one = check_model(model, rules={"strained-studs": Level.IGNORE})
+    assert format_report(one).endswith(
+        "against 9 rules (strained-studs ignored): 0 errors, 0 warnings"
+    )
+    most = check_model(model, rules={"all": Level.IGNORE, "overlap": Level.ERROR})
+    assert format_report(most).endswith(
+        "against 1 rule (9 ignored): 0 errors, 0 warnings"
+    )
+
+
+def test_reports_count_every_diagnostic_by_rule_beyond_the_cap() -> None:
+    builder = ModelBuilder("m")
+    for i in range(5):
+        builder.place("3024", at=(3 * i, 0, 2), color="Red")
+    report = check_model(builder.build(), max_diagnostics=2, settings=Settings())
+    assert len(report.diagnostics) == 2
+    assert report.counts == {"floating-group": 5}
+
+
+def test_errors_come_first_under_the_cap() -> None:
+    catalog = default_catalog()
+    brick = catalog.entry("3001")
+    assert brick is not None
+    never = next(color for color in catalog.colors if color.id not in brick.colors)
+    builder = ModelBuilder("m")
+    builder.place("3001", at=(0, 0, 0), color=never.id, id="odd")
+    wall(builder, 10, 0)
+    wall(builder, 11, 0)
+    report = check_model(builder.build(), max_diagnostics=1, settings=Settings())
+    assert [d.rule for d in report.diagnostics] == ["overlap"]
+    assert report.counts == {"color-never-made": 1, "overlap": 1}

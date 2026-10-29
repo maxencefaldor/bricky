@@ -28,7 +28,7 @@ from typing import Final
 
 from playwright.async_api import Page, Route, async_playwright
 
-from bricky import ModelBuilder, Settings, check_model, default_catalog, voxels
+from bricky import Level, ModelBuilder, Settings, check_model, default_catalog, voxels
 from bricky.analysis import build_world, diff_worlds
 from bricky.catalog import IMPORTED_CATALOG, SAMPLE_CATALOG, Catalog, load_catalog
 from bricky.instructions import build_instructions
@@ -611,8 +611,12 @@ async def render(
         return None
     catalog = load_catalog(IMPORTED_CATALOG) if figure.imported else default_catalog()
     model, provenance = await model_of(figure, catalog, settings)
+    # A figure that shows no report only needs its errors: skip the slow search for
+    # sites of studs, which reports warnings.
+    quick = dict.fromkeys(("overloaded-studs", "strained-studs"), Level.IGNORE)
     report = check_model(
         model,
+        rules=None if figure.check else quick,
         provenance=provenance,
         catalog=catalog,
         settings=settings,

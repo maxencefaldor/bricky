@@ -102,6 +102,7 @@ def test_check_model_answers_with_text_and_a_structured_report(tmp_path: Path) -
     assert result.structured_content["diagnostics"][0]["rule"] == "floating-group"
     ignored = call("check_model", {"model": str(path), "ignore": ["floating-group"]})
     assert ignored.structured_content["errors"] == 0
+    assert ignored.structured_content["rules"]["floating-group"] == "ignore"
 
 
 def test_build_model_returns_the_report_and_the_image(tmp_path: Path) -> None:
@@ -206,3 +207,13 @@ def test_the_command_answers_help_and_version(
     with pytest.raises(SystemExit) as exit_:
         main(["--bogus"])
     assert exit_.value.code == 2
+
+
+def test_the_command_stops_on_invalid_settings(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("BRICKY_RULES", '{"overlap": "deny"}')
+    with pytest.raises(SystemExit) as exit_:
+        main([])
+    assert exit_.value.code == 2
+    assert "invalid settings: rules.overlap" in capsys.readouterr().err

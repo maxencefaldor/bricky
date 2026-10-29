@@ -24,7 +24,7 @@ ENTRY_POINT_GROUP: Final = "bricky.passes"
 """The entry-point group that packages register passes under."""
 
 BUILT_IN: Final = ("schema", "collision", "connectivity", "stability")
-"""bricky's own passes, in the order checks run them; other passes follow, by name."""
+"""The passes of bricky itself, in the order checks run them; others follow, by name."""
 
 
 class Pass(Protocol):
@@ -48,7 +48,7 @@ class Pass(Protocol):
 def installed_passes() -> Mapping[str, type[Pass]]:
     """Return every installed pass by name, discovered once per process.
 
-    bricky's own passes come first, in the order of :data:`BUILT_IN`.
+    The passes of :data:`BUILT_IN` come first, in that order.
     """
     found: dict[str, type[Pass]] = {
         entry_point.name: entry_point.load()
@@ -68,15 +68,18 @@ def installed_passes() -> Mapping[str, type[Pass]]:
 def installed_rules() -> Mapping[str, tuple[str, Rule]]:
     """Return every rule an installed pass checks, with the name of that pass.
 
-    The rules come in the order checks report them: by pass, then as each pass lists
-    them.
+    The rules come in the order of their passes, then as each pass lists them.
 
     Raises:
-        BrickyError: If two installed passes claim the same rule.
+        BrickyError: If two installed passes claim the same rule, or a pass names a
+            rule ``all``, the key that sets every rule.
     """
     found: dict[str, tuple[str, Rule]] = {}
     for name, pass_type in installed_passes().items():
         for rule in pass_type.rules:
+            if rule.name == ALL:
+                message = f"pass {name!r} names a rule {ALL!r}, which sets every rule"
+                raise BrickyError(message)
             if rule.name in found:
                 other = found[rule.name][0]
                 message = f"passes {other!r} and {name!r} both check rule {rule.name}"
@@ -85,23 +88,23 @@ def installed_rules() -> Mapping[str, tuple[str, Rule]]:
     return MappingProxyType(found)
 
 
-def resolve_levels(*layers: Mapping[str, Level]) -> dict[str, Level]:
-    """Return the level of every installed rule, in the order checks report them.
+def resolve_levels(*layers: tuple[str, Mapping[str, Level]]) -> dict[str, Level]:
+    """Return the level of every installed rule, ordered as :func:`installed_rules`.
 
     Each rule starts at its default level. Each layer then applies in turn, such as the
     settings and then a command's options: ``all`` sets every rule, and a rule's own
-    entry overrides it.
+    entry overrides it. A layer comes with the name that errors give it.
 
     Raises:
         BrickyError: If a layer names a rule that no installed pass checks.
     """
     rules = installed_rules()
     levels = {name: rule.default_level for name, (_, rule) in rules.items()}
-    for layer in layers:
+    for source, layer in layers:
         if unknown := sorted(set(layer) - set(levels) - {ALL}):
             message = (
-                f"no installed pass checks {_listed(unknown)}; "
-                f"known rules: {', '.join(rules)}"
+                f"no installed pass checks {_listed(unknown)}, which the {source} "
+                f"name; known rules: {', '.join(rules)}"
             )
             raise BrickyError(message)
         if ALL in layer:
@@ -114,6 +117,10 @@ def resolve_levels(*layers: Mapping[str, Level]) -> dict[str, Level]:
 
 def run_passes(context: Context, levels: Mapping[str, Level]) -> list[Diagnostic]:
     """Run every pass that checks a rule not ignored, and keep those rules' diagnostics.
+
+    Args:
+        context: The model and its shared analyses.
+        levels: The level of every installed rule, as :func:`resolve_levels` returns.
 
     Raises:
         BrickyError: If a pass reports a rule it does not list.

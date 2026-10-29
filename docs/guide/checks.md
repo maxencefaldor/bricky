@@ -58,18 +58,17 @@ Each diagnostic has three parts:
 
 The summary `by source line` ranks script lines by how many diagnostics name their elements.
 The first line listed is the one to read first.
+The [rules](../reference/rules.md) page gives the exact condition behind every rule, and `bricky explain blocked-stud` prints it.
 The sheet tints elements an error names red and those a warning names orange.
 Each diagnostic also labels its first element with its rule and marks its region with a dashed box:
 
 ![The broken example: every element a diagnostic names is tinted red and labeled](../images/broken.png)
 
-The [rules](../reference/rules.md) page gives the exact condition behind every rule, and `bricky explain blocked-stud` prints it.
-
 ## Rules and levels
 
 Each diagnostic states the fact of one rule, and a check reports each rule at a level: `error`, `warn` or `ignore`.
 An error fails the check, a warning reports a fact without failing it, and `ignore` leaves the rule out.
-The rules that bricky checks exactly, such as `overlap`, are errors by default.
+The rules whose facts surely make a model impossible to build, such as `overlap`, are errors by default.
 The [stability](stability.md) rules are warnings by default: they rest on measured clutch, friction and density, which real elements only approach.
 The command `bricky explain` prints a rule's level, the pass that checks it and its exact condition:
 
@@ -83,7 +82,8 @@ floating-group (error, pass connectivity)
 A project sets the level of each rule in its configuration, and a command can set levels for one run, as with ty.
 The table `[tool.bricky.rules]` of `pyproject.toml`, or `[rules]` in a `bricky.toml`, maps rule names to levels.
 The key `all` sets every rule, and a rule's own entry overrides it.
-The options `--error`, `--warn` and `--ignore` take rule names or `all`, and apply over the configuration: `--ignore strained-studs` leaves one rule out of one build.
+The options `--error`, `--warn` and `--ignore` take rule names or `all`, and apply over the configuration.
+The option `--ignore strained-studs` leaves one rule out of one build.
 The variable `BRICKY_RULES` takes the same table as JSON (see [Configuration](../reference/configuration.md)).
 A project that builds its models for real might make two stability rules errors and leave one out:
 

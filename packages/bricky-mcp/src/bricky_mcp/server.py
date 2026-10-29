@@ -49,11 +49,11 @@ views, with rulers in studs and plates. From the second build on, the result als
 what changed since the last build, by script line, and the image outlines new and
 changed elements. Read everything, fix the script, and build again until the report has
 no errors and the images show the intended model. Weigh warnings too: the stability
-rules warn of groups that fall and studs that grip near their limit, which matter once
-someone builds the model for real. render_model looks closer: it
-highlights elements by uid or by script function, clips the model open, or renders
-other views. Once the model is done, write_instructions writes a page that shows people
-how to build it step by step, and export_model lists its parts to buy.
+rules warn of groups that fall and studs near their limit, which matter for real builds.
+render_model looks closer: it highlights elements by uid or by script function, clips
+the model open, or renders other views. Once the model is done, write_instructions
+writes a page that shows people how to build it step by step, and export_model lists its
+parts to buy.
 
 Coordinates: x points east and y north, both in studs; z points up, in plates (a brick
 is 3 plates). `at` is the minimum corner of the rotated bounding box of what a script
@@ -62,8 +62,8 @@ vertical axis. A rotation can also name where the part's x and y axes go, which 
 all 24 grid rotations: '+x+z' stands a part up facing -y. search_parts and search_colors
 find ids. search_parts also says which way a part faces unrotated, such as a slope
 falling toward -y, and show_part describes one part and can render it. Scripts can place
-only parts with a shape. explain_rule gives the exact condition behind a diagnostic's
-rule, such as floating-group, and its level: error, warn or ignore. In a script,
+only parts with a shape. The tool explain_rule gives the exact condition behind a
+diagnostic's rule, such as floating-group, and its level. In a script,
 bricky.voxels(model) maps every voxel a model fills, to compare with a plan.
 """
 
@@ -271,7 +271,10 @@ A harness starts this command: https://maxencefaldor.github.io/bricky/agents/con
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    """Serve over stdio, or answer ``--help`` or ``--version``."""
+    """Serve over stdio, or answer ``--help`` or ``--version``.
+
+    The exit status is 2 for invalid arguments or settings.
+    """
     arguments = sys.argv[1:] if argv is None else list(argv)
     if arguments == ["--version"]:
         sys.stdout.write(f"bricky-mcp {version('bricky-mcp')}\n")
@@ -286,4 +289,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         sys.stderr.write(
             "bricky-mcp serves MCP on stdio for a harness to start; Ctrl-C stops it.\n"
         )
-    create_server().run()
+    try:
+        server = create_server()
+    except BrickyError as error:
+        # Invalid settings, for example, stop the server before it serves anything.
+        sys.stderr.write(f"error: {error}\n")
+        raise SystemExit(2) from None
+    server.run()

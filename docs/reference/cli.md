@@ -49,6 +49,9 @@ Render images of a model file.
 | `--highlight` |  | Elements to highlight, rendering the rest faintly: uid patterns such as 'sign*', or '@' and a function, file or file:line of the build script, such as '@roof'. |
 | `--clip` |  | Clip the model to look inside: 'z&lt;130' keeps what lies below 130 plates; x and y are in studs. |
 | `--check`, `--no-check` | `True` | Mark the elements that diagnostics name. |
+| `--error` |  | Rules to report as errors, such as 'overloaded-studs', or 'all' for every rule; overrides the configured levels. |
+| `--warn` |  | Rules to report as warnings, or 'all' for every rule; overrides the configured levels. |
+| `--ignore` |  | Rules to leave out, such as 'strained-studs', or 'all' for every rule; overrides the configured levels. |
 | `--width` | `1600` | Image width in pixels. |
 | `--height` | `1200` | Image height in pixels. |
 | `--output` |  | Image file to write; with several views, each file name gets the view's name added. Defaults to &lt;model&gt;.&lt;view&gt;.png beside the model, so renders keep the sheet a build rendered. |

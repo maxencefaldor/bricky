@@ -13,7 +13,14 @@ from typing import cast
 import pytest
 from playwright.async_api import Route, async_playwright
 
-from bricky import BrickyError, ModelBuilder, Settings, check_model, default_catalog
+from bricky import (
+    BrickyError,
+    Level,
+    ModelBuilder,
+    Settings,
+    check_model,
+    default_catalog,
+)
 from bricky.geometry import Box, Vector
 from bricky.instructions import build_instructions
 from bricky.render import (
@@ -96,6 +103,26 @@ def test_scenes_mark_the_parts_diagnostics_name() -> None:
     assert [label.text for label in scene.labels] == ["floating-group float"]
     assert [mark.text for mark in scene.marks] == ["floating-group"]
     assert "check: 1 error, 0 warnings" in scene.title
+
+
+def test_scenes_mark_warnings_apart_from_errors() -> None:
+    builder = stack()
+    builder.place("3022", at=(9, 9, 9), color="Tan", id="float")
+    model = builder.build()
+    report = check_model(
+        model, rules={"floating-group": Level.WARN}, settings=Settings()
+    )
+    scene = build_scene(model, default_catalog(), report=report)
+    flags = dict(
+        zip(scene.uids, (element[1] for element in scene.elements), strict=True)
+    )
+    assert flags["float"] & Flag.WARNING
+    assert not flags["float"] & Flag.ERROR
+    assert [label.kind for label in scene.labels] == ["warning"]
+    assert [(d.rule, d.kind) for d in scene.diagnostics] == [
+        ("floating-group", "warning")
+    ]
+    assert "check: 0 errors, 1 warning" in scene.title
 
 
 def test_highlights_select_by_uid_or_script_function() -> None:

@@ -169,12 +169,13 @@ class Stability:
 
 
 def analyze_stability(
-    context: Context, material: Material, *, threshold: float = 1.0
+    context: Context, material: Material, *, threshold: float | None = 1.0
 ) -> Stability:
     """Find the elements that fall and the sites that need more than ``threshold``.
 
     The analysis covers the elements that a chain of contacts and studs joins to the
-    ground; the rest float, as the connectivity pass reports.
+    ground; the rest float, as the connectivity pass reports. A ``threshold`` of
+    ``None`` skips the search for sites, the slow part, and finds only what falls.
 
     Raises:
         BrickyError: If HiGHS finds no optimal forces.
@@ -191,10 +192,13 @@ def analyze_stability(
     clusters = _clusters(standing, joints)
     rigid = _Statics(elements, clusters, contacts, joints, material, held=None)
     moving = {i for k in rigid.moving() for i in clusters[k]}
+    falls = _groups(moving, links)
+    if threshold is None:
+        return Stability(falls=falls, sites=())
     held = [k for k, i in enumerate(standing) if i in moving]
     single = [(i,) for i in standing]
     statics = _Statics(elements, single, contacts, joints, material, held=held)
-    return Stability(falls=_groups(moving, links), sites=statics.sites(threshold))
+    return Stability(falls=falls, sites=statics.sites(threshold))
 
 
 type _Corners = tuple[tuple[int, int, int], ...]

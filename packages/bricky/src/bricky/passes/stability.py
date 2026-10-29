@@ -14,13 +14,16 @@ from bricky.settings import Level
 
 _MODEL = (
     "Elements are rigid and weigh their volume times the density setting. Forces act "
-    "only where elements touch. Faces that face up and down press on each other, "
-    "since weight closes any gap. Faces that face sideways press only where each is "
-    "the top or bottom of its part or holds its studs or anti-studs: the sides of "
-    "parts stand 0.1 mm in from the grid. Faces that no stud joins also rub, with the "
-    "friction setting. Studs bear any sideways force. The ground, at z = 0, presses "
-    "up wherever an element reaches it, with friction."
+    "only where elements touch. Faces that face up and down press on each other, since "
+    "weight closes any gap. Faces that face sideways press only where each is the top "
+    "or bottom of its part, or holds its studs or anti-studs. The sides of parts stand "
+    "0.1 mm in from the grid, so they never touch. Faces that no stud joins also rub, "
+    "with the friction setting. Studs bear any sideways force. The ground, at z = 0, "
+    "presses up wherever an element reaches it, with friction."
 )
+
+
+_STUD_RULES = ("overloaded-studs", "strained-studs")
 
 
 class StabilityPass:
@@ -38,7 +41,7 @@ class StabilityPass:
                 f"{_MODEL} A group falls when no such forces balance the weight of "
                 "each of its elements, however firmly studs grip. The pass reports "
                 "each group of touching elements that moves, with the box around "
-                "them. It leaves out elements with no chain of contacts to the "
+                "them. The pass leaves out elements with no chain of contacts to the "
                 "ground, which floating-group reports."
             ),
         ),
@@ -48,32 +51,37 @@ class StabilityPass:
             condition=(
                 f"{_MODEL} A stud's clutch, 2.94 N by default, is the force that pulls "
                 "it out of its anti-stud. A stud alone where two elements meet face to "
-                "face also resists twisting, at its 2.4 mm radius, and its pull and "
-                "twist share its clutch; two or more studs there resist any twist "
-                "together. The pass finds forces that hold the model still while the "
-                "most loaded stud uses the least share of its clutch, with the groups "
-                "of unbalanced-group held up. The studs that set that share form "
-                "sites, one for each group of elements that would move together to "
-                "pull them out. The search repeats with the studs of each site found "
-                "holding without limit, so each site needs its share however much the "
-                "sites before it hold. The pass reports at most 16 sites, most loaded "
-                "first: each whose studs need more than their clutch, with that share "
-                "rounded up, the elements the studs join and the box around the studs."
+                "face also resists twisting, at its 2.4 mm radius. The pull and twist "
+                "of such a stud share its clutch, and two or more studs there resist "
+                "any twist together. The pass finds forces that hold the model still "
+                "while the most loaded stud uses the least share of its clutch. The "
+                "groups that unbalanced-group reports stay held up meanwhile. The "
+                "studs that set that share form sites, one for each group of elements "
+                "that would move together to pull them out. The search repeats with "
+                "the studs of each site found holding without limit. Each site "
+                "therefore needs its share however much the sites before it hold. The "
+                "pass reports at most 16 sites, most loaded first, each whose studs "
+                "need more than their clutch. Each diagnostic gives that share rounded "
+                "up, the elements the studs join and the box around the studs."
             ),
         ),
         Rule(
             name="strained-studs",
             default_level=Level.WARN,
             condition=(
-                "As overloaded-studs, for a site whose studs need more than 1 over "
-                "the safety factor setting of their clutch, half by default, and at "
-                "most all of it."
+                "The pass reports sites as for overloaded-studs. Each site's studs "
+                "need more than 1 over the safety factor setting of their clutch, half "
+                "by default, and at most all of it."
             ),
         ),
     )
 
     def run(self, context: Context) -> Iterator[Diagnostic]:
-        """Yield the groups that fall, then the sites whose studs grip hard."""
+        """Yield the groups that fall, then the sites whose studs grip hard.
+
+        The search for sites, the slow part, runs only when the check reports
+        overloaded-studs or strained-studs, and only as deep as those rules need.
+        """
         from bricky.analysis.stability import (  # noqa: PLC0415 - the solvers load only when a check runs the pass
             Material,
             analyze_stability,
@@ -81,8 +89,14 @@ class StabilityPass:
 
         settings = context.settings
         elements = context.world.elements
+        overloaded, strained = (self._checks(context, name) for name in _STUD_RULES)
+        threshold = None
+        if overloaded:
+            threshold = 1.0
+        if strained:
+            threshold = 1 / settings.safety_factor
         stability = analyze_stability(
-            context, Material.of(settings), threshold=1 / settings.safety_factor
+            context, Material.of(settings), threshold=threshold
         )
         for group in stability.falls:
             what = (
@@ -114,3 +128,9 @@ class StabilityPass:
                 elements=tuple(elements[i].uid for i in site.elements),
                 region=Region.of(Box.bounding(joint.bounds for joint in site.joints)),
             )
+
+    @classmethod
+    def _checks(cls, context: Context, name: str) -> bool:
+        """Whether the check reports the rule of this pass named ``name``."""
+        rule = next(rule for rule in cls.rules if rule.name == name)
+        return context.checks(name, rule.default_level)

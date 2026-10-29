@@ -1,15 +1,14 @@
 # Copyright 2026 Maxence Faldor
 """Diagnostics: the facts that passes report, and the reports that collect them.
 
-A rule is one kind of fact a pass checks, by a name such as ``floating-group``, with a
-default level and the exact condition behind it (see ``bricky explain``). A diagnostic
-states one such fact about the model: what is wrong, the elements involved and the
-region they occupy, in studs and plates. A diagnostic never prescribes a fix: the agent
-decides what to change.
+A rule is one kind of fact a pass checks, such as ``floating-group``. It has a default
+level and an exact condition, which ``bricky explain`` prints. A diagnostic states one
+such fact about the model: what is wrong, the elements involved and their region. A
+diagnostic never prescribes a fix: the agent decides what to change.
 
 A check reports each rule at a level: error, warn or ignore. A report gives the level of
-every rule, and adds what the model and its source map know about each element a
-diagnostic names: the part, the color and the build-script line that placed it.
+every rule. It also says what each element a diagnostic names is, and which line of the
+build script placed it.
 """
 
 from __future__ import annotations
@@ -26,6 +25,7 @@ from bricky.units import to_plates, to_studs
 
 _LISTED_ELEMENTS: Final = 6
 _LISTED_SITES: Final = 10
+_LISTED_IGNORED: Final = 3
 
 
 class Rule(BaseModel):
@@ -125,6 +125,11 @@ class Report(BaseModel):
     warnings: int = Field(
         description="Number of warnings found, omitted ones included."
     )
+    counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Number of diagnostics found under each rule that has some, "
+        "omitted ones included.",
+    )
     diagnostics: tuple[Diagnostic, ...] = Field(
         description="Diagnostics, errors first, then by rule and first element."
     )
@@ -166,7 +171,9 @@ def format_report(report: Report) -> str:
         blocks.append("\n".join(lines))
     ignored = [name for name, level in report.rules.items() if level is Level.IGNORE]
     rules = _plural(len(report.rules) - len(ignored), "rule")
-    if ignored:
+    if len(ignored) > _LISTED_IGNORED:
+        rules += f" ({len(ignored)} ignored)"
+    elif ignored:
         rules += f" ({', '.join(ignored)} ignored)"
     blocks.append(
         f"checked {report.element_count} elements against {rules}: "
@@ -196,8 +203,8 @@ def describe_element(uid: str, info: ElementInfo | None) -> str:
 
 
 def _format_diagnostic(diagnostic: Diagnostic, report: Report) -> str:
-    severity = "error" if report.is_error(diagnostic) else "warning"
-    lines = [f"{severity}[{diagnostic.rule}]: {diagnostic.message}"]
+    kind = "error" if report.is_error(diagnostic) else "warning"
+    lines = [f"{kind}[{diagnostic.rule}]: {diagnostic.message}"]
     if diagnostic.region is not None:
         lines.append(f"  --> {diagnostic.region}")
     lines.extend(

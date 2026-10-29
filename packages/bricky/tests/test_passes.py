@@ -14,7 +14,9 @@ from bricky import (
     check_model,
     default_catalog,
 )
-from bricky.passes import BUILT_IN, installed_passes, installed_rules
+from bricky.analysis import Context
+from bricky.diagnostics import Diagnostic, Rule
+from bricky.passes import BUILT_IN, installed_passes, installed_rules, registry
 from bricky.passes.schema import SchemaPass
 
 SCHEMA: dict[str, Level] = {"all": Level.IGNORE} | {
@@ -166,8 +168,70 @@ def test_options_apply_over_the_settings() -> None:
 
 
 def test_unknown_rules_are_rejected() -> None:
-    with pytest.raises(BrickyError, match="no installed pass checks a rule named"):
+    with pytest.raises(BrickyError, match="'colision', which the options name"):
         check_model(Model(), rules={"colision": Level.IGNORE}, settings=Settings())
     settings = Settings(rules={"floating": Level.WARN})
-    with pytest.raises(BrickyError, match="'floating'; known rules: unknown-part"):
+    with pytest.raises(BrickyError, match="'floating', which the settings name"):
         check_model(Model(), settings=settings)
+
+
+class Odd:
+    """A pass that reports a rule it does not list."""
+
+    name = "odd"
+    summary = "Reports what it never lists."
+    rules = (Rule(name="listed", default_level=Level.ERROR, condition="Listed."),)
+
+    def run(self, context: Context) -> list[Diagnostic]:
+        """Report a fact under a rule the pass does not list."""
+        del context
+        return [Diagnostic(rule="unlisted", message="a fact under no listed rule")]
+
+
+def test_passes_cannot_report_rules_they_do_not_list(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(registry, "installed_passes", lambda: {"odd": Odd})
+    context = Context(Model(), default_catalog(), Settings())
+    with pytest.raises(BrickyError, match="pass 'odd' reports rule 'unlisted'"):
+        registry.run_passes(context, {"listed": Level.ERROR})
+
+
+def test_rules_belong_to_one_pass_and_never_take_the_name_all(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rules = installed_rules.__wrapped__
+    monkeypatch.setattr(registry, "installed_passes", lambda: {"a": Odd, "b": Odd})
+    with pytest.raises(BrickyError, match="passes 'a' and 'b' both check rule listed"):
+        rules()
+
+    class All(Odd):
+        rules = (Rule(name="all", default_level=Level.WARN, condition="Every."),)
+
+    monkeypatch.setattr(registry, "installed_passes", lambda: {"all": All})
+    with pytest.raises(BrickyError, match="names a rule 'all'"):
+        rules()
+
+
+def test_other_passes_run_after_the_built_in_ones(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Point:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def load(self) -> type[Odd]:
+            return Odd
+
+    names = ["acoustics", "stability", "schema", "collision", "beauty", "connectivity"]
+
+    def points(group: str) -> list[Point]:
+        assert group == registry.ENTRY_POINT_GROUP
+        return [Point(name) for name in names]
+
+    monkeypatch.setattr(registry, "entry_points", points)
+    assert list(installed_passes.__wrapped__()) == [
+        *BUILT_IN,
+        "acoustics",
+        "beauty",
+    ]

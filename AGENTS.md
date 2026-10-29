@@ -65,10 +65,11 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
   A diagnostic states what is wrong, where and which elements; the report adds what each element is and the script line that placed it.
   Advice belongs in the skill, not in bricky.
 - **Passes:** pure functions of a `Context`, registered under the `bricky.passes` entry-point group.
-  Each pass lists every rule it checks, with its default level and exact condition (`bricky explain`), and emits diagnostics with that rule, a message, the elements involved and a region.
+  Each pass lists every rule it checks, with its default level and exact condition (`bricky explain`).
+  Each diagnostic it emits names one of those rules and gives a message, the elements involved and a region.
 - **Rules, as in ty:** people configure rules, never passes.
   A rule's name is lowercase words joined by hyphens, and its level is `error`, `warn` or `ignore`.
-  A rule that bricky checks exactly defaults to `error`, and a rule that rests on measured physics to `warn`.
+  A rule whose fact surely makes a model impossible to build defaults to `error`, and any other rule to `warn`.
 - **Build scripts run in their own process** (`bricky.runner`), never in the command line or the MCP server: their output is captured, a timeout stops them, and a canceled command kills them.
 - **Images are first-class feedback:** every build renders its model by default.
   Renderer assets live in `bricky/render/assets`; three.js is vendored unmodified, so rendering works offline.

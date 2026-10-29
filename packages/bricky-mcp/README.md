@@ -10,6 +10,9 @@ With Claude Code, one command adds it:
 claude mcp add bricky -- uvx bricky-mcp
 ```
 
+Installing the server on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
+The command `uvx --python 3.14 bricky-mcp` avoids that.
+
 Other harnesses start it from a project's `.mcp.json`:
 
 ```json

@@ -11,7 +11,6 @@ match counts.
 
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Callable, Iterator, Mapping
 from typing import Final
 
@@ -77,13 +76,12 @@ class Score(BaseModel):
 
 def facts(report: Report, elements: int) -> Score:
     """Score a model that built, from its check report."""
-    rules = Counter(diagnostic.rule for diagnostic in report.diagnostics)
     return Score(
         built=True,
         elements=elements,
         errors=report.errors,
         warnings=report.warnings,
-        rules=dict(sorted(rules.items())),
+        rules=dict(sorted(report.counts.items())),
     )
 
 

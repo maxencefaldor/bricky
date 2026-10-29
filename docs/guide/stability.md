@@ -6,7 +6,7 @@ The page shows how bricky checks that a model stands under its own weight and th
 
 Every check tests whether the model stands under its own weight, as a real build on a table.
 Three rules report what fails: `unbalanced-group`, `overloaded-studs` and `strained-studs`.
-They are warnings by default, since they rest on measured clutch, friction and density, which real elements only approach.
+The three rules are warnings by default: they rest on measured clutch, friction and density, which real elements only approach.
 A project that builds its models for real can make them errors (see [Checks](checks.md#configuring-levels)).
 Here a crane's jib stands on a single stud of its mast:
 
@@ -39,7 +39,8 @@ Each element is a rigid body that weighs its volume times a density, and forces 
 A model stands when some set of these forces balances every element: the forces and torques on each sum to zero.
 Finding such forces is a linear program, the lower bound of limit analysis that studies of masonry and of LEGO® structures use ([Whiting et al., 2009](https://doi.org/10.1145/1618452.1618458); [Liu et al., 2024](https://arxiv.org/abs/2402.10711)).
 The interior point solver [Clarabel](https://clarabel.org) settles most models in a few seconds.
-When some stud grips hard, the simplex solver [HiGHS](https://highs.dev) starts from those forces and finds the exact loads, in a minute or two for thousands of elements.
+When some stud grips hard, the simplex solver [HiGHS](https://highs.dev) starts from those forces and finds the exact loads.
+That search takes a minute or two for thousands of elements, and a check that ignores both rules of studs skips it.
 The module `bricky.analysis.stability` gives the same analysis to Python: here a 1 x 8 plate reaches 6 studs past the brick it stands on.
 
 ```python
@@ -76,7 +77,8 @@ Many sets of forces hold a model still, so the check takes the one where the mos
 The studs that set that share form a site, one for each group of elements that would move together to pull them out.
 The search then repeats with those studs holding without limit.
 Each site therefore needs its share of clutch however much the sites before it hold.
-The rule `overloaded-studs` names a site that needs more than its whole clutch, and `strained-studs` one that needs more than half, the default safety factor of 2.
+The rule `overloaded-studs` names a site that needs more than its whole clutch.
+The rule `strained-studs` names one that needs more than half of it, with the default safety factor of 2.
 A heavy jib on a single stud of a crane's mast needs 107% of that stud's clutch:
 
 ![A crane whose jib stands on one stud of the mast, the two elements tinted orange, labeled overloaded-studs](../images/crane.png)

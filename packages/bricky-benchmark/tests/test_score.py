@@ -59,7 +59,7 @@ def test_an_empty_model_scores_zero() -> None:
     assert (fidelity.shape, fidelity.color, fidelity.voxels) == (0.0, 0.0, 0)
 
 
-def test_facts_count_diagnostics_by_code() -> None:
+def test_facts_count_diagnostics_by_rule() -> None:
     builder = ModelBuilder("floating")
     builder.place("3001", at=(0, 0, 3), color="Red")
     builder.place("3001", at=(5, 5, 3), color="Red")

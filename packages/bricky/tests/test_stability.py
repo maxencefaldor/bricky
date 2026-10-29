@@ -10,6 +10,7 @@ from hypothesis import strategies as st
 
 from bricky import Level, ModelBuilder, Settings, check_model, default_catalog
 from bricky.analysis import Context
+from bricky.analysis import stability as stability_module
 from bricky.analysis.stability import (
     GRAVITY,
     Material,
@@ -370,3 +371,30 @@ def test_checks_skip_the_stability_pass_when_its_rules_are_ignored(
     ignored = dict.fromkeys(STABILITY.keys() - {"all"}, Level.IGNORE)
     report = check_model(cantilever(1).build(), rules=ignored)
     assert report.diagnostics == ()
+
+
+@pytest.mark.parametrize(
+    ("ignored", "threshold"),
+    [
+        ((), 0.5),
+        (("strained-studs",), 1.0),
+        (("overloaded-studs",), 0.5),
+        (("overloaded-studs", "strained-studs"), None),
+    ],
+)
+def test_the_search_for_sites_goes_as_deep_as_the_rules_reported(
+    monkeypatch: pytest.MonkeyPatch,
+    ignored: tuple[str, ...],
+    threshold: float | None,
+) -> None:
+    asked: list[float | None] = []
+
+    def record(
+        context: Context, material: Material, *, threshold: float | None = 1.0
+    ) -> Stability:
+        asked.append(threshold)
+        return analyze_stability(context, material, threshold=threshold)
+
+    monkeypatch.setattr(stability_module, "analyze_stability", record)
+    check_model(cantilever(1).build(), rules=dict.fromkeys(ignored, Level.IGNORE))
+    assert asked == [threshold]

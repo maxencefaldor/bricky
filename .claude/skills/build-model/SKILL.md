@@ -84,8 +84,11 @@ def build() -> ModelBuilder:
 - `uv run bricky instructions models/<name>.bricky.json` writes `models/<name>.instructions.html`, a page that walks people through building the model step by step.
 - Every build also checks that the model stands under its own weight, and reports what fails as warnings.
   The rule `unbalanced-group` names groups that tip or fall, however firmly their studs grip.
-  The rule `overloaded-studs` names studs that need more than their clutch to hold the model, and `strained-studs` studs that need more than half of it.
+  The rule `overloaded-studs` names studs that need more than their clutch to hold the model.
+  The rule `strained-studs` names studs that need more than half of it.
   For a model someone will build for real, fix these warnings too.
+- The search behind `overloaded-studs` and `strained-studs` is the slow part of a check on a large model.
+  While you iterate on a large model, `--ignore overloaded-studs --ignore strained-studs` skips it; build once without them before you stop.
 
 ## Building well
 

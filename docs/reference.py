@@ -135,6 +135,14 @@ RULE_IMAGES: Final = {
         "blocked.png",
     ),
     "floating-group": ("A brick held by nothing", "floating.png"),
+    "unbalanced-group": (
+        "A post with a long arm on top, both tinted orange",
+        "tipping.png",
+    ),
+    "overloaded-studs": (
+        "A crane whose jib stands on one stud of its mast, tinted orange",
+        "crane.png",
+    ),
 }
 """The image beside each rule that has one, with its description."""
 
@@ -166,10 +174,12 @@ SETTINGS_INTRODUCTION: Final = """\
 # Configuration
 
 Settings tune every command.
-Each setting comes from the first source that sets it: a command's option, a \
-`BRICKY_*` environment variable, or the configuration file in the working directory.
-That file is `bricky.toml` when there is one, and otherwise the `[tool.bricky]` table \
-of `pyproject.toml`.
+Each setting comes whole from the first source that sets it: a command's option, a \
+`BRICKY_*` variable, or the configuration file.
+The options `--error`, `--warn` and `--ignore` instead apply over the levels that \
+`rules` sets.
+The configuration file is `bricky.toml` when there is one, and otherwise the \
+`[tool.bricky]` table of `pyproject.toml`.
 A `bricky.toml` replaces that table entirely, as `ty.toml` replaces `[tool.ty]`.
 
 | Setting | Environment variable | Default | Description |
@@ -178,6 +188,8 @@ A `bricky.toml` replaces that table entirely, as `ty.toml` replaces `[tool.ty]`.
 
 SETTINGS_EXAMPLE: Final = """\
 
+A `bricky.toml` holds the same settings without the `tool.bricky` prefix: `[rules]` \
+for `[tool.bricky.rules]`.
 A project that builds large models might raise the time limit and make two stability \
 rules errors:
 
@@ -186,16 +198,6 @@ rules errors:
 build_timeout = 300
 
 [tool.bricky.rules]
-unbalanced-group = "error"
-overloaded-studs = "error"
-```
-
-The same settings in `bricky.toml` drop the `tool.bricky` prefix:
-
-```toml title="bricky.toml"
-build_timeout = 300
-
-[rules]
 unbalanced-group = "error"
 overloaded-studs = "error"
 ```
