@@ -63,7 +63,7 @@ wheels = [
 
 [[package]]
 name = "bricky"
-version = "0.2.0"
+version = "0.1.0"
 source = { editable = "packages/bricky" }
 dependencies = [
     { name = "numpy" },
@@ -84,7 +84,7 @@ requires-dist = [
 
 [[package]]
 name = "bricky-benchmark"
-version = "0.2.0"
+version = "0.1.0"
 source = { editable = "packages/bricky-benchmark" }
 dependencies = [
     { name = "bricky" },
@@ -101,7 +101,7 @@ requires-dist = [
 
 [[package]]
 name = "bricky-mcp"
-version = "0.2.0"
+version = "0.1.0"
 source = { editable = "packages/bricky-mcp" }
 dependencies = [
     { name = "bricky" },

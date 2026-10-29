@@ -1,6 +1,6 @@
 [project]
 name = "bricky-benchmark"
-version = "0.2.0"
+version = "0.1.0"
 description = "Benchmark projects for agents that build LEGO® models with bricky."
 readme = "README.md"
 license = "Apache-2.0"
@@ -19,7 +19,7 @@ classifiers = [
   # The benchmark runs the projects in the repository's benchmark/ folder, so it stays off PyPI.
   "Private :: Do Not Upload",
 ]
-dependencies = ["bricky==0.2.0", "pydantic>=2.14", "pydantic-settings>=2.15"]
+dependencies = ["bricky==0.1.0", "pydantic>=2.14", "pydantic-settings>=2.15"]
 
 [project.scripts]
 bricky-benchmark = "bricky_benchmark.cli:main"

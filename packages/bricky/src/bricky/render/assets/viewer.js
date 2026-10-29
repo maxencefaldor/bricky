@@ -634,6 +634,12 @@ function header(scene, width) {
     legend.append(item);
   }
   bar.append(legend);
+  if (scene.credits?.length) {
+    const credit = document.createElement("span");
+    credit.className = "credit";
+    credit.textContent = scene.credits.join("; ");
+    bar.append(credit);
+  }
   return bar;
 }
 

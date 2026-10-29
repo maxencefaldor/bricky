@@ -23,13 +23,16 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from bricky.analysis import PlacedElement, World, build_world
 from bricky.analysis.connections import anti_stud_index
-from bricky.catalog import Catalog, ColorType, ConnectorKind
+from bricky.catalog import Catalog, ColorType, ConnectorKind, Family
 from bricky.diagnostics import Region, Report, Severity
 from bricky.errors import BrickyError
 from bricky.geometry import AXES, Box, Convex, Vector
 from bricky.model import Model
 from bricky.provenance import Frame, Provenance
 from bricky.units import PLATE, STUD, STUD_HEIGHT, plates, studs, to_plates, to_studs
+
+LDRAW_CREDIT: Final = "Part shapes from the LDraw.org Parts Library, CC BY 4.0"
+"""The credit that every image of a part shaped from LDraw carries."""
 
 
 class View(StrEnum):
@@ -212,6 +215,10 @@ class Scene(BaseModel):
     )
     labels: list[Label] = Field(default_factory=list)
     marks: list[Mark] = Field(default_factory=list)
+    credits: list[str] = Field(
+        default_factory=list,
+        description="Credits for the sources of the part shapes, shown with the views.",
+    )
     clips: list[Clip] = Field(default_factory=list)
     bounds: tuple[int, int, int, int, int, int] = Field(
         description=(
@@ -287,6 +294,7 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
     tips = [Vector(x, y, z) + axes[axis] * STUD_HEIGHT for x, y, z, axis, _ in studs]
     framed = Box.bounding([body, *(Box(tip, tip) for tip in tips)])
     bounds = _clipped(framed, clips)
+    ldraw = any(element.part.family is Family.BOXES for element in elements)
     return Scene(
         name=model.name,
         title=_title(model, _clipped(body, clips), len(elements), report),
@@ -295,6 +303,7 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
             (color_index[e.color], int(flags[i])) for i, e in enumerate(elements)
         ],
         uids=[element.uid for element in elements],
+        credits=[LDRAW_CREDIT] if ldraw else [],
         boxes=boxes,
         meshes=meshes,
         studs=studs,

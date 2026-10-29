@@ -25,7 +25,7 @@ from bricky.model import Component, Element, Instance, Model
 from bricky.settings import Settings
 
 __version__ = _package_version("bricky")
-"""The installed version of bricky, such as ``0.2.0``."""
+"""The installed version of bricky, such as ``0.1.0``."""
 
 __all__ = [
     "BrickyError",

@@ -7,11 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from bricky import BrickyError
+from bricky import BrickyError, ModelBuilder, default_catalog
 from bricky.catalog import Catalog, Family
 from bricky.catalog.bricklink import read_downloads
 from bricky.catalog.importing import import_catalog
 from bricky.catalog.ldraw import Library, ldraw_parts, ldraw_shape
+from bricky.render import build_scene, write_html
+from bricky.render.scene import LDRAW_CREDIT
 
 DATA = Path(__file__).parent / "data"
 LIBRARY = Library(DATA / "ldraw")
@@ -168,3 +170,19 @@ def test_a_part_whose_ldraw_shape_only_lacks_anti_studs_keeps_its_name_s_shape(
             "LDraw gives 20 x 20 x 24 units, 1 stud, 0 anti-studs"
         ),
     )
+
+
+def test_images_of_parts_shaped_from_ldraw_credit_the_library(tmp_path: Path) -> None:
+    catalog = Catalog(
+        [{"id": "3004", "name": "Brick 1 x 2", "shape": ldraw_shape(LIBRARY, "3004")}],
+        default_catalog().colors,
+    )
+    builder = ModelBuilder("converted", catalog=catalog)
+    builder.place("3004", at=(0, 0, 0), color="Red")
+    scene = build_scene(builder.build(), catalog)
+    assert scene.credits == [LDRAW_CREDIT]
+    page = write_html(scene, tmp_path / "converted.html").read_text()
+    assert f'<p class="credit">{LDRAW_CREDIT}</p>' in page
+    sample = ModelBuilder("sample")
+    sample.place("3004", at=(0, 0, 0), color="Red")
+    assert build_scene(sample.build(), default_catalog()).credits == []

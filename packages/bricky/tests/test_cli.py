@@ -348,11 +348,27 @@ def test_help_writes_choices_as_the_values_the_command_line_accepts(
     monkeypatch.setenv(
         "PYTHON_COLORS", "0"
     )  # argparse colors help where CI forces color
+    monkeypatch.setenv("COLUMNS", "200")  # one line per option, whatever the terminal
     assert run("render", "--help") == 0
     out = capsys.readouterr().out
-    assert "--views list[{sheet,perspective,perspective-south-west," in out
-    assert "(default: [sheet])" in out
-    assert "View." not in out
+    assert "--views {sheet,perspective,perspective-south-west," in out
+    assert "--width N" in out
+    assert "--output PATH" in out
+    assert "(default: sheet)" in out
+    assert "(default: --check)" in out
+    assert "(default: --no-html)" in out
+    for python in ("View.", "list[", " int", "None", "factory", "True", "False"):
+        assert python not in out
+
+
+def test_errors_are_json_when_the_output_is(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    missing = str(tmp_path / "nope.json")
+    assert run("check", missing, "--output-format", "json") == 2
+    assert "no such model file" in json.loads(capsys.readouterr().out)["error"]
+    assert run("check", missing, "--output-format=json", "--max-diagnostics", "x") == 2
+    assert json.loads(capsys.readouterr().out)["error"].startswith("invalid arguments")
 
 
 def test_parts_search(capsys: pytest.CaptureFixture[str]) -> None:

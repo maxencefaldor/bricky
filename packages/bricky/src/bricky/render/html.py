@@ -58,6 +58,7 @@ _PAGE: Final = Template("""\
   }
   label { display: flex; align-items: center; gap: 8px; color: var(--quiet); }
   output { min-width: 7ch; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .credit { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--quiet); }
   #stage { position: relative; min-height: 0; background: var(--paper); }
   #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 </style>
@@ -75,6 +76,7 @@ _PAGE: Final = Template("""\
   <label for="clip">Clip at
     <input id="clip" type="range" min="1" step="1"> <output id="clip-height"></output>
   </label>
+  $credit
 </header>
 <main id="stage" aria-label="3D view of the model"></main>
 <script type="application/json" id="scene">$scene</script>
@@ -125,6 +127,11 @@ def write_html(scene: Scene, path: Path) -> Path:
     page = _PAGE.substitute(
         title=escape(f"{scene.name} - bricky"),
         heading=escape(scene.title),
+        credit=(
+            f'<p class="credit">{escape("; ".join(scene.credits))}</p>'
+            if scene.credits
+            else ""
+        ),
         imports=json.dumps(imports),
         scene=scene.model_dump_json().replace("</", "<\\/"),
         viewer=_viewer_source(),

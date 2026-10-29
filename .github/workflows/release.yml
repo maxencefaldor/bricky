@@ -1,6 +1,6 @@
 name: Release
 
-# Pushing a tag such as v0.2.0 publishes bricky and bricky-mcp to PyPI, then makes a GitHub
+# Pushing a tag such as v0.1.0 publishes bricky and bricky-mcp to PyPI, then makes a GitHub
 # release. PyPI trusts this workflow, in the environment "pypi", as each project's publisher.
 on:
   push:

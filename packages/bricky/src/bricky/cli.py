@@ -14,7 +14,8 @@ import re
 import sys
 from collections.abc import Sequence
 from enum import Enum
-from typing import Final, Literal, NoReturn, override
+from pathlib import Path
+from typing import Final, Literal, NoReturn, get_args, get_origin, override
 
 from pydantic import BaseModel, Field, ValidationError
 from pydantic.fields import FieldInfo
@@ -266,16 +267,39 @@ _ENUM_REPR: Final = re.compile(r"<\w+\.\w+: '([^']*)'>")
 """An enum member as Python prints it, such as ``<View.SHEET: 'sheet'>``."""
 
 
-class _Source(CliSettingsSource[Bricky]):
-    """Writes enum members in help as the values the command line accepts.
+_METAVARS: Final[dict[object, str]] = {
+    Path: "PATH",
+    str: "TEXT",
+    int: "N",
+    float: "NUMBER",
+}
+"""Words that name what an option takes, in place of Python's type names."""
 
-    The help shows ``View.SHEET``, for example, as ``sheet``.
+_NO_DEFAULT: Final = re.compile(r" \(default( factory)?: (None|list|)\)")
+"""A default that says nothing, such as ``(default: None)``."""
+
+_LIST_DEFAULT: Final = re.compile(r"\(default: \[([^\]]*)\]\)")
+"""A default list, such as ``(default: [sheet])``, which the help writes ``sheet``."""
+
+_FLAG_DEFAULT: Final = re.compile(r"\(default: (True|False)\)")
+"""A switch's default, such as ``(default: True)``, which the help writes as a flag."""
+
+
+class _Source(CliSettingsSource[Bricky]):
+    """Writes help in the command line's own words, not in Python's.
+
+    The help shows ``View.SHEET`` as ``sheet``, ``list[str]`` as ``TEXT``, an option
+    that repeats as what one occurrence takes, and leaves out defaults that are empty.
     """
 
     @override
     def _metavar_format_recurse(self, obj: object) -> str:
         if isinstance(obj, type) and issubclass(obj, Enum):
             return self._metavar_format_choices([str(member.value) for member in obj])
+        if get_origin(obj) in {list, tuple, set} and (arguments := get_args(obj)):
+            return self._metavar_format_recurse(arguments[0])
+        if obj in _METAVARS:
+            return _METAVARS[obj]
         return super()._metavar_format_recurse(obj)
 
     @override
@@ -290,7 +314,13 @@ class _Source(CliSettingsSource[Bricky]):
         text = super()._help_format(
             field_name, field_info, model_default, is_model_suppressed, env_var_names
         )
-        return _ENUM_REPR.sub(r"\1", text)
+        text = _LIST_DEFAULT.sub(r"(default: \1)", _ENUM_REPR.sub(r"\1", text))
+        flag = field_name.replace("_", "-")
+        text = _FLAG_DEFAULT.sub(
+            lambda match: f"(default: --{'' if match[1] == 'True' else 'no-'}{flag})",
+            text,
+        )
+        return _NO_DEFAULT.sub("", text)
 
 
 def main(argv: Sequence[str] | None = None) -> None:
@@ -312,9 +342,9 @@ def main(argv: Sequence[str] | None = None) -> None:
             cli_settings_source=_Source(Bricky),
         )
     except BrickyError as error:
-        _fail(str(error))
+        _fail(str(error), as_json=_wants_json(arguments))
     except ValidationError as error:
-        _fail(_invalid(error))
+        _fail(_invalid(error), as_json=_wants_json(arguments))
     except SystemExit as exit_:
         # A command run without its subcommand exits with a message, after its help.
         if isinstance(exit_.code, str):
@@ -326,10 +356,19 @@ def main(argv: Sequence[str] | None = None) -> None:
         raise SystemExit(1) from None
 
 
-def _fail(message: str) -> NoReturn:
-    """Print an error and exit with status 2."""
-    print(f"error: {message}", file=sys.stderr)
+def _fail(message: str, *, as_json: bool) -> NoReturn:
+    """Print an error, as JSON on standard output when asked to, and exit with 2."""
+    if as_json:
+        print(json.dumps({"error": message}))
+    else:
+        print(f"error: {message}", file=sys.stderr)
     raise SystemExit(2)
+
+
+def _wants_json(arguments: Sequence[str]) -> bool:
+    """Whether the arguments ask for JSON output."""
+    pairs = zip(arguments, [*arguments[1:], ""], strict=True)
+    return "--output-format=json" in arguments or ("--output-format", "json") in pairs
 
 
 def _invalid(error: ValidationError) -> str:
