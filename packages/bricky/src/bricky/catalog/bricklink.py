@@ -16,6 +16,8 @@ each part the shape its name describes, when bricky has a family for it (see
 from LDraw.
 """
 
+from __future__ import annotations
+
 import html
 import re
 import xml.etree.ElementTree as ET

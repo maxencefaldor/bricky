@@ -3,13 +3,14 @@
 
 Each command is a request model plus an async function. The command line runs them,
 the MCP server awaits them, and Python callers can do either, so every front end shares
-one set
-of argument names, defaults and descriptions. A :class:`Session` carries the settings
-and a warm renderer between commands.
+one set of argument names, defaults and descriptions. A :class:`Session` carries the
+settings and a warm renderer between commands.
 
 :func:`run_script` runs each build script in a child process (see :mod:`bricky.runner`),
 within a timeout, and captures what the script prints.
 """
+
+from __future__ import annotations
 
 import asyncio
 import sys
@@ -43,7 +44,7 @@ from bricky.catalog.bricklink import DOWNLOAD_PAGE, read_downloads
 from bricky.catalog.importing import Coverage, Progress, import_catalog
 from bricky.catalog.ldraw import Library
 from bricky.check import check_model
-from bricky.diagnostics import Code, Report, render_report
+from bricky.diagnostics import Code, Report, format_report
 from bricky.errors import BrickyError
 from bricky.files import (
     SUFFIX,
@@ -64,7 +65,7 @@ from bricky.settings import Settings
 from bricky.units import PLATE, STUD, to_plates, to_studs
 
 _PROFILE_HELP: Final = (
-    "Profile to run, such as 'digital' or 'physical'; defaults to the configured one."
+    "Profile to run, such as 'digital'; defaults to the configured one."
 )
 _PASSES_HELP: Final = "Pass names to run instead of a profile."
 _MAX_DIAGNOSTICS_HELP: Final = (
@@ -214,7 +215,11 @@ async def check(request: CheckRequest, session: Session) -> Report:
 
 
 class BuildRequest(BaseModel):
-    """Run a build script, save its model, check it and render it."""
+    """Run a build script, save its model, check it and render it.
+
+    The script runs as ordinary Python with the user's permissions, in its own process
+    with a time limit; that process is not a sandbox.
+    """
 
     script: CliPositionalArg[Path] = Field(
         description=(
@@ -348,7 +353,14 @@ class BuildResult(BaseModel):
         description="The check report; null when checking is off."
     )
     images: tuple[Image, ...] = Field(
-        description="Rendered images; empty when rendering is off."
+        description="Rendered images; empty when rendering is off or failed."
+    )
+    render_error: str | None = Field(
+        default=None,
+        description=(
+            "Why the images failed to render; null when they rendered or rendering "
+            "is off. The model, its source map and its report are saved regardless."
+        ),
     )
     seconds: Timings
 
@@ -364,8 +376,10 @@ class BuildResult(BaseModel):
         if text := self.output.describe():
             blocks.append(text)
         if self.report is not None:
-            blocks.append(render_report(self.report))
+            blocks.append(format_report(self.report))
         blocks.extend(_describe_images(self.images))
+        if self.render_error is not None:
+            blocks.append(f"not rendered: {self.render_error}")
         blocks.append(_describe_timings(self.seconds))
         return "\n\n".join(blocks)
 
@@ -376,9 +390,11 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
     When an earlier build saved a model at the same path, the result says what changed
     since, and the images mark the new and changed elements.
 
+    A render that fails, for example for want of a browser, leaves the saved model and
+    the report intact, and the result says why in ``render_error``.
+
     Raises:
-        BrickyError: If the script is missing, fails, times out or returns no model, or
-            if the render fails.
+        BrickyError: If the script is missing, fails, times out or returns no model.
     """
     settings = session.settings
     started = time.perf_counter()
@@ -413,17 +429,23 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
         seconds.check = time.perf_counter() - started
 
     images: tuple[Image, ...] = ()
+    render_error = None
     if request.render:
         started = time.perf_counter()
-        images = await _render(
-            session,
-            run.model,
-            provenance=run.provenance,
-            report=report,
-            views=request.views,
-            paths=_view_paths(path.with_name(model_stem(path) + ".png"), request.views),
-            changed=changed,
-        )
+        try:
+            images = await _render(
+                session,
+                run.model,
+                provenance=run.provenance,
+                report=report,
+                views=request.views,
+                paths=_view_paths(
+                    path.with_name(model_stem(path) + ".png"), request.views
+                ),
+                changed=changed,
+            )
+        except BrickyError as error:
+            render_error = str(error)
         seconds.render = time.perf_counter() - started
     return BuildResult(
         model=path,
@@ -434,6 +456,7 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
         changes=changes,
         report=report,
         images=images,
+        render_error=render_error,
         seconds=seconds,
     )
 
@@ -527,7 +550,7 @@ def _read_result(path: Path) -> RunResult | None:
     """Return the child's result, or ``None`` if it exited before writing all of it."""
     try:
         return RunResult.model_validate_json(path.read_bytes())
-    except FileNotFoundError, ValidationError:
+    except (FileNotFoundError, ValidationError):
         return None
 
 
@@ -850,6 +873,10 @@ class PartsResult(BaseModel):
 
     parts: tuple[PartInfo, ...]
     total: int = Field(description="Matching parts before the limit applied.")
+    sample: bool = Field(
+        default=False,
+        description="Whether the search ran on the sample catalog of common parts.",
+    )
 
     def describe(self) -> str:
         """Return the result as a table, with each part's note under it."""
@@ -882,6 +909,11 @@ class PartsResult(BaseModel):
         rows.append(
             shown + ("; --limit shows more" if len(self.parts) < self.total else "")
         )
+        if self.sample and not self.total:
+            rows.append(
+                "the sample catalog in use holds only common parts; "
+                "`bricky catalog import` imports every BrickLink part"
+            )
         return "\n".join(rows)
 
 
@@ -895,7 +927,7 @@ async def parts(request: PartsRequest, session: Session) -> PartsResult:
     infos = await asyncio.to_thread(
         lambda: tuple(_part_info(catalog, entry) for entry in shown)
     )
-    return PartsResult(parts=infos, total=len(hits))
+    return PartsResult(parts=infos, total=len(hits), sample=catalog.is_sample)
 
 
 class ColorsRequest(BaseModel):

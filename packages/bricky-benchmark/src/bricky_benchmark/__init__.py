@@ -5,6 +5,8 @@ Projects live in ``benchmark/projects``. ``bricky-benchmark run`` runs them with
 Code and scores what it builds; see :mod:`bricky_benchmark.run`.
 """
 
+from __future__ import annotations
+
 from bricky_benchmark.projects import Project, ProjectFile, load_projects
 from bricky_benchmark.score import Fidelity, Score, compare
 

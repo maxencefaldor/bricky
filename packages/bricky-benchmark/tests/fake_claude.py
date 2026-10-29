@@ -6,6 +6,8 @@ for, and reports on standard output the way ``claude -p --output-format stream-j
 does.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import re

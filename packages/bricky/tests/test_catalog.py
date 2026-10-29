@@ -1,5 +1,7 @@
 # Copyright 2026 Maxence Faldor
 
+from __future__ import annotations
+
 import re
 from collections.abc import Mapping
 from pathlib import Path

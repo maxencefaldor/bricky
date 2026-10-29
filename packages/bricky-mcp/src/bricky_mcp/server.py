@@ -12,11 +12,15 @@ render browser warm between calls. The service runs each build script in a proce
 its own, outside the server, so nothing a script prints can reach the protocol stream.
 """
 
+from __future__ import annotations
+
 import base64
 import copy
 import inspect
+import sys
 from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 from pathlib import Path
 from typing import Annotated, Final, Protocol, runtime_checkable
 
@@ -32,7 +36,7 @@ from mcp.types import (
 from pydantic import BaseModel
 
 from bricky import service
-from bricky.diagnostics import Report, render_report
+from bricky.diagnostics import Report, format_report
 from bricky.errors import BrickyError
 
 INSTRUCTIONS: Final = """\
@@ -60,6 +64,13 @@ script, bricky.voxels(model) maps every voxel a model fills, to compare with a p
 """
 
 READ_ONLY: Final = ToolAnnotations(read_only_hint=True, open_world_hint=False)
+RUNS_CODE: Final = ToolAnnotations(
+    read_only_hint=False,
+    destructive_hint=True,
+    idempotent_hint=False,
+    open_world_hint=True,
+)
+"""A build runs any Python with the user's permissions, so harnesses should ask."""
 WRITES_FILES: Final = ToolAnnotations(
     read_only_hint=False,
     destructive_hint=False,
@@ -86,7 +97,7 @@ class Pictured(Protocol):
 
 def _text(result: BaseModel) -> str:
     if isinstance(result, Report):
-        return render_report(result)
+        return format_report(result)
     if isinstance(result, Described):
         return result.describe()
     return result.model_dump_json(indent=2)
@@ -166,7 +177,13 @@ def create_server(session: service.Session | None = None) -> MCPServer:
             if session is None:
                 await shared.close()
 
-    server = MCPServer("bricky", instructions=INSTRUCTIONS, lifespan=lifespan)
+    server = MCPServer(
+        "bricky",
+        version=version("bricky-mcp"),
+        instructions=INSTRUCTIONS,
+        website_url="https://maxencefaldor.github.io/bricky/",
+        lifespan=lifespan,
+    )
 
     def register[RequestModel: BaseModel, ResultModel: BaseModel](
         name: str,
@@ -186,7 +203,7 @@ def create_server(session: service.Session | None = None) -> MCPServer:
         service.BuildRequest,
         service.build,
         service.BuildResult,
-        WRITES_FILES,
+        RUNS_CODE,
     )
     register(
         "render_model",
@@ -234,6 +251,28 @@ def create_server(session: service.Session | None = None) -> MCPServer:
     return server
 
 
-def main() -> None:
-    """Serve over stdio."""
+USAGE: Final = """\
+usage: bricky-mcp [--help | --version]
+
+Serve bricky's tools to an agent harness over the Model Context Protocol, on stdio.
+A harness starts this command: https://maxencefaldor.github.io/bricky/agents/connect/
+"""
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Serve over stdio, or answer ``--help`` or ``--version``."""
+    arguments = sys.argv[1:] if argv is None else list(argv)
+    if arguments == ["--version"]:
+        sys.stdout.write(f"bricky-mcp {version('bricky-mcp')}\n")
+        return
+    if arguments in (["--help"], ["-h"]):
+        sys.stdout.write(USAGE)
+        return
+    if arguments:
+        sys.stderr.write(USAGE)
+        raise SystemExit(2)
+    if sys.stdin.isatty():
+        sys.stderr.write(
+            "bricky-mcp serves MCP on stdio for a harness to start; Ctrl-C stops it.\n"
+        )
     create_server().run()

@@ -1,6 +1,8 @@
 # Copyright 2026 Maxence Faldor
 """Reference for project 01: a running-bond wall, 8 studs long and 6 bricks tall."""
 
+from __future__ import annotations
+
 from bricky import ModelBuilder
 
 LENGTH = 8

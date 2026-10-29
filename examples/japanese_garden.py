@@ -21,6 +21,8 @@
 Run: ``uv run bricky build examples/japanese_garden.py``
 """
 
+from __future__ import annotations
+
 from collections import defaultdict, deque
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass

@@ -8,6 +8,8 @@ and the MCP server, whose standard output may be a protocol channel. The runner 
 streams, which the service captures and returns.
 """
 
+from __future__ import annotations
+
 import runpy
 import sys
 import traceback

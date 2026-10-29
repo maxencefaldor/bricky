@@ -7,6 +7,8 @@ column changes every copy.
 Run: ``uv run bricky build examples/colonnade.py``
 """
 
+from __future__ import annotations
+
 from bricky import ModelBuilder
 
 HEIGHT = 5  # bricks per column

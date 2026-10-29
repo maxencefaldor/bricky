@@ -7,6 +7,8 @@ railing rings the top, a Trans-Yellow lantern sits inside it, and a Red roof wit
 Black finial caps the lantern.
 """
 
+from __future__ import annotations
+
 from bricky import ModelBuilder
 
 ROCK = "Dark Bluish Gray"

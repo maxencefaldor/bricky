@@ -1,6 +1,8 @@
 # Copyright 2026 Maxence Faldor
 """The analysis context: shared analyses, each computed once, on first use."""
 
+from __future__ import annotations
+
 from functools import cached_property
 
 from bricky.analysis.connections import (

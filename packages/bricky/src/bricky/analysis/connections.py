@@ -6,6 +6,8 @@ Positions are exact integers, so a dictionary lookup finds every match, whatever
 rotations.
 """
 
+from __future__ import annotations
+
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 

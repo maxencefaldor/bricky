@@ -7,6 +7,8 @@ the SHA-256 of the model file it describes, so bricky detects a stale map and ig
 it.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any, Final
 
@@ -114,7 +116,7 @@ def load_source_map(model_path: Path) -> Provenance | None:
     try:
         source_map = SourceMap.model_validate_json(path.read_bytes())
         current = model_digest(model_path.read_bytes())
-    except OSError, ValidationError:
+    except (OSError, ValidationError):
         return None
     return source_map.provenance if source_map.model_sha256 == current else None
 

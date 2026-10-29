@@ -10,6 +10,8 @@ The builder also records the build-script line behind each placement (see
 :mod:`bricky.provenance`), so diagnostics and renders can point back at it.
 """
 
+from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final
@@ -78,9 +80,11 @@ class _Scope:
         if definition is None:
             entry = self.catalog.entry(part)
             if entry is None:
-                message = (
-                    f"unknown part {part!r}: "
-                    "`bricky parts <words>` searches the catalog"
+                message = f"unknown part {part!r}: " + (
+                    f"the sample catalog in use holds {len(self.catalog)} common "
+                    "parts, and `bricky catalog import` imports every BrickLink part"
+                    if self.catalog.is_sample
+                    else "`bricky parts <words>` searches the catalog"
                 )
             else:
                 message = (

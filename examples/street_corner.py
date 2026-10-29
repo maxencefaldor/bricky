@@ -20,6 +20,8 @@
 Run: ``uv run bricky build examples/street_corner.py``
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from math import atan2, degrees, hypot, pi, sin, sqrt
 

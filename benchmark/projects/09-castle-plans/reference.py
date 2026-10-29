@@ -6,6 +6,8 @@ corners: on even courses the walls along x run the full width, on odd courses th
 along y do.
 """
 
+from __future__ import annotations
+
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 

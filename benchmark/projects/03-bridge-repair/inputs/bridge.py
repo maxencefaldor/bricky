@@ -4,6 +4,8 @@
 The bridge runs 12 studs along x and is 4 studs wide (y 0 to 4).
 """
 
+from __future__ import annotations
+
 from bricky import ModelBuilder
 
 

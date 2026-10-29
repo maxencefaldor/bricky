@@ -21,6 +21,8 @@
 Run: ``uv run bricky build examples/pumpkin_manor.py``
 """
 
+from __future__ import annotations
+
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass, field

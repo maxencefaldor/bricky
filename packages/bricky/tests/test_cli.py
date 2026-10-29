@@ -1,12 +1,14 @@
 # Copyright 2026 Maxence Faldor
 
+from __future__ import annotations
+
 import json
 import re
 from pathlib import Path
 
 import pytest
 
-from bricky import ModelBuilder, save_model, service
+from bricky import ModelBuilder, __version__, save_model, service
 from bricky.cli import main
 
 TOWER = """
@@ -37,6 +39,13 @@ def floating(tmp_path: Path) -> Path:
     path = tmp_path / "floating.bricky.json"
     save_model(builder.build(), path)
     return path
+
+
+def test_version_prints_the_installed_version(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert run("--version") == 0
+    assert capsys.readouterr().out == f"bricky {__version__}\n"
 
 
 def test_check_states_facts_and_exits_1(
@@ -71,6 +80,43 @@ def test_build_saves_checks_and_names_script_lines(
     assert "error[E301]" in out
     assert "tower.py:8 in build()" in out
     assert "by source line:" in out
+
+
+def test_a_failed_render_keeps_the_report_and_says_why(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("BRICKY_RENDER_BROWSER", str(tmp_path / "no-such-browser"))
+    script = tmp_path / "tower.py"
+    script.write_text(TOWER)
+    assert run("build", str(script)) == 2
+    out = capsys.readouterr().out
+    assert "checked 2 elements" in out
+    assert "not rendered: cannot start Chromium" in out
+    assert (tmp_path / "tower.bricky.json").is_file()
+
+
+def test_invalid_arguments_fail_in_one_line(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert run("build", "--views", "sideways", str(tmp_path / "x.py")) == 2
+    assert capsys.readouterr().err.startswith("error: invalid arguments: --views:")
+
+
+def test_a_command_without_its_subcommand_fails() -> None:
+    assert run("catalog") == 2
+
+
+def test_unknown_parts_point_past_the_sample(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    script = tmp_path / "panel.py"
+    script.write_text(TOWER.replace('"3001", at=(0, 0, 0)', '"60581", at=(0, 0, 0)'))
+    assert run("build", str(script), "--no-render") == 2
+    assert "the sample catalog in use holds 112 common parts" in capsys.readouterr().err
+    assert run("parts", "wall panel") == 0
+    assert "`bricky catalog import` imports every" in capsys.readouterr().out
 
 
 def test_build_shows_what_the_script_printed(
@@ -328,7 +374,6 @@ def test_passes_lists_profiles_and_codes(capsys: pytest.CaptureFixture[str]) -> 
     assert run("passes") == 0
     out = capsys.readouterr().out
     assert "digital (default): schema, collision, connectivity" in out
-    assert "stability (not installed)" in out
     assert "E201, E202" in out
 
 

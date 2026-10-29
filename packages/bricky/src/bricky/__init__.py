@@ -9,16 +9,23 @@ LEGO® is a trademark of the LEGO Group, which does not sponsor, authorize or en
 this project.
 """
 
+from __future__ import annotations
+
+from importlib.metadata import version as _package_version
+
 from bricky.analysis.voxels import Voxel
 from bricky.analysis.voxels import model_voxels as voxels
 from bricky.builder import ComponentBuilder, ModelBuilder
 from bricky.catalog import Catalog, default_catalog
 from bricky.check import check_model
-from bricky.diagnostics import Diagnostic, Region, Report, Severity, render_report
+from bricky.diagnostics import Diagnostic, Region, Report, Severity, format_report
 from bricky.errors import BrickyError
 from bricky.files import load_model, save_model
 from bricky.model import Component, Element, Instance, Model
 from bricky.settings import Settings
+
+__version__ = _package_version("bricky")
+"""The installed version of bricky, such as ``0.2.0``."""
 
 __all__ = [
     "BrickyError",
@@ -37,8 +44,8 @@ __all__ = [
     "Voxel",
     "check_model",
     "default_catalog",
+    "format_report",
     "load_model",
-    "render_report",
     "save_model",
     "voxels",
 ]

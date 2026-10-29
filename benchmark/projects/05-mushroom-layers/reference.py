@@ -6,6 +6,8 @@ plates whose rows rotate by 90 degrees from one layer to the next, so every row 
 the rows above and below it and the overhang holds together.
 """
 
+from __future__ import annotations
+
 from bricky import ModelBuilder
 
 SIZE = 10

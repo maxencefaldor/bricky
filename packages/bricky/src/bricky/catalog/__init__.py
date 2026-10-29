@@ -11,6 +11,8 @@ family that generates the part's geometry and the numbers the family needs. The 
 generates a part's geometry on first use, so a catalog of every part loads quickly.
 """
 
+from __future__ import annotations
+
 import json
 import re
 import tomllib
@@ -186,6 +188,11 @@ class Catalog:
             message = f"{origin} is not a valid catalog: {error}"
             raise BrickyError(message) from None
         return cls(parts, colors, source=str(data.get("source", "")))
+
+    @property
+    def is_sample(self) -> bool:
+        """Whether this is the sample shipped with bricky, not an imported catalog."""
+        return self.source.startswith("sample:")
 
     def __len__(self) -> int:
         """The number of parts."""

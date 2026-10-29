@@ -23,7 +23,7 @@ docs = ["mkdocstrings-python", "zensical"]
 
 [tool.ruff]
 # The workspace root has no [project] table, so ruff cannot read requires-python here.
-target-version = "py315"
+target-version = "py312"
 src = ["packages/bricky/src", "packages/bricky-benchmark/src", "packages/bricky-mcp/src"]
 
 [tool.ruff.lint]
@@ -54,8 +54,15 @@ builtins-ignorelist = ["id"]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.ruff.lint.isort]
+# Annotations stay lazy on every supported Python, as Python 3.14 makes them by default.
+required-imports = ["from __future__ import annotations"]
+
 [tool.ruff.format]
 docstring-code-format = true
+
+[tool.ty.environment]
+python-version = "3.12" # the oldest Python bricky supports
 
 [tool.ty.rules]
 all = "error"

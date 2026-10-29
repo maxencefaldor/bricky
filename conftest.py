@@ -5,6 +5,8 @@ A machine that has imported the full BrickLink catalog would otherwise give diff
 search results and counts, so tests pin the catalog to the sample shipped with bricky.
 """
 
+from __future__ import annotations
+
 import os
 
 from bricky.catalog import SAMPLE_CATALOG

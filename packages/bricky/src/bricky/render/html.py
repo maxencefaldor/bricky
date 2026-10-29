@@ -6,6 +6,8 @@ so it stays small and needs a network connection when opened. Renders for agents
 offline in headless Chromium instead (see :mod:`bricky.render.browser`).
 """
 
+from __future__ import annotations
+
 import json
 from functools import cache
 from html import escape

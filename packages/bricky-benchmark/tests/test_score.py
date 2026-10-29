@@ -1,5 +1,7 @@
 # Copyright 2026 Maxence Faldor
 
+from __future__ import annotations
+
 from bricky import ModelBuilder, check_model, voxels
 from bricky.analysis import Voxel, VoxelKey
 from bricky_benchmark.score import compare, facts

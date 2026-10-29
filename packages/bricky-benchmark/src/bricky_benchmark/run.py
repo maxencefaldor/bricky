@@ -10,6 +10,8 @@ in the same workspace, exactly as the agent would, scores it, and keeps the work
 the transcript and the score in the run folder.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import os

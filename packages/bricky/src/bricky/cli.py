@@ -6,14 +6,17 @@ format. The command line therefore accepts exactly what the MCP tools accept and
 the text they return.
 """
 
+from __future__ import annotations
+
 import json
+import os
 import re
 import sys
 from collections.abc import Sequence
 from enum import Enum
-from typing import Final, Literal, override
+from typing import Final, Literal, NoReturn, override
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
@@ -24,8 +27,8 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from bricky import service
-from bricky.diagnostics import Report, render_report
+from bricky import __version__, service
+from bricky.diagnostics import Report, format_report
 from bricky.errors import BrickyError
 from bricky.files import model_schema
 
@@ -55,6 +58,8 @@ class BuildCommand(service.BuildRequest, _Output):
         async with service.Session() as session:
             result = await service.build(self, session)
         self.emit(result, result.describe())
+        if result.render_error is not None:
+            raise SystemExit(2)
         _fail_on_errors(result.report)
 
 
@@ -65,7 +70,7 @@ class CheckCommand(service.CheckRequest, _Output):
         """Run the command."""
         async with service.Session() as session:
             report = await service.check(self, session)
-        self.emit(report, render_report(report))
+        self.emit(report, format_report(report))
         _fail_on_errors(report)
 
 
@@ -292,15 +297,46 @@ def main(argv: Sequence[str] | None = None) -> None:
     """Run the command line.
 
     The exit status is 1 when a model has errors or a part fails verification, and 2
-    when the arguments are invalid or a command fails with a
-    :class:`~bricky.BrickyError`.
+    when the arguments are invalid, a command needs a subcommand, or a command fails
+    with a :class:`~bricky.BrickyError`. The lone argument ``--version`` prints the
+    version.
     """
+    arguments = sys.argv[1:] if argv is None else list(argv)
+    if arguments == ["--version"]:
+        print(f"bricky {__version__}")
+        return
     try:
         CliApp.run(
             Bricky,
-            cli_args=None if argv is None else list(argv),
+            cli_args=arguments,
             cli_settings_source=_Source(Bricky),
         )
     except BrickyError as error:
-        print(f"error: {error}", file=sys.stderr)
-        raise SystemExit(2) from None
+        _fail(str(error))
+    except ValidationError as error:
+        _fail(_invalid(error))
+    except SystemExit as exit_:
+        # A command run without its subcommand exits with a message, after its help.
+        if isinstance(exit_.code, str):
+            raise SystemExit(2) from None
+        raise
+    except BrokenPipeError:
+        # The reader stopped reading, as `head` does: stop quietly.
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        raise SystemExit(1) from None
+
+
+def _fail(message: str) -> NoReturn:
+    """Print an error and exit with status 2."""
+    print(f"error: {message}", file=sys.stderr)
+    raise SystemExit(2)
+
+
+def _invalid(error: ValidationError) -> str:
+    """Name each invalid option and say what it accepts."""
+    problems = []
+    for problem in error.errors():
+        names = [part for part in problem["loc"] if isinstance(part, str)]
+        option = "--" + names[-1].replace("_", "-") if names else "arguments"
+        problems.append(f"{option}: {problem['msg']}")
+    return "invalid arguments: " + "; ".join(problems)

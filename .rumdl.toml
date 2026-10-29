@@ -34,7 +34,7 @@ style = "one"
 enabled = true
 
 [code-block-tools.tools.ruff-excerpt]
-command = ["ruff", "check", "--output-format=concise", "--ignore", "CPY001,D,F821", "-"]
+command = ["ruff", "check", "--output-format=concise", "--ignore", "CPY001,D,F821,I002", "-"]
 
 [code-block-tools.languages.python]
 lint = ["ruff-excerpt"]

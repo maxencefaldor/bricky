@@ -14,6 +14,8 @@ Cutout" or "with Handle", marks a part that differs from the plain shape, and th
 gets no shape.
 """
 
+from __future__ import annotations
+
 import math
 import re
 from collections.abc import Callable

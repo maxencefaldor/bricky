@@ -1,6 +1,8 @@
 # Copyright 2026 Maxence Faldor
 """Schema: unknown parts and colors, parts below the ground, and colors never made."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from collections.abc import Iterator
 from typing import ClassVar

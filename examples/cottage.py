@@ -13,6 +13,8 @@
 Run: ``uv run bricky build examples/cottage.py``
 """
 
+from __future__ import annotations
+
 from bricky import ModelBuilder
 
 BASE = 0.5  # the top of the baseplate, in plates

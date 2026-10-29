@@ -1,5 +1,7 @@
 # Copyright 2026 Maxence Faldor
 
+from __future__ import annotations
+
 import pytest
 
 from bricky import ModelBuilder, Report, check_model, default_catalog, voxels

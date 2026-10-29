@@ -9,6 +9,8 @@ model about the vertical axis and shifts it to line up with the reference, and t
 match counts.
 """
 
+from __future__ import annotations
+
 from collections import Counter
 from collections.abc import Callable, Iterator, Mapping
 from typing import Final

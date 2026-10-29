@@ -1,6 +1,8 @@
 # Copyright 2026 Maxence Faldor
 """Collision: parts sharing space, and studs that push into parts with no anti-stud."""
 
+from __future__ import annotations
+
 from collections import Counter
 from collections.abc import Iterable, Iterator
 from typing import ClassVar

@@ -6,7 +6,10 @@ origin and refuses every other request, so renders work offline and never touch 
 network.
 """
 
+from __future__ import annotations
+
 import asyncio
+import sys
 from collections.abc import Sequence
 from functools import cache
 from importlib.resources import files
@@ -179,7 +182,7 @@ def _asset(name: str) -> bytes | None:
     resource = files("bricky.render").joinpath("assets", *parts)
     try:
         return resource.read_bytes()
-    except FileNotFoundError, IsADirectoryError:
+    except (FileNotFoundError, IsADirectoryError):
         return None
 
 
@@ -192,8 +195,18 @@ def _launch_failure(error: PlaywrightError, executable: Path | None) -> str:
         )
         if executable is not None
         else (
-            "Install Playwright's browser with `uv run playwright install chromium`, "
-            "or point BRICKY_RENDER_BROWSER at a Chromium executable."
+            f"Install Playwright's browser with `{_python()} -m playwright install "
+            "chromium` (on Linux, add `--with-deps` for its system libraries), "
+            "point BRICKY_RENDER_BROWSER at a Chromium executable, "
+            "or turn rendering off."
         )
     )
     return f"cannot start Chromium for renders: {first}. {hint}"
+
+
+def _python() -> str:
+    """Return the Python that runs bricky, quoted for a shell when its path has spaces.
+
+    Its Playwright is the one bricky uses, so its browser is the one bricky needs.
+    """
+    return f'"{sys.executable}"' if " " in sys.executable else sys.executable

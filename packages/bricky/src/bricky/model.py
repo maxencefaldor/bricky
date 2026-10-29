@@ -8,6 +8,8 @@ connections. Positions are in 0.4 mm base units, and rotations use the grid rota
 names of :mod:`bricky.geometry`.
 """
 
+from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
 from functools import cache
 from typing import Annotated, Final, Literal, Self

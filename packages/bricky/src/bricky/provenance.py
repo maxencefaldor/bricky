@@ -9,6 +9,8 @@ Provenance is build metadata and stays out of the model. A build result carries 
 bricky saves it beside the model file as a source map, tied to that file by its hash.
 """
 
+from __future__ import annotations
+
 import hashlib
 import inspect
 import sysconfig

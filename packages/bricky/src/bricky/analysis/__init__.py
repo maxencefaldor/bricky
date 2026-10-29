@@ -4,6 +4,8 @@
 Diffs compare the worlds of two builds.
 """
 
+from __future__ import annotations
+
 from bricky.analysis.connections import AntiStudIndex, Connection
 from bricky.analysis.context import Context
 from bricky.analysis.diff import WorldDiff, diff_worlds

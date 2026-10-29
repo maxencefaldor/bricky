@@ -11,6 +11,8 @@ facets approximate each curved surface, with their corners on the grid: close to
 real part, and exact.
 """
 
+from __future__ import annotations
+
 from collections.abc import Iterable, Sequence
 from itertools import pairwise
 from math import cos, pi, sin

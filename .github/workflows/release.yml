@@ -1,0 +1,86 @@
+name: Release
+
+# Pushing a tag such as v0.2.0 publishes bricky and bricky-mcp to PyPI, then makes a GitHub
+# release. PyPI trusts this workflow, in the environment "pypi", as each project's publisher.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  UV_LOCKED: "1"
+  FORCE_COLOR: "1"
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build and try the packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Check the tag names the packages' version
+        run: |
+          for package in bricky bricky-mcp; do
+            test "v$(uv version --short --package "$package")" = "$GITHUB_REF_NAME"
+          done
+      - name: Build sdists and wheels
+        run: |
+          uv build --package bricky
+          uv build --package bricky-mcp
+      - name: Install the wheels in a fresh environment
+        run: |
+          uv venv --python 3.12 /tmp/fresh
+          uv pip install --python /tmp/fresh dist/*.whl
+          /tmp/fresh/bin/bricky --version
+          /tmp/fresh/bin/bricky-mcp --version
+      - name: Keep the packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: release
+          path: dist/
+          if-no-files-found: error
+
+  pypi:
+    name: Publish to PyPI
+    needs: [ci, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/bricky/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release
+          path: dist/
+      - uses: astral-sh/setup-uv@v7
+      - name: Publish with trusted publishing
+        run: uv publish
+
+  github:
+    name: Make the GitHub release
+    needs: pypi
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release
+          path: dist/
+      - name: Release the tag with its packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" dist/*
+          --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes

@@ -6,6 +6,8 @@ agent the same files. ``bricky-benchmark prepare`` writes them again after a ref
 changes.
 """
 
+from __future__ import annotations
+
 import asyncio
 import string
 from collections.abc import Iterable, Sequence

@@ -17,6 +17,8 @@ of baseplates.
 Run: ``uv run bricky build examples/colosseum.py``
 """
 
+from __future__ import annotations
+
 from functools import cache
 from math import atan2, pi, sqrt
 

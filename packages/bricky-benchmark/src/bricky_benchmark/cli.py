@@ -4,6 +4,8 @@
 Run it from the bricky repository root, where ``benchmark/projects`` lives.
 """
 
+from __future__ import annotations
+
 import sys
 from collections.abc import Sequence
 from datetime import UTC, datetime

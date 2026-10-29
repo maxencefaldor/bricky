@@ -21,6 +21,8 @@
 Run: ``uv run bricky build examples/lighthouse_island.py``
 """
 
+from __future__ import annotations
+
 from collections import defaultdict, deque
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field

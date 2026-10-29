@@ -6,6 +6,8 @@ Each level rotates its bricks by 90 degrees, so every brick bridges the two belo
 Run: ``uv run bricky build examples/tower.py``
 """
 
+from __future__ import annotations
+
 from bricky import ModelBuilder
 
 LEVELS = 8

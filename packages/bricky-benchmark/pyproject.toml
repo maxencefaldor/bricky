@@ -4,16 +4,22 @@ version = "0.2.0"
 description = "Benchmark projects for agents that build LEGO® models with bricky."
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "Maxence Faldor" }]
-requires-python = ">=3.15"
+requires-python = ">=3.12"
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
   "Typing :: Typed",
+  # The benchmark runs the projects in the repository's benchmark/ folder, so it stays off PyPI.
+  "Private :: Do Not Upload",
 ]
-dependencies = ["bricky", "pydantic>=2.14", "pydantic-settings>=2.15"]
+dependencies = ["bricky==0.2.0", "pydantic>=2.14", "pydantic-settings>=2.15"]
 
 [project.scripts]
 bricky-benchmark = "bricky_benchmark.cli:main"

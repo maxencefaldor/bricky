@@ -8,6 +8,8 @@ corners, its faces and the edges worth outlining. :func:`build_scene` is pure Py
 and :mod:`bricky.render.browser` renders its result.
 """
 
+from __future__ import annotations
+
 import fnmatch
 import re
 from collections import Counter

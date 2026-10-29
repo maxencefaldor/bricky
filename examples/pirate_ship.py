@@ -16,6 +16,8 @@
 Run: ``uv run bricky build examples/pirate_ship.py``
 """
 
+from __future__ import annotations
+
 from collections import deque
 from dataclasses import dataclass, field
 from math import ceil, cos, floor, pi, sin

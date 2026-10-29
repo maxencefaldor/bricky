@@ -1,17 +1,22 @@
 # Copyright 2026 Maxence Faldor
 
+from __future__ import annotations
+
 import asyncio
 import os
 import sys
 from collections.abc import Mapping
+from importlib.metadata import version
 from pathlib import Path
 
+import pytest
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 from mcp.types import CallToolResult, ImageContent, ListToolsResult, TextContent, Tool
 
 from bricky import ModelBuilder, save_model
 from bricky_mcp import create_server
+from bricky_mcp.server import main
 
 SCRIPT = """
 from bricky import ModelBuilder
@@ -75,6 +80,7 @@ def test_tools_mirror_the_service_requests() -> None:
     build = tools["build_model"].annotations
     assert build is not None
     assert build.read_only_hint is False
+    assert build.destructive_hint is True  # a build runs arbitrary Python
     assert "highlight" in tools["render_model"].input_schema["properties"]
 
 
@@ -180,3 +186,15 @@ def test_scripts_that_print_cannot_corrupt_the_stdio_channel(tmp_path: Path) -> 
     assert not built.is_error
     assert built.structured_content["output"]["stdout"].startswith("{not json}")
     assert not colors.is_error
+
+
+def test_the_command_answers_help_and_version(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    main(["--version"])
+    assert capsys.readouterr().out == f"bricky-mcp {version('bricky-mcp')}\n"
+    main(["--help"])
+    assert capsys.readouterr().out.startswith("usage: bricky-mcp")
+    with pytest.raises(SystemExit) as exit_:
+        main(["--bogus"])
+    assert exit_.value.code == 2

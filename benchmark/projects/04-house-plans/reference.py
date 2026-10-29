@@ -7,6 +7,8 @@ courses the front and back walls run the full width, on odd courses the side wal
 the full depth.
 """
 
+from __future__ import annotations
+
 from bricky import ModelBuilder
 
 WEST, EAST = 2, 14  # the outer walls fill x from WEST to EAST - 1

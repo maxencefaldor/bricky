@@ -4,6 +4,8 @@
 Run: ``uv run bricky build examples/broken.py``
 """
 
+from __future__ import annotations
+
 from bricky import ModelBuilder
 
 

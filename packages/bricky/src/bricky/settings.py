@@ -6,6 +6,8 @@ variables and the ``[tool.bricky]`` table of the ``pyproject.toml`` in the worki
 directory.
 """
 
+from __future__ import annotations
+
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Final, override
@@ -23,14 +25,8 @@ from bricky.errors import BrickyError
 DIGITAL: Final = ("schema", "collision", "connectivity")
 """Passes every model needs, whether or not anyone builds it for real."""
 
-DEFAULT_PROFILES: Final[dict[str, tuple[str, ...]]] = {
-    "digital": DIGITAL,
-    "physical": (*DIGITAL, "stability", "buildability", "budget"),
-}
-"""Built-in profiles by name.
-
-``physical`` adds passes that a physics pass pack provides.
-"""
+DEFAULT_PROFILES: Final[dict[str, tuple[str, ...]]] = {"digital": DIGITAL}
+"""Built-in profiles by name; settings can add profiles that name installed passes."""
 
 
 class Settings(BaseSettings):

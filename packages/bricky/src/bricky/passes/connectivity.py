@@ -1,6 +1,8 @@
 # Copyright 2026 Maxence Faldor
 """Connectivity: groups of parts with no connected path to the ground."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from collections.abc import Iterator
 from typing import ClassVar

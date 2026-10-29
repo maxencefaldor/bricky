@@ -24,6 +24,8 @@ Any other disagreement means the name hides a detail that changes the part, so t
 takes LDraw's shape.
 """
 
+from __future__ import annotations
+
 import re
 import tomllib
 from collections import Counter

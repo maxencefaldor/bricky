@@ -12,6 +12,8 @@ Each project is a folder under ``benchmark/projects``, named ``NN-name``:
   comparing voxels (see :mod:`bricky_benchmark.score`).
 """
 
+from __future__ import annotations
+
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path

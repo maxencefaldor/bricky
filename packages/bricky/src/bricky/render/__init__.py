@@ -11,6 +11,8 @@ Every orthographic view carries rulers in studs and plates, so a position read o
 image is a position to write in the build script.
 """
 
+from __future__ import annotations
+
 from bricky.render.browser import Renderer
 from bricky.render.html import THREE_VERSION, write_html
 from bricky.render.scene import (

@@ -1,11 +1,14 @@
 # Copyright 2026 Maxence Faldor
 """Run passes over a model and assemble a report."""
 
+from __future__ import annotations
+
 from collections.abc import Sequence
 
 from bricky.analysis import Context
 from bricky.catalog import Catalog, default_catalog
 from bricky.diagnostics import Diagnostic, ElementInfo, Report, Severity
+from bricky.errors import BrickyError
 from bricky.model import Model
 from bricky.passes import installed_passes, run_passes
 from bricky.provenance import Provenance
@@ -28,8 +31,8 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
         model: The model to check.
         profile: Profile to run; the configured profile, normally ``digital``, by
             default.
-        passes: Pass names to run instead of a profile. The report lists the names that
-            are not installed.
+        passes: Pass names to run instead of a profile; each must be installed. A
+            profile may name passes that are not installed, and the report lists them.
         max_diagnostics: Maximum number of diagnostics in the report; the error and
             warning counts cover every diagnostic found.
         provenance: Where the build script placed each element, so the report names
@@ -40,11 +43,21 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
             ``pyproject.toml`` by default.
 
     Raises:
-        BrickyError: If the profile is unknown.
+        BrickyError: If the profile is unknown, or ``passes`` names a pass that is not
+            installed.
     """
     profile_name, names = (settings or Settings()).resolve_passes(profile, passes)
+    available = installed_passes()
+    if passes is not None and (
+        unknown := [name for name in names if name not in available]
+    ):
+        message = (
+            f"no installed pass is named {', '.join(map(repr, unknown))}; "
+            f"installed passes: {', '.join(available)}"
+        )
+        raise BrickyError(message)
     context = Context(model, catalog or default_catalog())
-    diagnostics, missing = run_passes(context, names, installed_passes())
+    diagnostics, missing = run_passes(context, names, available)
     diagnostics.sort(key=Diagnostic.sort_key)
     shown = diagnostics if max_diagnostics is None else diagnostics[:max_diagnostics]
     named = {uid for diagnostic in shown for uid in diagnostic.elements}

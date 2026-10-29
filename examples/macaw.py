@@ -20,6 +20,8 @@
 Run: ``uv run bricky build examples/macaw.py``
 """
 
+from __future__ import annotations
+
 from functools import cache
 from itertools import pairwise
 from math import cos, sin, sqrt

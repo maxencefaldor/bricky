@@ -4,15 +4,22 @@ version = "0.2.0"
 description = "A compiler-style toolkit that lets AI agents design buildable LEGO® models."
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "Maxence Faldor" }]
-requires-python = ">=3.15"
+keywords = ["lego", "ai agents", "llm", "geometry", "cad", "mcp", "3d", "voxels"]
+requires-python = ">=3.12"
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
+  "Topic :: Multimedia :: Graphics :: 3D Modeling",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Typing :: Typed",
 ]
 dependencies = [
@@ -22,6 +29,13 @@ dependencies = [
   "pydantic>=2.14",
   "pydantic-settings>=2.15",
 ]
+
+[project.urls]
+Homepage = "https://maxencefaldor.github.io/bricky/"
+Documentation = "https://maxencefaldor.github.io/bricky/"
+Source = "https://github.com/maxencefaldor/bricky"
+Issues = "https://github.com/maxencefaldor/bricky/issues"
+Changelog = "https://github.com/maxencefaldor/bricky/releases"
 
 [project.scripts]
 bricky = "bricky.cli:main"

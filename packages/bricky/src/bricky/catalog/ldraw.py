@@ -29,6 +29,8 @@ ordinary parts. Curved surfaces become steps. The part's size is its surface's b
 box, so a round part fills its square. Each part keeps the orientation LDraw gives it.
 """
 
+from __future__ import annotations
+
 import re
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass

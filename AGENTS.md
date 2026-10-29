@@ -43,9 +43,9 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
 - **Format and lint:** ruff's default format at 88 columns, every ruff rule, every ty rule as an error, and Markdown one sentence per line.
   The file `.editorconfig` sets the editor to match, and `.rumdl.toml` holds the Markdown rules.
   A rule is switched off only in `pyproject.toml`, as narrowly as it can be, with its reason beside it.
-- **Python:** 3.15 only.
+- **Python:** 3.12 or newer; development runs on 3.15 (`.python-version`), and CI tests every version.
   Use modern syntax: PEP 695 generics and `type` aliases.
-  Annotations are lazy, so never write `TYPE_CHECKING` blocks.
+  Every module starts with `from __future__ import annotations`, which ruff adds, so annotations stay lazy: never write `TYPE_CHECKING` blocks.
 - **Concurrency:** asyncio only.
   Hand blocking work to `asyncio.to_thread`; never use threading, multiprocessing or other event loops directly.
 - **Data:** pydantic models at every boundary (files, settings, command line, MCP).
@@ -62,7 +62,7 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
   Advice belongs in the skill, not in bricky.
 - **Passes:** pure functions of a `Context`, registered under the `bricky.passes` entry-point group.
   Each pass documents every code it emits, with the exact rule it checks (`bricky explain`), and emits diagnostics with that code, a message, the elements involved and a region.
-- **Build scripts run in their own process** (`bricky.runner`), never in the command line or the MCP server: their output is captured, a timeout stops them, and a cancelled command kills them.
+- **Build scripts run in their own process** (`bricky.runner`), never in the command line or the MCP server: their output is captured, a timeout stops them, and a canceled command kills them.
 - **Images are first-class feedback:** every build renders its model by default.
   Renderer assets live in `bricky/render/assets`; three.js is vendored unmodified, so rendering works offline.
 - **Sources:** BrickLink, the LEGO Group's marketplace, is the source of what parts and colors exist.
@@ -114,7 +114,7 @@ A word missing from this table is plain English, never a second name for a conce
 | clip, highlight | Keep one side of a plane; render some elements in full and the rest faintly |
 | agent, harness | An AI model that writes build scripts, and the program that runs it, such as Claude Code |
 | front end | How an agent reaches bricky: the command line, the MCP server or the skill |
-| example | A build script in `examples/`, shown in the gallery |
+| example | A build script in `examples/`; the gallery shows the larger ones |
 | project, reference, run | A benchmark task, the model it is scored against, and one agent's attempt at it |
 
 Rotate, never turn; clip, never cut; render, never draw.
@@ -132,3 +132,11 @@ Docs, docstrings, comments and messages are formal, direct and plain.
 - **Words:** say what something is or does, not what it is not, and leave out filler.
   Lists hold parallel items, tables hold lookups, and prose holds reasoning.
 - **Shell blocks:** comments align two spaces after the longest command.
+
+## Releases
+
+The packages `bricky` and `bricky-mcp` go to PyPI together, at one version; `bricky-benchmark` runs from a clone and never goes to PyPI.
+
+1. Set the new version in the three `pyproject.toml` files, in the `bricky==` pins, and in `CITATION.cff` with its date, then run `uv lock`.
+1. Commit, push, and wait for CI to pass.
+1. Tag the commit `vX.Y.Z` and push the tag: the release workflow checks, builds and tests the packages, publishes them to PyPI by trusted publishing, and makes the GitHub release.

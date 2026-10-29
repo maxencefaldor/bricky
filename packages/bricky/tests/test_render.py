@@ -1,5 +1,7 @@
 # Copyright 2026 Maxence Faldor
 
+from __future__ import annotations
+
 import asyncio
 import json
 import struct

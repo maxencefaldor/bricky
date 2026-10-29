@@ -9,6 +9,8 @@ Agents work in studs (x and y) and plates (z), never in base units. The helpers 
 convert both ways and refuse values that land off the grid.
 """
 
+from __future__ import annotations
+
 from typing import Final
 
 MM_PER_UNIT: Final = 0.4

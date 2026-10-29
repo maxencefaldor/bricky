@@ -1,5 +1,7 @@
 # Copyright 2026 Maxence Faldor
 
+from __future__ import annotations
+
 import pytest
 
 from bricky import (
@@ -113,11 +115,17 @@ def test_reports_cap_diagnostics_but_count_everything() -> None:
 
 
 def test_profiles_report_passes_that_are_not_installed() -> None:
+    settings = Settings(profiles={"stable": (*DIGITAL, "stability")})
     report = check_model(
-        stack(("3001", (0, 0, 0), "R0")), profile="physical", settings=Settings()
+        stack(("3001", (0, 0, 0), "R0")), profile="stable", settings=settings
     )
     assert report.passes == DIGITAL
-    assert report.missing == ("stability", "buildability", "budget")
+    assert report.missing == ("stability",)
+
+
+def test_passes_named_explicitly_must_be_installed() -> None:
+    with pytest.raises(BrickyError, match="no installed pass is named 'colision'"):
+        check_model(Model(), passes=("colision",), settings=Settings())
 
 
 def test_unknown_profiles_are_rejected() -> None:
@@ -127,7 +135,7 @@ def test_unknown_profiles_are_rejected() -> None:
 
 def test_configured_profiles_extend_the_defaults() -> None:
     settings = Settings(profiles={"quick": ("schema",)})
-    assert set(settings.profiles) == {"digital", "physical", "quick"}
+    assert set(settings.profiles) == {"digital", "quick"}
     report = check_model(
         stack(("3001", (0, 0, 0), "R0")), profile="quick", settings=settings
     )

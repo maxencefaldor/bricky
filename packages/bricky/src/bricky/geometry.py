@@ -10,6 +10,8 @@ lies in a plane with an integer normal, and separating axes decide exactly wheth
 solids overlap.
 """
 
+from __future__ import annotations
+
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from functools import cache
@@ -148,7 +150,7 @@ class Rotation:
         key = ALIASES.get(text.upper(), text)
         try:
             return cls(AXES[key[:2]], AXES[key[2:]])
-        except KeyError, ValueError:
+        except (KeyError, ValueError):
             message = (
                 f"unknown rotation {text!r}: "
                 f"use a name like '+y-x' or one of {', '.join(ALIASES)}"

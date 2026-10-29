@@ -3,9 +3,10 @@
 
 A pass is any class with a ``name``, a one-line ``summary``, the ``codes`` it can report
 and a ``run`` method. Packages register passes under the ``bricky.passes`` entry-point
-group, so a pass pack, such as a future ``bricky-physics``, installs and uninstalls
-without changes to the core.
+group, so a pass pack installs and uninstalls without changes to the core.
 """
+
+from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from functools import cache

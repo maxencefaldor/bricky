@@ -1,6 +1,8 @@
 # Copyright 2026 Maxence Faldor
 """Resolve a model against the catalog and place every element in world space."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from functools import cache
 

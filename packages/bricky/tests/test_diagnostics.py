@@ -1,9 +1,11 @@
 # Copyright 2026 Maxence Faldor
 
+from __future__ import annotations
+
 import ast
 import inspect
 
-from bricky import ModelBuilder, Settings, check_model, render_report
+from bricky import ModelBuilder, Settings, check_model, format_report
 from bricky.diagnostics import Diagnostic
 from bricky.passes import installed_codes, installed_passes
 
@@ -52,7 +54,7 @@ def test_reports_describe_each_element_and_count_script_lines() -> None:
     assert (info.part_name, info.color_name) == ("Brick 2 x 4", "Red")
     assert info.source is not None
     assert info.source.site.function == "wall"
-    text = render_report(report)
+    text = format_report(report)
     assert "= e1: Brick 2 x 4 (3001), Red, " in text
     assert "in wall()" in text
     assert "by source line:" in text
@@ -65,7 +67,7 @@ def test_reports_without_provenance_still_name_parts_and_colors() -> None:
     builder.place("3022", at=(0, 0, 5), color="Tan", id="floating")
     report = check_model(builder.build(), settings=Settings())
     assert report.elements["floating"].source is None
-    text = render_report(report)
+    text = format_report(report)
     assert "= floating: Plate 2 x 2 (3022), Tan" in text
     assert "by source line" not in text
 
@@ -77,4 +79,4 @@ def test_long_element_lists_are_shortened_in_text_but_complete_in_data() -> None
     report = check_model(builder.build(), settings=Settings())
     (diagnostic,) = report.diagnostics
     assert len(diagnostic.elements) == 9
-    assert "and 3 more elements" in render_report(report)
+    assert "and 3 more elements" in format_report(report)

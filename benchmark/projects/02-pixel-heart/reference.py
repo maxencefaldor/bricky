@@ -1,6 +1,8 @@
 # Copyright 2026 Maxence Faldor
 """Reference for project 02: a 12 x 12 pixel heart, as tiles on a Black base."""
 
+from __future__ import annotations
+
 from bricky import ModelBuilder
 
 # Rows from north (top) to south; '.' White, 'R' Red, 'D' Dark Red.

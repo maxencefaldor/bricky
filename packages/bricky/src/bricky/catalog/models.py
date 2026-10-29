@@ -6,6 +6,8 @@ colors it comes in) with the shape bricky generates its geometry from, when bric
 one.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Annotated, Literal, Self

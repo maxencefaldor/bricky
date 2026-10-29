@@ -8,6 +8,8 @@ comparison with a target made of voxels is exact. Studs belong to no body and fi
 voxel.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Final
 

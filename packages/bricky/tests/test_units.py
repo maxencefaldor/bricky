@@ -1,5 +1,7 @@
 # Copyright 2026 Maxence Faldor
 
+from __future__ import annotations
+
 import pytest
 
 from bricky.units import BRICK, PLATE, STUD, plates, studs, to_plates, to_studs

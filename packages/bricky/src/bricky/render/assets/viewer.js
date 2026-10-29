@@ -14,7 +14,7 @@ const BASE_UNIT = 0.4; // millimeters
 const STUD = 20;
 const PLATE = 8;
 // How far a clip plane sits beyond its height, in millimeters. A plane exactly at a face's height
-// keeps that face in some pixels and cuts it in others; a hair beyond keeps the face whole.
+// keeps that face in some pixels and clips it in others; a hair beyond keeps the face whole.
 const CLIP_SLACK = 0.01;
 const FLAG = { HIGHLIGHT: 1, GHOST: 2, ERROR: 4, WARNING: 8, CHANGED: 16 };
 const AXES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
@@ -133,7 +133,7 @@ export function buildModel(scene) {
   }
 
   // Edges: dark outlines that set every element apart. Highlighted, changed and diagnosed elements
-  // get colored outlines, and the outlines of diagnosed elements draw over everything.
+  // get colored outlines, and the outlines of diagnosed elements render over everything.
   const outline = (filter) => {
     const points = [];
     for (const box of scene.boxes) if (filter(scene.elements[box[6]][1])) pushEdges(points, box);
@@ -166,7 +166,7 @@ export function buildModel(scene) {
     root.add(segments);
   }
 
-  // Diagnostic regions: dashed boxes drawn over everything.
+  // Diagnostic regions: dashed boxes rendered over everything.
   for (const mark of scene.marks) {
     const points = [];
     pushEdges(points, mark.box);
@@ -264,7 +264,7 @@ function materials(planes, vertexColors) {
     material.clippingPlanes = planes;
     // What a clip removes casts no shadow on what remains.
     material.clipShadows = true;
-    // Push faces back a little so outlines drawn on their edges stay in front. Faces pressed
+    // Push faces back a little so outlines rendered on their edges stay in front. Faces pressed
     // against a neighbor share its plane: inner sides and see-through faces go further back, so the
     // neighbor's outer face wins the tie everywhere instead of flickering against them.
     const back = kind.endsWith("Inside") ? 4 : kind === "clear" ? 2 : 1;

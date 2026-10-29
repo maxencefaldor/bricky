@@ -14,6 +14,8 @@ reaches back on its own. A voxel that no part can hold still gets a part; the ch
 then report it as floating.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict, deque
 from collections.abc import Callable, Container, Iterator, Mapping
 from dataclasses import dataclass, field

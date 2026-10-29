@@ -13,6 +13,8 @@ id and part in both models, but another position, rotation or color, has changed
 remaining elements were added or removed.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass
 

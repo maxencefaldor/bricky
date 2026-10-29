@@ -1,6 +1,8 @@
 # Copyright 2026 Maxence Faldor
 """A uniform grid that finds what might touch a box without comparing every pair."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from collections.abc import Hashable, Iterator
 from itertools import product

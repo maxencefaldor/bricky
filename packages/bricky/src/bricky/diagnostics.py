@@ -11,6 +11,8 @@ A report adds what the model and its source map know about each element a diagno
 names: the part, the color and the build-script line that placed it.
 """
 
+from __future__ import annotations
+
 from collections import Counter
 from enum import StrEnum
 from typing import Final, override
@@ -174,10 +176,10 @@ class Report(BaseModel):
         return self.errors == 0
 
 
-def render_report(report: Report) -> str:
-    """Render a report as compiler-style text."""
+def format_report(report: Report) -> str:
+    """Format a report as compiler-style text."""
     blocks = [
-        _render_diagnostic(diagnostic, report.elements)
+        _format_diagnostic(diagnostic, report.elements)
         for diagnostic in report.diagnostics
     ]
     if report.omitted:
@@ -226,7 +228,7 @@ def describe_element(uid: str, info: ElementInfo | None) -> str:
     return text
 
 
-def _render_diagnostic(diagnostic: Diagnostic, elements: dict[str, ElementInfo]) -> str:
+def _format_diagnostic(diagnostic: Diagnostic, elements: dict[str, ElementInfo]) -> str:
     lines = [f"{diagnostic.severity}[{diagnostic.code}]: {diagnostic.message}"]
     if diagnostic.region is not None:
         lines.append(f"  --> {diagnostic.region}")

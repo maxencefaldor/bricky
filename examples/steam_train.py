@@ -19,6 +19,8 @@
 Run: ``uv run bricky build examples/steam_train.py``
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from itertools import groupby
 from math import hypot
