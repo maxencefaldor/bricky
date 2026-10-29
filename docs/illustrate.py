@@ -374,8 +374,7 @@ card: Final = partial(Figure, view=View.PERSPECTIVE, size=(1200, 900), bare=True
 """Make the figure of a card's image: a bare perspective in a 4:3 frame."""
 
 FIGURES: Final = (
-    # Home and getting started
-    Figure("elizabeth-tower", EXAMPLES / "elizabeth_tower.py"),
+    # Getting started
     Figure("wall-floating", wall_floating, check=True),
     Figure("wall-fixed", wall_fixed, check=True, before=wall_floating),
     # Coordinates
