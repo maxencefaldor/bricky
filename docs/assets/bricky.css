@@ -352,8 +352,10 @@
 }
 
 /*
- * A card with an image is a row: the image in a fixed 4:3 frame on the left, the text centered on the right.
- * The rows stack in one column, so any number of cards lines up; on a phone the image goes on top.
+ * A card with an image is a row: the image's 4:3 frame on the left sets the card's height, and the text, kept
+ * short enough to fit, centers on the right. Text that runs taller stretches the frame, so the image's panel
+ * still reaches the card's bottom. The rows stack in one column, so any number of cards lines up; on a phone
+ * the image goes on top.
  */
 .md-typeset .grid.cards.bricky-cards {
   grid-template-columns: minmax(0, 1fr);
@@ -366,6 +368,11 @@
   padding: 0;
 }
 
+/* The gallery gives each model half its card. */
+.md-typeset .grid.cards.bricky-gallery > ul > li {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 .md-typeset .grid.cards.bricky-cards > ul > li > p {
   grid-column: 2;
   margin: 0 1rem;
@@ -375,6 +382,7 @@
   display: flex;
   grid-row: 1 / -1;
   grid-column: 1;
+  align-self: stretch;
   align-items: center;
   justify-content: center;
   margin: 0;

@@ -12,8 +12,8 @@ Each scene sets a subject in its surroundings, with the details that make it liv
 
     **[Japanese garden](gallery/japanese-garden.html)** · 4,501 elements
 
-    A five-story pagoda, a vermilion torii and cherry trees in bloom surround a koi pond under an arched bridge.
-    Inverted slopes flare the eaves, and filled voxels grow the blossoms.
+    A five-story pagoda and a vermilion torii stand by a koi pond under cherry trees in bloom.
+    Filled voxels grow the blossoms.
 
     [Open in 3D](gallery/japanese-garden.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/japanese_garden.py)
 
@@ -21,8 +21,8 @@ Each scene sets a subject in its surroundings, with the details that make it liv
 
     **[Street corner](gallery/street-corner.html)** · 3,372 elements
 
-    Four townhouses meet at a corner café with a turret, an onion dome and striped awnings.
-    Components place the windows, doors, shop fronts, awnings, signs and dormers 76 times.
+    Four townhouses meet at a corner café with a turret and an onion dome.
+    Components place their 51 windows, 7 doors and 4 awnings.
 
     [Open in 3D](gallery/street-corner.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/street_corner.py)
 
@@ -39,8 +39,8 @@ Each scene sets a subject in its surroundings, with the details that make it liv
 
     **[Pumpkin manor](gallery/pumpkin-manor.html)** · 5,325 elements
 
-    A crooked manor rises on a twisted hill, its tower a giant jack-o'-lantern in a witch's hat, before a full moon crossed by bats.
-    Ghosts haunt the graveyard, a scarecrow guards the pumpkins, and a cauldron bubbles green.
+    A crooked manor rises on a twisted hill, its tower a jack-o'-lantern in a witch's hat.
+    Ghosts haunt the graveyard under a full moon.
 
     [Open in 3D](gallery/pumpkin-manor.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/pumpkin_manor.py)
 
@@ -56,8 +56,8 @@ Each scene sets a subject in its surroundings, with the details that make it liv
 
     **[Steam train](gallery/steam-train.html)** · 2,587 elements
 
-    A locomotive, its tender and two carriages wait at a country station with a clock and a water tower.
-    Round plates on side studs make the wheels, and one component makes both carriages.
+    A locomotive waits at a country station with two carriages, both from one component.
+    Round plates on side studs make the wheels.
 
     [Open in 3D](gallery/steam-train.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/steam_train.py)
 
@@ -106,8 +106,8 @@ Each landmark rebuilds a real building at scale, with the details that make it r
 
     **[Elizabeth Tower](gallery/elizabeth-tower.html)** · 10,683 elements
 
-    Big Ben's tower rises 301 plates over Bridge Street, beside the Palace of Westminster, with red buses and a black cab at its foot.
-    Its blue and gold dials are built sideways on side studs, under a belfry and a spire of gilded slopes.
+    Big Ben's tower rises 301 plates beside the Palace of Westminster.
+    The blue and gold dials stand sideways on side studs, under a gilded spire.
 
     [Open in 3D](gallery/elizabeth-tower.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/elizabeth_tower.py)
 
