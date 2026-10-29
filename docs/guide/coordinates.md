@@ -22,7 +22,7 @@ An element below it is an error (E103), and a group of connected elements that r
 ## Exact integers
 
 Every length in the kernel is a whole number of base units, so the kernel compares only integers.
-The base unit, 0.4 mm, divides every LEGO System dimension exactly, so the conversion from studs and plates loses nothing.
+The base unit, 0.4 mm, divides every LEGO® System dimension exactly, so the conversion from studs and plates loses nothing.
 The corner `at=(0, 1.5, 2)`, half a stud off the grid, becomes `(0, 30, 16)` in base units.
 A coordinate between base units makes `place` raise `ValueError`, and the build fails.
 
@@ -62,7 +62,8 @@ The rotations below stand a part up, to [build sideways](scripts.md#building-sid
 ## Positions off the grid
 
 A jumper plate 1 x 2 carries one stud at its center, half a stud off the grid.
-A part on that stud sits off the grid too, so its `at` takes a half: the lamp post below stands at y = 1.5.
+A part on that stud sits off the grid too, so its `at` takes a half.
+The lamp post below stands at y = 1.5.
 
 ```python
 builder.place("3020", at=(0, 0, 0), color="Dark Bluish Gray")  # Plate 2 x 4

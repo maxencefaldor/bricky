@@ -1,7 +1,11 @@
 # bricky-benchmark
 
 The benchmark runner for [bricky](https://github.com/maxencefaldor/bricky): it runs each project with Claude Code and scores the model the agent builds.
+
 The [benchmark page](https://maxencefaldor.github.io/bricky/agents/benchmark/) describes the projects and the scores.
+
+The package ships only with the repository, because it runs the projects in the repository's `benchmark/` folder.
+Run it from a clone, after `uv sync`, with Claude Code (`claude`) signed in:
 
 ```sh
 uv run bricky-benchmark list                      # the projects and their inputs

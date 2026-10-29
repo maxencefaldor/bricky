@@ -48,7 +48,9 @@ The plans carry rulers in studs and plates; the lighthouse's one image carries n
 
 ## Running it
 
-The package `bricky-benchmark` runs the projects with Claude Code and scores the results:
+The package `bricky-benchmark` runs the projects with Claude Code and scores the results.
+The package stays off PyPI, because it runs the projects in the repository's `benchmark/` folder.
+Run it from a clone of the repository, after `uv sync`:
 
 ```sh
 uv run bricky-benchmark list                      # the projects and their inputs
@@ -84,9 +86,9 @@ Judged projects have facts and effort but no fidelity; a person compares their i
 
 ## Results
 
-On 28 October 2026, a separate Claude agent built each of the ten projects.
+On October 28, 2026, a separate Claude agent built each of the ten projects with the version of bricky of that date.
 Each agent worked in a workspace like the runner's, with the command line and the skill, and the benchmark's scorer scored its final script.
-On that date, every model built with no errors and no warnings.
+With that version, every model built with no errors and no warnings.
 
 | # | Project | Elements | Shape | Color |
 | --- | --- | ---: | ---: | ---: |
@@ -103,8 +105,10 @@ On that date, every model built with no errors and no warnings.
 
 The projects with exact inputs, 1 to 5 and 9, reach a perfect score in one to four builds.
 Those projects measure whether an agent can use bricky at all.
-The agents rated the difficulty of the other projects out of 5: 3 for the lighthouse, the telephone box and the pagoda, and 4 for Notre-Dame.
-Notre-Dame earns its rating with roofs that meet at the crossing, rose windows on side studs, and walls that pack around openings without floating parts.
+The agents rated the difficulty of the other projects out of 5.
+The lighthouse, the telephone box and the pagoda got 3, and Notre-Dame got 4.
+Notre-Dame earns it with roofs meeting at the crossing, rose windows on side studs, and walls packed around openings without floating parts.
 
-Side studs have moved since these runs: they now sit where the real parts have them, half a stud below the top of the brick.
-The current version therefore reports 18 errors in the telephone box and 9 in Notre-Dame, all where a part hangs on a side stud a quarter plate off.
+Side studs have moved since these runs.
+They now sit where the real parts have them, half a stud below the top of the brick.
+The telephone box and Notre-Dame hang parts on side studs, so their results hold for the earlier version only.

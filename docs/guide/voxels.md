@@ -23,7 +23,8 @@ The keys are `(x, y, z)`, in the units of `at`:
 ```
 
 Below, a slope and an arch stand beside their voxels, rebuilt from plates 1 x 1.
-The slope fills its back row three plates high and its front row two; the arch fills its legs and the span above the opening.
+The slope fills its back row three plates high and its front row two.
+The arch fills its legs and the span above the opening.
 
 ![A slope and an arch beside the voxels they fill](../images/voxels.png)
 

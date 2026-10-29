@@ -2,7 +2,8 @@
 
 The `bricky` command builds, checks and renders models from the shell.
 
-Every command takes `--output-format json` to print its result as JSON for programs; the default, `text`, is for people and agents.
+Every command but `json-schema` takes `--output-format json` to print its result as JSON for programs; the default, `text`, is for people and agents.
+The command `bricky --version` prints the version.
 The exit status is 0 for success, 1 when the model has errors or `catalog verify` finds problems, and 2 for invalid arguments or a failed command.
 Each command's options come from a request model in `bricky.service`, which the [MCP server](../agents/connect.md#mcp-server) shares, so a tool takes the same arguments as its command.
 
@@ -18,7 +19,7 @@ Run a build script, then save, check and render its model.
 | `--check`, `--no-check` | `True` | Check the model after building it. |
 | `--render`, `--no-render` | `True` | Render the model after checking it. |
 | `--views` | `sheet` | Views to render: sheet (perspective, front, right and top on one image), perspective (from the south-east), perspective-south-west, perspective-north-west, perspective-north-east, front, back, left, right or top. |
-| `--profile` |  | Profile to run, such as 'digital' or 'physical'; defaults to the configured one. |
+| `--profile` |  | Profile to run, such as 'digital'; defaults to the configured one. |
 | `--passes` |  | Pass names to run instead of a profile. |
 | `--max-diagnostics` |  | Maximum diagnostics to return; defaults to the configured cap. |
 
@@ -30,7 +31,7 @@ Check a model file.
 | --- | --- | --- |
 | `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
 | `MODEL` | required | Path to a .bricky.json model file. |
-| `--profile` |  | Profile to run, such as 'digital' or 'physical'; defaults to the configured one. |
+| `--profile` |  | Profile to run, such as 'digital'; defaults to the configured one. |
 | `--passes` |  | Pass names to run instead of a profile. |
 | `--max-diagnostics` |  | Maximum diagnostics to return; defaults to the configured cap. |
 
@@ -130,5 +131,4 @@ Explain diagnostic codes.
 
 Print the model file schema.
 
-| Option | Default | Description |
-| --- | --- | --- |
+The command takes no options.

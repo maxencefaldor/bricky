@@ -1,6 +1,7 @@
 # Connect an agent
 
-An agent reaches bricky through one of three front ends.
+The page shows how an agent reaches bricky through each of its three front ends.
+
 The command line and the MCP server derive from the same request models, so their arguments always match.
 
 | Front end | Suits |
@@ -14,6 +15,7 @@ The command line and the MCP server derive from the same request models, so thei
 An agent whose harness runs shell commands needs nothing more.
 The command `bricky build` runs a script and prints the report, and the agent opens the images it names.
 Every command takes `--output-format json` to print its result as JSON for programs.
+Where bricky is installed as a tool or with pip, the command is `bricky`, without `uv run`.
 The [command line reference](../reference/cli.md) lists every command and option.
 
 ```sh
@@ -23,20 +25,33 @@ uv run bricky build models/tower.py
 ## MCP server
 
 The package `bricky-mcp` serves bricky over the [Model Context Protocol](https://modelcontextprotocol.io), on stdio.
-A harness starts it from a project's `.mcp.json`, which Claude Code and other harnesses read:
+A harness starts it from a project's `.mcp.json`, which Claude Code and other harnesses read.
+The command `uvx`, which comes with uv, runs the server straight from PyPI:
 
 ```json title=".mcp.json"
 {
   "mcpServers": {
     "bricky": {
-      "command": "uv",
-      "args": ["run", "--project", "/path/to/bricky", "bricky-mcp"]
+      "command": "uvx",
+      "args": ["bricky-mcp"]
     }
   }
 }
 ```
 
 With Claude Code, one command does the same:
+
+```sh
+claude mcp add bricky -- uvx bricky-mcp
+```
+
+The server renders in Chromium, which Playwright installs once per machine:
+
+```sh
+uvx --from bricky-mcp playwright install chromium
+```
+
+From a clone of the repository, the server runs with the clone's code instead:
 
 ```sh
 claude mcp add bricky -- uv run --project /path/to/bricky bricky-mcp
@@ -65,7 +80,8 @@ Three behaviors of the server matter to an agent:
 - **Scripts run apart.**
   Each build script runs in a child process with a time limit.
   Whatever the script prints comes back in the result, never on the protocol stream.
-  A cancelled call stops its child.
+  A canceled call stops its child.
+  A build script still runs as ordinary Python with your permissions, so run only scripts you trust.
 - **Self-contained instructions.**
   The server's instructions teach the workflow, the coordinates and the tools, so an agent can start without the skill.
 
@@ -74,10 +90,17 @@ Three behaviors of the server matter to an agent:
 The skill `.claude/skills/build-model/SKILL.md` teaches an agent the loop: plan, write the script, build, read the report and the images, fix, and repeat.
 The skill holds the advice, such as staggering joints like a brick wall, because bricky itself only states facts.
 Claude Code loads the skill on its own inside the bricky repository.
-To use it from another project, copy `.claude/skills/build-model/` into that project or into `~/.claude/skills/`.
+To use it in another project, download it into that project's `.claude/skills/`:
+
+```sh
+mkdir -p .claude/skills/build-model && curl -o .claude/skills/build-model/SKILL.md https://raw.githubusercontent.com/maxencefaldor/bricky/main/.claude/skills/build-model/SKILL.md
+```
+
+To use it in every project, download it into `~/.claude/skills/` the same way.
 Other harnesses can include the file in the agent's context.
 The [benchmark](benchmark.md) copies the skill into every workspace.
+The skill in full:
 
-```markdown
+````markdown
 --8<-- ".claude/skills/build-model/SKILL.md"
-```
+````

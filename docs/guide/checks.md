@@ -5,10 +5,10 @@ Every build checks its model and reports facts: what is wrong, never how to fix 
 ## Reading a report
 
 A report lists diagnostics, and each diagnostic states one fact about the model: what is wrong, where, and which elements.
-The report adds what each element is and the script line that placed it, so every fact leads back to the code that caused it.
+The report adds what each element is and the script line that placed it, so every fact leads back to the code behind it.
 Deciding what to change stays with the agent: bricky never fixes a model and never suggests a fix.
 
-The example `examples/broken.py` makes three mistakes: an overlap, a brick half a stud off and a floating plate.
+The example [`examples/broken.py`](https://github.com/maxencefaldor/bricky/blob/main/examples/broken.py) makes three mistakes: an overlap, a brick half a stud off and a floating plate.
 
 ```python
 builder.place("3001", at=(0, 0, 0), color="Red", id="base")  # Brick 2 x 4
@@ -20,32 +20,32 @@ builder.place("3022", at=(4, 2, 9), color="Tan", id="floating")  # touches nothi
 ```text
 error[E201]: base and overlap occupy the same space
   --> x 1..2  y 0..4  z 0..3
-   = base: Brick 2 x 4 (3001), Red, examples/broken.py:13 in build()
-   = overlap: Brick 2 x 4 (3001), Blue, examples/broken.py:14 in build()
+   = base: Brick 2 x 4 (3001), Red, examples/broken.py:15 in build()
+   = overlap: Brick 2 x 4 (3001), Blue, examples/broken.py:16 in build()
 
 error[E202]: 4 studs of base push into offset, which has no anti-stud there
   --> x 0.2..1.8  y 0.2..1.8  z 3..3.5
-   = base: Brick 2 x 4 (3001), Red, examples/broken.py:13 in build()
-   = offset: Brick 2 x 2 (3003), White, examples/broken.py:15 in build()
+   = base: Brick 2 x 4 (3001), Red, examples/broken.py:15 in build()
+   = offset: Brick 2 x 2 (3003), White, examples/broken.py:17 in build()
 
 error[E202]: 4 studs of overlap push into offset, which has no anti-stud there
   --> x 1.2..2.8  y 0.2..1.8  z 3..3.5
-   = overlap: Brick 2 x 4 (3001), Blue, examples/broken.py:14 in build()
-   = offset: Brick 2 x 2 (3003), White, examples/broken.py:15 in build()
+   = overlap: Brick 2 x 4 (3001), Blue, examples/broken.py:16 in build()
+   = offset: Brick 2 x 2 (3003), White, examples/broken.py:17 in build()
 
 error[E301]: 1 element floats: no chain of stud connections leads to the ground
   --> x 4..6  y 2..4  z 9..10
-   = floating: Plate 2 x 2 (3022), Tan, examples/broken.py:16 in build()
+   = floating: Plate 2 x 2 (3022), Tan, examples/broken.py:18 in build()
 
 error[E301]: 1 element floats: no chain of stud connections leads to the ground
   --> x 0.5..2.5  y 0..2  z 3..6
-   = offset: Brick 2 x 2 (3003), White, examples/broken.py:15 in build()
+   = offset: Brick 2 x 2 (3003), White, examples/broken.py:17 in build()
 
 by source line:
-  examples/broken.py:15 in build(): 3 diagnostics
-  examples/broken.py:13 in build(): 2 diagnostics
-  examples/broken.py:14 in build(): 2 diagnostics
-  examples/broken.py:16 in build(): 1 diagnostic
+  examples/broken.py:17 in build(): 3 diagnostics
+  examples/broken.py:15 in build(): 2 diagnostics
+  examples/broken.py:16 in build(): 2 diagnostics
+  examples/broken.py:18 in build(): 1 diagnostic
 
 checked 4 elements with profile digital (schema, collision, connectivity): 5 errors, 0 warnings
 ```
@@ -68,7 +68,11 @@ The [diagnostic codes](../reference/codes.md) page gives the exact rule behind e
 ## Passes and profiles
 
 A check runs the passes of a profile, and each pass tests one kind of fact.
-Passes are pure functions of the model's shared analyses, registered under the `bricky.passes` entry-point group, so any package can add a pass without changing bricky.
+Passes are pure functions of the model's shared analyses, registered under the `bricky.passes` entry-point group.
+Any package can therefore add a pass without changing bricky.
+A profile is a named list of passes, and settings can add profiles (see [Configuration](../reference/configuration.md)).
+The option `--profile` runs a profile, and `--passes collision` runs one pass alone.
+A pass named in `--passes` must be installed, or the command fails.
 The command `bricky passes` lists the installed passes and profiles:
 
 ```text
@@ -77,11 +81,7 @@ connectivity  E301                    Groups of parts with no connected path to 
 schema        E101, E102, E103, W104  Unknown parts and colors, parts below the ground plane, and colors a part never came in.
 
 digital (default): schema, collision, connectivity
-physical: schema, collision, connectivity, stability (not installed), buildability (not installed), budget (not installed)
 ```
-
-The profile `physical` also names three passes that no package installs yet, and the report lists them as skipped.
-The option `--profile physical` runs a profile, and `--passes collision` runs one pass alone.
 
 ## Changes between builds
 

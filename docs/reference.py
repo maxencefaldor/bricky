@@ -8,6 +8,8 @@ come from the installed passes, as ``bricky explain`` prints them, and every set
 comes from :class:`bricky.Settings`. The pages therefore match the tools exactly.
 """
 
+from __future__ import annotations
+
 import re
 from html import escape
 from pathlib import Path
@@ -29,8 +31,9 @@ INTRODUCTION: Final = """\
 
 The `bricky` command builds, checks and renders models from the shell.
 
-Every command takes `--output-format json` to print its result as JSON for programs; \
-the default, `text`, is for people and agents.
+Every command but `json-schema` takes `--output-format json` to print its result as \
+JSON for programs; the default, `text`, is for people and agents.
+The command `bricky --version` prints the version.
 The exit status is 0 for success, 1 when the model has errors or `catalog verify` \
 finds problems, and 2 for invalid arguments or a failed command.
 Each command's options come from a request model in `bricky.service`, which the \
@@ -76,12 +79,15 @@ def _options(command: type[BaseModel]) -> list[str]:
 
 
 def _section(path: str, command: type[BaseModel], summary: str) -> list[str]:
+    options = (
+        _options(command) if command.model_fields else ["The command takes no options."]
+    )
     return [
         f"## `bricky {path}`",
         "",
         summary.rstrip(".") + ".",
         "",
-        *_options(command),
+        *options,
         "",
     ]
 

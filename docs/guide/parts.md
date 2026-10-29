@@ -1,6 +1,9 @@
 # Parts and colors
 
-Parts and colors carry their BrickLink ids, the ids LEGO® builders and sellers already use: `3001` is a Brick 2 x 4, and `5` is Red.
+The page shows how to find parts and colors, and the shape each family gives a part.
+
+Parts and colors carry their BrickLink ids, the ids LEGO® builders and sellers already use.
+The part `3001` is a Brick 2 x 4, and the color `5` is Red.
 The [catalog](catalog.md) guide says where parts and colors come from, and how to import them all.
 
 ## Finding parts
@@ -8,12 +11,12 @@ The [catalog](catalog.md) guide says where parts and colors come from, and how t
 The command `bricky parts` searches the catalog, so a script never needs to guess an id.
 
 ```sh
-uv run bricky parts "plate 2x4"
-uv run bricky parts "slope 45"
+uv run bricky parts "slope 45" --limit 2
 ```
 
 The search matches every word of the query against each part's id, name, category and family.
-A size such as `2x4`, `4x2` or `2 x 4` matches whole sizes only, so `plate 1x2` finds Plate 1 x 2 and skips Plate 1 x 12.
+A size such as `2x4`, `4x2` or `2 x 4` matches whole sizes only.
+The query `plate 1x2` therefore finds Plate 1 x 2 and skips Plate 1 x 12.
 Parts with a shape come first, plain parts before printed ones, and shorter names before longer ones.
 DUPLO, Quatro, Primo and Modulex parts come last unless the query names their system.
 Each row gives the family, the footprint, the height and the studs, and how the part sits when unrotated:
@@ -34,8 +37,9 @@ In a script, `builder.catalog.find(family="plate", size=(1, 6))` returns every P
 
 ## One part in full
 
-The command `bricky catalog show` describes one part: its category, its other numbers, its shape, maps of its studs and anti-studs, and the colors it comes in.
-A part with an uneven top also gets a map of its height over each stud square, so a slope shows which way it falls:
+The command `bricky catalog show` describes one part: its category, its other numbers and its shape.
+The description also maps the part's studs and anti-studs, and lists the colors it comes in.
+A part with an uneven top also gets a map of its height over each stud square, showing which way a slope falls:
 
 ```text
 3039: Slope 45 2 x 2
@@ -59,23 +63,26 @@ The option `--render` also renders the part, into bricky's cache folder.
 
 ## Families
 
-A family converts a few numbers from the catalog into a part's exact solids and connectors, so one tested generator serves every part of the family.
+A family converts a few numbers from the catalog into a part's exact solids and connectors.
+One tested generator therefore serves every part of the family.
 
 ![One part of each family on a baseplate, each labeled with its family](../images/families.png)
 
 | Family | Parts | Shape |
 | --- | --- | --- |
-| brick, plate, tile | `3001`, `3020`, `87079` | Boxes; bricks and plates carry studs, tiles none |
-| baseplate | `3867` | Half a plate thick: parts standing on it start at z = 0.5 |
-| slope | `3039` | Falls toward -y; the rows behind the slope carry studs |
-| inverted slope | `3660` | Its underside rises toward -y |
-| curved slope | `15068` | Curves down toward -y, as flat facets |
-| round | `3941`, `4032` | Round bricks, plates and tiles, as many-sided prisms |
-| side studs | `87087`, `4733` | Studs on one or more sides, facing as the name says |
-| jumper | `87580` | One stud in the middle, half a stud off the grid |
-| arch | `3659` | A leg at each end, spanning along y |
+| `brick`, `plate`, `tile` | `3001`, `3020`, `87079` | Boxes; bricks and plates carry studs, tiles none |
+| `baseplate` | `3867` | Half a plate thick: parts standing on it start at z = 0.5 |
+| `slope` | `3039` | Falls toward -y; the rows behind the slope carry studs |
+| `inverted_slope` | `3660` | Its underside rises toward -y |
+| `curved_slope` | `15068` | Curves down toward -y, as flat facets |
+| `round` | `3941`, `4032` | Round bricks, plates and tiles, as many-sided prisms |
+| `side_studs` | `87087`, `4733` | Studs on one or more sides, facing as the name says |
+| `jumper` | `87580` | One stud in the middle, half a stud off the grid |
+| `arch` | `3659` | A leg at each end, spanning along y |
+| `boxes` | `3700` | Any part converted from LDraw: its body as boxes, its connectors one by one |
 
-Curved and round surfaces become flat facets whose corners stay on the grid, so the shape stays close to the real part and remains exact.
+Curved and round surfaces become flat facets whose corners stay on the grid.
+The shape therefore stays close to the real part and remains exact.
 
 ## Converted parts
 
@@ -95,4 +102,4 @@ uv run bricky colors gray       # every color whose name contains "gray"
 uv run bricky colors "#F2CD37"  # the five colors nearest to an RGB value
 ```
 
-![Round bricks in 28 colors: solid, pearl, metallic and transparent](../images/colors.png)
+![Round bricks in 28 colors: solid, pearl and transparent](../images/colors.png)

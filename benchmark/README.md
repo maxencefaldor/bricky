@@ -1,11 +1,13 @@
 # Benchmark
 
 Ten projects, from a brick wall to Notre-Dame de Paris, measure how well an agent builds LEGO® models with bricky.
+
 The [benchmark page](https://maxencefaldor.github.io/bricky/agents/benchmark/) describes the projects, the scores and the results.
 
 ## Running it
 
-Run the benchmark from the repository root, with Claude Code (`claude`) signed in:
+The package `bricky-benchmark` stays off PyPI, so the benchmark runs from a clone of the repository.
+Run it from the repository root, after `uv sync`, with Claude Code (`claude`) signed in:
 
 ```sh
 uv run bricky-benchmark list                      # the projects and their inputs
@@ -22,7 +24,7 @@ Each project is a folder under `projects/`:
 ```text
 projects/04-house-plans/
   project.toml   title, difficulty, prompt, turn and time budgets, and inputs to generate
-  reference.py   the model the prompt asks for; never shown to the agent
+  reference.py   the model the prompt asks for, in scored projects; never shown to the agent
   inputs/        what the agent receives besides the prompt
 ```
 

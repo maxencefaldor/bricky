@@ -1,7 +1,6 @@
 # Images
 
-Every build renders its model, because a model with no errors can still look wrong.
-The checks say whether a model holds together; the images show whether it looks as intended.
+The checks say whether a model holds together, and the images, rendered by every build, show whether it looks as intended.
 
 ## The sheet
 
@@ -17,9 +16,11 @@ The title line counts the elements, gives the model's size, and adds the errors 
 
 The command `bricky render` renders a saved model again and writes `name.<view>.png` beside it.
 The sheet of the last build stays as it was.
+The model must exist first, so build the cottage example, then render it:
 
 ```sh
-uv run bricky render models/cottage.bricky.json --views front --views top
+uv run bricky build examples/cottage.py
+uv run bricky render examples/cottage.bricky.json --views front --views top
 ```
 
 | View | Seen from |
@@ -37,6 +38,7 @@ The perspectives from the other corners show the sides the sheet hides.
 The Colosseum keeps its outer ring on the north side, so its façade shows from the north-west:
 
 ```sh
+uv run bricky build examples/colosseum.py
 uv run bricky render examples/colosseum.bricky.json --views perspective-north-west
 ```
 
@@ -52,7 +54,7 @@ A selector is a uid pattern, or `@` followed by a function, file or line of the 
 | `--highlight "sign*"` | Elements whose uids match the pattern |
 | `--highlight "i2/*"` | Every element inside the instance `i2` |
 | `--highlight @roof` | Every element the function `roof` placed |
-| `--highlight @cottage.py:151` | Every element line 151 placed |
+| `--highlight @cottage.py:153` | Every element line 153 placed |
 
 Script selectors read the source map the build wrote.
 The cottage with `--highlight @roof`:
@@ -66,7 +68,7 @@ The clip `z<130` keeps what lies below 130 plates, and `x>4` what lies east of 4
 Clips combine, and the views frame what remains.
 
 ```sh
-uv run bricky render models/cottage.bricky.json --views perspective --clip "y>4"
+uv run bricky render examples/cottage.bricky.json --views perspective --clip "y>4"
 ```
 
 ![The cottage clipped open along y](../images/clip.png)
@@ -88,4 +90,4 @@ Marks show on every image what the report states in text:
 
 The option `--html` of `bricky render` also writes `name.html`, a standalone viewer to orbit, zoom and clip by height in a browser.
 The page embeds the scene and loads three.js from jsDelivr, so it needs no server but does need a network connection.
-The [gallery](../gallery.md) shows a viewer for every example.
+The [gallery](../gallery.md) opens each of its models in such a viewer.

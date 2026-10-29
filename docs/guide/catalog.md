@@ -27,7 +27,8 @@ flowchart LR
 
 - **BrickLink** supplies ids, names, categories, RGB values, and the colors each part comes in.
 - **Names** give exact shapes: a part whose official name follows a family pattern gets that family's shape.
-  The name "Slope 45 2 x 4" describes a slope two studs deep and four wide, and "Brick 1 x 2 x 2" a brick two bricks tall.
+  The name "Slope 45 2 x 4" describes a slope two studs deep and four wide.
+  The name "Brick 1 x 2 x 2" describes a brick two bricks tall.
 - **Printed parts** take the shape of the part they are printed on.
 - **LDraw** shapes every other part, converted from the [LDraw.org Parts Library](https://library.ldraw.org) under CC BY 4.0.
   The conversion keeps the body as boxes on a 0.8 mm grid and the studs where LDraw places them.
@@ -35,7 +36,8 @@ flowchart LR
 
 Where a part has both a family shape and an LDraw file, the import compares their sizes, studs and anti-studs, and reports every disagreement.
 The two agree for 159 of 179 parts, so each source checks the other.
-Where LDraw's shape lacks only anti-studs that the name gives, the part keeps the name's shape: the conversion misses anti-studs under thin and curved bodies.
+Where LDraw's shape lacks only anti-studs that the name gives, the part keeps the name's shape.
+The conversion misses anti-studs under thin and curved bodies.
 Any other disagreement means the name misses a detail, so the part takes LDraw's shape.
 The import rotates that shape to the name's orientation when a rotation brings the two closer.
 
@@ -54,6 +56,8 @@ uv run bricky catalog verify              # generate and check every shaped part
 ```
 
 The import writes `catalog.json` to bricky's data folder, outside any repository, and every command uses it from then on.
+The data folder is `~/.local/share/bricky` on Linux, `~/Library/Application Support/bricky` on macOS and `%LOCALAPPDATA%\bricky` on Windows.
+The command `bricky catalog status` prints the path of the catalog in use.
 Without BrickLink's downloads, parts come from LDraw alone, under LDraw's names, and colors come from the sample.
 To use another catalog file, set `catalog` in `[tool.bricky]` or the variable `BRICKY_CATALOG` (see [Configuration](../reference/configuration.md)).
 
@@ -90,4 +94,5 @@ compared 179 named shapes with LDraw: 20 disagreements
 
 Parts without a shape stay in the catalog, and `bricky parts --shapeless` finds them, but no script can place them.
 Most are minifigure parts, stickers and DUPLO, which no family describes and LDraw models as surfaces without volume.
-A converted part keeps LDraw's orientation, or the name's orientation where it replaces a named shape; the note under it in `bricky parts` says which.
+A converted part keeps LDraw's orientation, or the name's orientation where it replaces a named shape.
+The note under it in `bricky parts` says which.

@@ -6,6 +6,6 @@ A check runs the passes of a profile over a model and returns a report.
 
 ::: bricky.diagnostics
     options:
-      members: [Report, Diagnostic, Region, Severity, ElementInfo, Code, render_report]
+      members: [Report, Diagnostic, Region, Severity, ElementInfo, Code, format_report]
 
 ::: bricky.passes.registry

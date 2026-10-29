@@ -30,11 +30,11 @@ Each build places every part in exact geometry, reports each error with the scri
 
 -   🤖 **[Agents](agents/index.md)**
 
-    Connect an agent through the command line, MCP or the skill, and measure it with the benchmark.
+    Connect an agent through the command line, the MCP server or the skill, and measure it with the benchmark.
 
 -   🖼️ **[Gallery](gallery.md)**
 
-    Every example in a 3D viewer, from a Japanese garden and a pirate ship to the Colosseum.
+    The gallery's models in 3D viewers, from a Japanese garden and a pirate ship to the Colosseum.
 
 -   📚 **[Reference](reference/index.md)**
 
@@ -45,7 +45,8 @@ Each build places every part in exact geometry, reports each error with the scri
 ## How it works
 
 Each build saves the model the script describes, checks it and renders it.
-The agent reads the report and the images, edits the script and builds again, until the report says `0 errors` and the images show the intended model.
+The agent reads the report and the images, edits the script and builds again.
+The loop ends when the report says `0 errors` and the images show the intended model.
 
 ```mermaid
 flowchart LR
@@ -56,11 +57,18 @@ flowchart LR
 
 ## Install
 
-Installing bricky takes [uv](https://docs.astral.sh/uv/), which installs Python 3.15 and every dependency:
+A [uv](https://docs.astral.sh/uv/) project holds your build scripts, and uv installs Python 3.12 or newer if needed:
 
 ```sh
-git clone https://github.com/maxencefaldor/bricky && cd bricky
-uv sync
-uv run playwright install chromium       # the browser bricky renders in
-uv run bricky build examples/cottage.py  # build, check and render the cottage
+uv init --bare my-models && cd my-models  # a project for your build scripts
+uv add bricky                             # bricky and every dependency, from PyPI
+uv run playwright install chromium        # the browser bricky renders in, once per machine
+```
+
+The [Get started](get-started.md#install) page also covers pip, a tool install and a clone of the repository.
+To try an example, download it into the project and build it:
+
+```sh
+curl -O https://raw.githubusercontent.com/maxencefaldor/bricky/main/examples/japanese_garden.py
+uv run bricky build japanese_garden.py
 ```

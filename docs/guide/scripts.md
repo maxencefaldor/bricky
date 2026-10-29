@@ -6,27 +6,45 @@ A build script describes a model as ordinary Python, so loops, functions and dat
 
 A build script is a Python file that defines `build()` and returns a `ModelBuilder`.
 Python supplies what a model needs to repeat itself: loops for courses, functions for features that recur, and data for anything measured.
-The build runs the script in its own process with a time limit, so a script that hangs or crashes never stops bricky.
-Anything the script prints appears in the report.
+The build runs the script in its own process, which captures what it prints and stops it after a time limit.
+A script that hangs or crashes therefore never stops bricky, and anything it prints appears in the report.
+A build script still runs as ordinary Python with your permissions, so run only scripts you trust.
+The example `examples/tower.py` crosses its courses and caps them with tiles:
 
-```python
+```python title="examples/tower.py"
+# Copyright 2026 Maxence Faldor
+"""A 4 x 4 tower of interlocking 2 x 4 bricks, capped with tiles.
+
+Each level rotates its bricks by 90 degrees, so every brick bridges the two below it.
+
+Run: ``uv run bricky build examples/tower.py``
+"""
+
+from __future__ import annotations
+
 from bricky import ModelBuilder
+
+LEVELS = 8
 
 
 def build() -> ModelBuilder:
+    """Stack crossed pairs of 2 x 4 bricks, then tile the top."""
     builder = ModelBuilder("tower")
-    for course in range(8):
-        z = 3 * course
-        if course % 2 == 0:
+    for level in range(LEVELS):
+        z = 3 * level  # a brick is three plates tall
+        if level % 2 == 0:
             builder.place("3001", at=(0, 0, z), color="Red")
             builder.place("3001", at=(2, 0, z), color="Red")
-        else:  # each course rotates 90 degrees, so every brick bridges the two below
+        else:
             builder.place("3001", at=(0, 0, z), rotation="R90", color="White")
             builder.place("3001", at=(0, 2, z), rotation="R90", color="White")
+    for x in (0, 2):
+        for y in (0, 2):
+            builder.place("3068", at=(x, y, 3 * LEVELS), color="Dark Bluish Gray")
     return builder
 ```
 
-![The tower example: crossed courses of bricks 2 x 4](../images/tower.png)
+![The tower example: crossed courses of bricks 2 x 4, capped with tiles](../images/tower.png)
 
 ## Placing parts
 
@@ -58,7 +76,8 @@ for index in range(4):
 
 The `at` of an instance is the minimum corner of the rotated component, exactly as for a part.
 Components may hold instances of other components.
-An element inside an instance has a uid that joins the ids of the instances that hold it: `i2/e3` names the element `e3` inside the instance `i2`.
+An element inside an instance has a uid that joins the ids of the instances that hold it.
+The uid `i2/e3` names the element `e3` inside the instance `i2`.
 The colonnade below highlights `i2/*`, its second column:
 
 ![The colonnade example, its second column highlighted](../images/colonnade.png)
@@ -90,7 +109,7 @@ builder.fill(tower, id="tower")  # ids such as tower.4.-2.9: the prefix, then th
 ![A round tower described as voxels and filled with bricks and plates](../images/fill.png)
 
 The function `plan_fill` in `bricky.fill` returns the same parts as data, to inspect or adjust before placing them.
-[The Colosseum](../gallery.md) fills 242,576 voxels this way.
+[The Colosseum](../gallery.md) fills 273,616 voxels this way.
 
 ## Building sideways
 

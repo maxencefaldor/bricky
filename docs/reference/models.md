@@ -18,6 +18,8 @@ Build scripts create models with a `ModelBuilder`, and a model stores only part 
     options:
       members: [plan_fill, Placement, BRICKS, PLATES]
 
+The package exports `model_voxels` as `bricky.voxels`, the name the guide uses.
+
 ::: bricky.analysis.voxels
     options:
       members: [model_voxels, world_voxels, Voxel, VoxelKey]

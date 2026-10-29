@@ -1,19 +1,33 @@
 # Get started
 
-The tutorial builds a small wall, breaks it and fixes it, and shows exactly what each build prints and renders.
+The tutorial builds a small wall with one mistake, then fixes it, and shows the report and the image of each build.
 
 ## Install
 
-Python 3.15 runs bricky, and [uv](https://docs.astral.sh/uv/) installs it along with every dependency at the versions in `uv.lock`.
+A [uv](https://docs.astral.sh/uv/) project holds the tutorial's build scripts, and uv installs Python 3.12 or newer if needed:
+
+```sh
+uv init --bare my-models && cd my-models  # a project for your build scripts
+uv add bricky                             # bricky and every dependency, from PyPI
+uv run playwright install chromium        # the browser bricky renders in, once per machine
+uv run bricky --version                   # the installed version
+```
+
+Playwright's Chromium renders the images.
+On Linux, `uv run playwright install --with-deps chromium` also installs the browser's system libraries.
+To render with a Chromium already on the machine, set `BRICKY_RENDER_BROWSER` to its executable instead (see [Configuration](reference/configuration.md)).
+
+With pip, run `pip install bricky` and then `playwright install chromium`.
+To install bricky as a tool, run `uv tool install bricky --with-executables-from playwright`, then `playwright install chromium`.
+The command is then `bricky`, without `uv run`, wherever the docs write `uv run bricky`.
+
+A clone of the repository runs every example and the benchmark, and is the way to work on bricky:
 
 ```sh
 git clone https://github.com/maxencefaldor/bricky && cd bricky
 uv sync
 uv run playwright install chromium
 ```
-
-Playwright's Chromium renders the images.
-To render with a Chromium already on the machine, set `BRICKY_RENDER_BROWSER` to its executable instead (see [Configuration](reference/configuration.md)).
 
 ## Write a build script
 
@@ -51,7 +65,8 @@ uv run bricky build models/wall.py
 ```
 
 The build runs the script in a process of its own, then saves, checks and renders the model.
-The report opens with the model's size and then states what is wrong:
+The report opens with the model's size and then states what is wrong.
+The report's last line, the time each step took, is left out of the outputs below:
 
 ```text
 saved models/wall.bricky.json: 8 elements, 8 x 1 studs, 13 plates tall
@@ -100,6 +115,9 @@ since the last build: 0 added, 0 removed, 1 changed, 7 unchanged
     models/wall.py:15 in build(): 1 element
 
 checked 8 elements with profile digital (schema, collision, connectivity): 0 errors, 0 warnings
+
+rendered (open the images to see the model):
+  sheet: models/wall.png
 ```
 
 One element changed, placed by line 15, and nothing else moved.

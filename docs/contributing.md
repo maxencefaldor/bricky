@@ -1,6 +1,8 @@
 # Contributing
 
-The rules for changing bricky live in `AGENTS.md` at the repository root, so people and every agent harness read the same rules.
+The page gives the checks a change must pass, the commands that build the docs, and the rules for changing bricky.
+
+The rules live in `AGENTS.md` at the repository root, so people and every agent harness read the same rules.
 A change is done when five checks pass:
 
 ```sh
@@ -12,10 +14,10 @@ uv run ruff format && uv run ruff check && uv run ty check && uv run rumdl check
 The docs build with [Zensical](https://zensical.org), and bricky renders their images itself:
 
 ```sh
-uv run python docs/reference.py   # write the reference pages generated from the code
-uv run python docs/illustrate.py  # render every image into docs/images
-uv run python docs/gallery.py     # write a 3D viewer for every example
-uv run zensical serve             # preview the site at http://localhost:8000
+uv run python docs/reference.py     # write the reference pages generated from the code
+uv run python docs/illustrate.py    # render every image into docs/images
+uv run python docs/gallery.py       # write a 3D viewer for every example
+uv run --group docs zensical serve  # preview the site at http://localhost:8000
 ```
 
 The rest of this page is `AGENTS.md`.

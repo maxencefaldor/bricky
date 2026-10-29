@@ -40,7 +40,7 @@ The guide covers one concept per page, in the order a build meets them.
 
     The grid that compares a model with a plan or with another model, exactly.
 
--   ![Parts converted from LDraw: a Technic brick, a window, a log and more](../images/card-catalog.png)
+-   ![Parts converted from LDraw: a Technic brick, a window, a log brick and more](../images/card-catalog.png)
 
     **[Catalog](catalog.md)**
 

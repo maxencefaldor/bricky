@@ -6,7 +6,7 @@ The agent pages show how to hand the build loop to an AI agent, and how to measu
 
 -   🔌 **[Connect an agent](connect.md)**
 
-    Reach bricky through the command line, the MCP server or the Claude Code skill.
+    Reach bricky through the command line, the MCP server or the skill.
 
 -   🏁 **[Benchmark](benchmark.md)**
 
