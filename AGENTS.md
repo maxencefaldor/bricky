@@ -28,7 +28,7 @@ Each module imports only from the modules listed before it:
 1. `catalog`: parts and colors keyed by BrickLink ids, imported from BrickLink's catalog downloads; each part's shape is read from its official name, or converted from LDraw, and its geometry generated per family, with curves built as exact facets.
 1. `model`, `provenance`, `fill`, `builder`, `files`: the canonical model format, the script lines that placed each element, the bricks and plates that fill voxels, how to write models, and their files and source maps.
 1. `exports`: a model's lots, written in formats other tools read, such as BrickLink's Wanted List; one module per format.
-1. `analysis`: derived data (world geometry, spatial index, connections, voxels), cached in `Context`, and the differences between two builds.
+1. `analysis`: derived data (world geometry, spatial index, connections, voxels), cached in `Context`, the differences between two builds, and stability: the forces that hold a model still, as a linear program, with solvers from the extra `bricky[stability]`.
 1. `passes`, `diagnostics`, `check`: plugin passes and the reports they produce.
 1. `instructions`: the steps to build a model, in an order that straight moves can follow, swept exactly.
 1. `render`: scenes resolved from a model, rendered with three.js in headless Chromium, and the standalone viewer.
@@ -41,10 +41,11 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
 ## Conventions
 
 - **Tools:** use the standard, official, established tool in each category.
-  That means uv, ruff, ty, rumdl, pytest with Hypothesis, pydantic and pydantic-settings, the official MCP SDK, and Playwright with three.js for renders.
+  That means uv, ruff, ty, rumdl, pytest with Hypothesis, pydantic and pydantic-settings, the official MCP SDK, Playwright with three.js for renders, and HiGHS with Clarabel for linear programs.
 - **Format and lint:** ruff's default format at 88 columns, every ruff rule, every ty rule as an error, and Markdown one sentence per line.
   The file `.editorconfig` sets the editor to match, and `.rumdl.toml` holds the Markdown rules.
   A rule is switched off only in `pyproject.toml`, as narrowly as it can be, with its reason beside it.
+  Types for a dependency that ships none live in `typings/`, for the parts bricky uses.
 - **Python:** 3.12 or newer; development runs on 3.15 (`.python-version`), and CI tests every version.
   Use modern syntax: PEP 695 generics and `type` aliases.
   Every module starts with `from __future__ import annotations`, which ruff adds, so annotations stay lazy: never write `TYPE_CHECKING` blocks.
@@ -54,6 +55,7 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
   Use frozen, slotted dataclasses for hot geometry.
 - **Exactness:** no floats inside the kernel.
   Convert studs and plates to base units at the edges.
+  The stability analysis finds contacts exactly, then solves for forces in floats.
 - **One definition:** each command is a request model plus a function in `bricky.service`.
   The command line and the MCP server derive from it and never redefine arguments.
 - **Store once:** the model stores ids and poses only.
@@ -105,6 +107,7 @@ A word missing from this table is plain English, never a second name for a conce
 | position, rotation, pose | Where an element's origin lands, how it is rotated, and both |
 | stud, anti-stud | A connector on a part's face, and the socket under a part that a stud fits |
 | connection | Two elements joined by studs of one in anti-studs of the other |
+| clutch, site | The force that pulls a stud out of its anti-stud, and the studs that together need a share of it to hold a model |
 | solid | A box or a convex solid of a part's body |
 | base unit | 0.4 mm, the integer unit of the kernel; scripts write studs and plates |
 | voxel | One stud square and one plate tall: the grid that models are compared on |

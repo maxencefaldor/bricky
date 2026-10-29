@@ -88,6 +88,9 @@ class Figure:
     """Render the model built up to this step of its instructions, outlining the step's
     elements as changed."""
 
+    profile: str | None = None
+    """The profile to check the model with; the configured one when unset."""
+
 
 # --------------------------------------------------------------------------------------
 # Coordinates
@@ -367,6 +370,32 @@ def underground(catalog: Catalog) -> ModelBuilder:
 
 
 # --------------------------------------------------------------------------------------
+# Stability
+
+
+def tipping(catalog: Catalog) -> ModelBuilder:
+    """E401: an arm that reaches past the post it stands on, so both tip over."""
+    builder = ModelBuilder("tipping", catalog=catalog)
+    for level in range(3):
+        builder.place("3003", at=(0, 0, 3 * level), color="Yellow", id=f"post{level}")
+    builder.place("3832", at=(0, 0, 9), rotation="R90", color="White", id="arm")
+    return builder
+
+
+def crane(catalog: Catalog) -> ModelBuilder:
+    """E402: a heavy jib on a mast, held by a single stud."""
+    builder = ModelBuilder("crane", catalog=catalog)
+    builder.place("3867", at=(0, 0, 0), color="Dark Bluish Gray", id="base")
+    for level in range(4):
+        at = (2, 6, 0.5 + 3 * level)
+        builder.place("3003", at=at, color="Yellow", id=f"mast{level}")
+    for layer in range(6):
+        at = (3, 7, 12.5 + 3 * layer)
+        builder.place("3006", at=at, rotation="R90", color="White", id=f"jib{layer}")
+    return builder
+
+
+# --------------------------------------------------------------------------------------
 # Voxels
 
 
@@ -473,6 +502,23 @@ FIGURES: Final = (
     Figure("highlight", EXAMPLES / "cottage.py", highlight=("@roof",)),
     Figure("clip", EXAMPLES / "cottage.py", view=View.PERSPECTIVE, clips=("y>4",)),
     Figure("front", EXAMPLES / "cottage.py", view=View.FRONT, size=(1200, 900)),
+    # Stability
+    Figure(
+        "tipping",
+        tipping,
+        view=View.FRONT,
+        size=(1000, 800),
+        check=True,
+        profile="physical",
+    ),
+    Figure(
+        "crane",
+        crane,
+        view=View.FRONT,
+        size=(1000, 900),
+        check=True,
+        profile="physical",
+    ),
     # Voxels
     Figure(
         "voxels", voxelized, view=View.PERSPECTIVE, size=(1200, 900), buildable=False
@@ -494,6 +540,7 @@ FIGURES: Final = (
     card("card-catalog", converted, imported=True),
     card("card-exports", inventory),
     card("card-instructions", EXAMPLES / "cottage.py", step=17),
+    card("card-stability", crane, check=True, profile="physical"),
     *(
         Figure(
             f"gallery-{name}", EXAMPLES / script, view=view, size=(1200, 900), bare=True
@@ -570,7 +617,11 @@ async def render(
     catalog = load_catalog(IMPORTED_CATALOG) if figure.imported else default_catalog()
     model, provenance = await model_of(figure, catalog, settings)
     report = check_model(
-        model, provenance=provenance, catalog=catalog, settings=settings
+        model,
+        profile=figure.profile,
+        provenance=provenance,
+        catalog=catalog,
+        settings=settings,
     )
     if report.errors and figure.buildable and not figure.check:
         print(

@@ -26,7 +26,7 @@ Each build places every part in exact geometry, reports each error with the scri
 
 -   📘 **[Guide](guide/index.md)**
 
-    One page per concept: coordinates, build scripts, parts, checks, images, voxels and the catalog.
+    One page per concept: coordinates, build scripts, parts, checks, stability, images, voxels and the catalog.
 
 -   🤖 **[Agents](agents/index.md)**
 

@@ -20,6 +20,7 @@ nav = [
     { "Build scripts" = "guide/scripts.md" },
     { "Parts and colors" = "guide/parts.md" },
     { "Checks" = "guide/checks.md" },
+    { "Stability" = "guide/stability.md" },
     { "Images" = "guide/images.md" },
     { "Exports" = "guide/exports.md" },
     { "Instructions" = "guide/instructions.md" },

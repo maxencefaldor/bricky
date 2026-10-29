@@ -39,14 +39,15 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
             script lines; see :meth:`bricky.ModelBuilder.provenance`.
         catalog: Catalog to resolve parts and colors against;
             :func:`bricky.default_catalog` by default.
-        settings: Settings to read profiles from; read from the environment and
-            ``pyproject.toml`` by default.
+        settings: Settings to read profiles and passes' options from; read from the
+            environment and ``pyproject.toml`` by default.
 
     Raises:
         BrickyError: If the profile is unknown, or ``passes`` names a pass that is not
             installed.
     """
-    profile_name, names = (settings or Settings()).resolve_passes(profile, passes)
+    settings = settings or Settings()
+    profile_name, names = settings.resolve_passes(profile, passes)
     available = installed_passes()
     if passes is not None and (
         unknown := [name for name in names if name not in available]
@@ -56,7 +57,7 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
             f"installed passes: {', '.join(available)}"
         )
         raise BrickyError(message)
-    context = Context(model, catalog or default_catalog())
+    context = Context(model, catalog or default_catalog(), settings)
     diagnostics, missing = run_passes(context, names, available)
     diagnostics.sort(key=Diagnostic.sort_key)
     shown = diagnostics if max_diagnostics is None else diagnostics[:max_diagnostics]

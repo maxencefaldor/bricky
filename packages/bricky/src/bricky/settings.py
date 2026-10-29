@@ -25,7 +25,13 @@ from bricky.errors import BrickyError
 DIGITAL: Final = ("schema", "collision", "connectivity")
 """Passes every model needs, whether or not anyone builds it for real."""
 
-DEFAULT_PROFILES: Final[dict[str, tuple[str, ...]]] = {"digital": DIGITAL}
+PHYSICAL: Final = (*DIGITAL, "stability")
+"""Passes for models that someone builds for real: the digital ones, and stability."""
+
+DEFAULT_PROFILES: Final[dict[str, tuple[str, ...]]] = {
+    "digital": DIGITAL,
+    "physical": PHYSICAL,
+}
 """Built-in profiles by name; settings can add profiles that name installed passes."""
 
 
@@ -66,6 +72,30 @@ class Settings(BaseSettings):
         description="Catalog file to use. When unset, bricky uses the catalog that "
         "`bricky catalog import` wrote to its data folder, or its sample catalog "
         "when there is none.",
+    )
+    clutch: float = Field(
+        default=2.94,
+        gt=0,
+        description="Newtons that pull one stud out of its anti-stud: three contact "
+        "points of 0.98 N, as StableLego measured.",
+    )
+    friction: float = Field(
+        default=0.2,
+        ge=0,
+        description="Coefficient of friction between faces that press together, "
+        "a cautious value for ABS.",
+    )
+    density: float = Field(
+        default=0.54,
+        gt=0,
+        description="Grams per cubic centimeter of an element's body, hollows "
+        "included; 0.54 fits the bricks StableLego weighed.",
+    )
+    safety_factor: float = Field(
+        default=2.0,
+        ge=1,
+        description="Times a stud's clutch must exceed what it holds before the "
+        "stability pass stops warning.",
     )
     profiles: dict[str, tuple[str, ...]] = Field(
         default_factory=lambda: dict(DEFAULT_PROFILES),

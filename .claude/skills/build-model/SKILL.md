@@ -82,6 +82,9 @@ def build() -> ModelBuilder:
     - `--html` to write a viewer people can orbit and inspect in a browser.
 - When the model is done, `uv run bricky export models/<name>.bricky.json` writes its parts as a BrickLink Wanted List, `models/<name>.wanted.xml`, to buy them on BrickLink.
 - `uv run bricky instructions models/<name>.bricky.json` writes `models/<name>.instructions.html`, a page that walks people through building the model step by step.
+- For a model someone will build for real, build with `--profile physical`, after `uv add "bricky[stability]"` installs its solvers.
+  The profile adds the stability pass: E401 names groups that tip or fall, however firmly their studs grip.
+  E402 names studs that need more than their clutch to hold the model, and W403 studs that need more than half of it.
 
 ## Building well
 
@@ -89,5 +92,8 @@ The advice below is yours to weigh; bricky only reports facts.
 
 - Stagger joints between courses, like a brick wall, so every brick bridges the ones below it.
 - Overhanging parts must reach back over something that holds them: E301 reports anything that is not connected to the ground through studs.
+- A long or heavy overhang needs many studs far from the edge it would rotate about.
+  Studs in one line, or a single stud, hold little weight at a distance: E402 and W403 name them.
+  Interleave plates across the joint so that more studs share the load.
 - Compare the images with the subject: proportions, silhouette from each side, colors.
   A model with no errors can still look wrong.

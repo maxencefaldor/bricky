@@ -9,7 +9,7 @@ bricky-mcp = { workspace = true }
 # uv.lock pins every version; `uv lock --upgrade` moves them all to the newest releases.
 [dependency-groups]
 dev = [
-  "bricky",
+  "bricky[stability]",
   "bricky-benchmark",
   "bricky-mcp",
   "hypothesis",
@@ -63,6 +63,7 @@ docstring-code-format = true
 
 [tool.ty.environment]
 python-version = "3.12" # the oldest Python bricky supports
+extra-paths = ["typings"]
 
 [tool.ty.rules]
 all = "error"

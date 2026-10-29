@@ -16,15 +16,22 @@ from bricky.analysis.voxels import Voxel, VoxelKey, world_voxels
 from bricky.analysis.world import World, build_world
 from bricky.catalog import Catalog
 from bricky.model import Model
+from bricky.settings import Settings
 
 
 class Context:
     """One model under check, with analyses all passes share, computed on first use."""
 
-    def __init__(self, model: Model, catalog: Catalog) -> None:
-        """Hold a model and its catalog; derived data comes on first use."""
+    def __init__(
+        self, model: Model, catalog: Catalog, settings: Settings | None = None
+    ) -> None:
+        """Hold a model, its catalog and settings; derived data comes on first use.
+
+        Settings are read from the environment and ``pyproject.toml`` by default.
+        """
         self.model = model
         self.catalog = catalog
+        self.settings = settings or Settings()
 
     @cached_property
     def world(self) -> World:

@@ -30,6 +30,10 @@ dependencies = [
   "pydantic-settings>=2.15",
 ]
 
+[project.optional-dependencies]
+# The stability pass solves linear programs; its solvers stay out of every other command.
+stability = ["clarabel>=0.11.1", "highspy>=1.15.1", "scipy>=1.18"]
+
 [project.urls]
 Homepage = "https://maxencefaldor.github.io/bricky/"
 Documentation = "https://maxencefaldor.github.io/bricky/"
@@ -44,6 +48,7 @@ bricky = "bricky.cli:main"
 schema = "bricky.passes.schema:SchemaPass"
 collision = "bricky.passes.collision:CollisionPass"
 connectivity = "bricky.passes.connectivity:ConnectivityPass"
+stability = "bricky.passes.stability:StabilityPass"
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14"]

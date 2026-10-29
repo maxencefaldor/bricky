@@ -71,6 +71,7 @@ A check runs the passes of a profile, and each pass tests one kind of fact.
 Passes are pure functions of the model's shared analyses, registered under the `bricky.passes` entry-point group.
 Any package can therefore add a pass without changing bricky.
 A profile is a named list of passes, and settings can add profiles (see [Configuration](../reference/configuration.md)).
+The profile `digital` runs by default, and `physical` adds the [stability](stability.md) pass for models that someone builds for real.
 The option `--profile` runs a profile, and `--passes collision` runs one pass alone.
 A pass named in `--passes` must be installed, or the command fails.
 The command `bricky passes` lists the installed passes and profiles:
@@ -79,8 +80,10 @@ The command `bricky passes` lists the installed passes and profiles:
 collision     E201, E202              Parts sharing space, and studs blocked by parts with no anti-stud.
 connectivity  E301                    Groups of parts with no connected path to the ground.
 schema        E101, E102, E103, W104  Unknown parts and colors, parts below the ground plane, and colors a part never came in.
+stability     E401, E402, W403        Groups that fall under their weight, and studs that grip near their limit.
 
 digital (default): schema, collision, connectivity
+physical: schema, collision, connectivity, stability
 ```
 
 ## Changes between builds

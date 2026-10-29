@@ -28,6 +28,12 @@ The guide covers one concept per page, in the order a build meets them.
 
     How to read a report, which passes run, and what changed since the last build.
 
+-   ![A crane whose jib stands on one stud of its mast, tinted red](../images/card-stability.png)
+
+    **[Stability](stability.md)**
+
+    Whether a model stands under its own weight, and how hard its studs grip.
+
 -   ![The cottage with its roof highlighted](../images/card-images.png)
 
     **[Images](images.md)**

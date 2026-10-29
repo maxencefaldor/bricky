@@ -115,12 +115,12 @@ def test_reports_cap_diagnostics_but_count_everything() -> None:
 
 
 def test_profiles_report_passes_that_are_not_installed() -> None:
-    settings = Settings(profiles={"stable": (*DIGITAL, "stability")})
+    settings = Settings(profiles={"lasting": (*DIGITAL, "durability")})
     report = check_model(
-        stack(("3001", (0, 0, 0), "R0")), profile="stable", settings=settings
+        stack(("3001", (0, 0, 0), "R0")), profile="lasting", settings=settings
     )
     assert report.passes == DIGITAL
-    assert report.missing == ("stability",)
+    assert report.missing == ("durability",)
 
 
 def test_passes_named_explicitly_must_be_installed() -> None:
@@ -135,7 +135,7 @@ def test_unknown_profiles_are_rejected() -> None:
 
 def test_configured_profiles_extend_the_defaults() -> None:
     settings = Settings(profiles={"quick": ("schema",)})
-    assert set(settings.profiles) == {"digital", "quick"}
+    assert set(settings.profiles) == {"digital", "physical", "quick"}
     report = check_model(
         stack(("3001", (0, 0, 0), "R0")), profile="quick", settings=settings
     )
