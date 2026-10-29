@@ -282,7 +282,8 @@ def make_workspace(
             "[project]",
             'name = "workspace"',
             'version = "0"',
-            'requires-python = ">=3.15"',
+            # The workspace runs the Python that runs the benchmark, so its pins hold.
+            f'requires-python = ">={sys.version_info.major}.{sys.version_info.minor}"',
             "dependencies = [",
             *(f'  "{dependency}",' for dependency in dependencies),
             "]",
