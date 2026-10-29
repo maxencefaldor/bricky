@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import sys
 from dataclasses import replace
 
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from bricky import BrickyError, ModelBuilder, Settings, check_model, default_catalog
+from bricky import Level, ModelBuilder, Settings, check_model, default_catalog
 from bricky.analysis import Context
 from bricky.analysis.stability import (
     GRAVITY,
@@ -20,6 +19,7 @@ from bricky.analysis.stability import (
     analyze_stability,
 )
 from bricky.geometry import Box, Vector
+from bricky.passes.stability import StabilityPass
 
 MATERIAL = Material(clutch=2.94, friction=0.2, density=0.54)
 
@@ -302,11 +302,17 @@ def test_studs_of_groups_that_fall_need_no_clutch() -> None:
     ]
 
 
-def codes(builder: ModelBuilder, clutch: float = 2.94) -> list[tuple[str, str]]:
+STABILITY: dict[str, Level] = {"all": Level.IGNORE} | {
+    rule.name: rule.default_level for rule in StabilityPass.rules
+}
+"""Levels that check the stability rules alone, each at its default level."""
+
+
+def found(builder: ModelBuilder, clutch: float = 2.94) -> list[tuple[str, str]]:
     report = check_model(
-        builder.build(), passes=["stability"], settings=Settings(clutch=clutch)
+        builder.build(), rules=STABILITY, settings=Settings(clutch=clutch)
     )
-    return [(d.code, d.message) for d in report.diagnostics]
+    return [(d.rule, d.message) for d in report.diagnostics]
 
 
 def test_the_stability_pass_reports_groups_that_fall() -> None:
@@ -317,14 +323,14 @@ def test_the_stability_pass_reports_groups_that_fall() -> None:
         "2 elements fall: no forces at their faces and studs balance their weight, "
         "however firmly the studs grip"
     )
-    assert codes(builder) == [("E401", message)]
+    assert found(builder) == [("unbalanced-group", message)]
 
 
 def test_the_stability_pass_reports_overloaded_and_strained_studs() -> None:
     message = "4 studs joining 2 elements need {}% of their clutch to hold the model"
-    assert codes(cantilever(1), clutch=0.0075) == [
-        ("E402", message.format(116) + " together"),
-        ("W403", message.format(73) + " together"),
+    assert found(cantilever(1), clutch=0.0075) == [
+        ("overloaded-studs", message.format(116) + " together"),
+        ("strained-studs", message.format(73) + " together"),
     ]
 
 
@@ -335,21 +341,32 @@ def test_the_stability_pass_passes_interlocking_bricks() -> None:
             builder.place(
                 "3001", at=(4 * k + 2 * (course % 2), 0, 3 * course), color="Red"
             )
-    assert codes(builder) == []
+    assert found(builder) == []
 
 
-def test_the_physical_profile_checks_stability() -> None:
-    report = check_model(
-        cantilever(1).build(), profile="physical", settings=Settings(clutch=0.0075)
-    )
-    assert report.passes == ("schema", "collision", "connectivity", "stability")
-    assert [d.code for d in report.diagnostics] == ["E402", "W403"]
+def test_checks_report_stability_as_warnings_by_default() -> None:
+    report = check_model(cantilever(1).build(), settings=Settings(clutch=0.0075))
+    assert [d.rule for d in report.diagnostics] == [
+        "overloaded-studs",
+        "strained-studs",
+    ]
+    assert (report.errors, report.warnings, report.ok) == (0, 2, True)
 
 
-def test_the_stability_pass_names_the_extra_its_solvers_come_with(
+def test_settings_can_make_stability_rules_errors() -> None:
+    settings = Settings(clutch=0.0075, rules={"overloaded-studs": Level.ERROR})
+    report = check_model(cantilever(1).build(), settings=settings)
+    assert (report.errors, report.warnings, report.ok) == (1, 1, False)
+    assert report.is_error(report.diagnostics[0])
+
+
+def test_checks_skip_the_stability_pass_when_its_rules_are_ignored(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delitem(sys.modules, "bricky.analysis.stability")
-    monkeypatch.setitem(sys.modules, "highspy", None)
-    with pytest.raises(BrickyError, match=r"needs highspy: .* bricky\[stability\]"):
-        codes(cantilever(1))
+    def fail(*_: object) -> None:
+        raise AssertionError
+
+    monkeypatch.setattr(StabilityPass, "run", fail)
+    ignored = dict.fromkeys(STABILITY.keys() - {"all"}, Level.IGNORE)
+    report = check_model(cantilever(1).build(), rules=ignored)
+    assert report.diagnostics == ()

@@ -65,8 +65,9 @@ class Score(BaseModel):
     elements: int = 0
     errors: int = 0
     warnings: int = 0
-    codes: dict[str, int] = Field(
-        default_factory=dict, description="Diagnostics by code, such as {'E301': 2}."
+    rules: dict[str, int] = Field(
+        default_factory=dict,
+        description="Diagnostics by rule, such as {'floating-group': 2}.",
     )
     fidelity: Fidelity | None = Field(
         default=None,
@@ -76,13 +77,13 @@ class Score(BaseModel):
 
 def facts(report: Report, elements: int) -> Score:
     """Score a model that built, from its check report."""
-    codes = Counter(diagnostic.code for diagnostic in report.diagnostics)
+    rules = Counter(diagnostic.rule for diagnostic in report.diagnostics)
     return Score(
         built=True,
         elements=elements,
         errors=report.errors,
         warnings=report.warnings,
-        codes=dict(sorted(codes.items())),
+        rules=dict(sorted(rules.items())),
     )
 
 

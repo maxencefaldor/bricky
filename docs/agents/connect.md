@@ -67,8 +67,7 @@ Each tool matches one command and takes the same arguments:
 | `search_parts` | Searches the catalog's parts |
 | `show_part` | Describes one part, and can render it |
 | `search_colors` | Searches the catalog's colors |
-| `list_passes` | Lists the installed passes, their codes and the profiles that run them |
-| `explain_code` | Gives the exact rule behind a diagnostic code |
+| `explain_rule` | Gives the exact condition behind a rule, its level and its pass |
 
 Each tool answers twice: with the text the command line prints, for the agent, and with the result as structured content, for programs.
 The tools `build_model` and `render_model` also return their images, so the agent sees the model without another call.

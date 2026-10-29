@@ -8,7 +8,8 @@ from collections.abc import Iterator
 from typing import ClassVar
 
 from bricky.analysis import Context
-from bricky.diagnostics import Code, Diagnostic, Region
+from bricky.diagnostics import Diagnostic, Region, Rule
+from bricky.settings import Level
 
 
 class SchemaPass:
@@ -19,36 +20,36 @@ class SchemaPass:
         "Unknown parts and colors, parts below the ground plane, and colors a part "
         "never came in."
     )
-    codes: ClassVar[tuple[Code, ...]] = (
-        Code(
-            code="E101",
-            title="Unknown part",
-            rule=(
+    rules: ClassVar[tuple[Rule, ...]] = (
+        Rule(
+            name="unknown-part",
+            default_level=Level.ERROR,
+            condition=(
                 "The element's part id is not in the catalog, or the catalog lists the "
                 "part without a shape. The element then has no geometry, and no other "
                 "pass sees it. The command `bricky parts` searches the catalog."
             ),
         ),
-        Code(
-            code="E102",
-            title="Unknown color",
-            rule=(
+        Rule(
+            name="unknown-color",
+            default_level=Level.ERROR,
+            condition=(
                 "The element's color id is not in the catalog. The command "
                 "`bricky colors` lists the catalog's colors."
             ),
         ),
-        Code(
-            code="E103",
-            title="Below the ground",
-            rule=(
+        Rule(
+            name="below-ground",
+            default_level=Level.ERROR,
+            condition=(
                 "The element's body reaches below the ground plane, z = 0. The ground "
                 "plane is the table the model stands on."
             ),
         ),
-        Code(
-            code="W104",
-            title="Color never made",
-            rule=(
+        Rule(
+            name="color-never-made",
+            default_level=Level.WARN,
+            condition=(
                 "The catalog lists the colors a part has come in, and the element's "
                 "color is not among them: the part and the color both exist, but never "
                 "together. The pass reports each part and color once, with every "
@@ -68,8 +69,7 @@ class SchemaPass:
                 else f"({entry.name}), which has no shape in the catalog"
             )
             yield Diagnostic(
-                code="E101",
-                pass_name=self.name,
+                rule="unknown-part",
                 message=f"{unknown.uid} uses part {unknown.part!r} {what}",
                 elements=(unknown.uid,),
             )
@@ -77,8 +77,7 @@ class SchemaPass:
         for element in context.world.elements:
             if context.catalog.color(element.color) is None:
                 yield Diagnostic(
-                    code="E102",
-                    pass_name=self.name,
+                    rule="unknown-color",
                     message=(
                         f"{element.uid} uses color {element.color}, "
                         "which is not in the catalog"
@@ -87,8 +86,7 @@ class SchemaPass:
                 )
             if element.bounds.min.z < 0:
                 yield Diagnostic(
-                    code="E103",
-                    pass_name=self.name,
+                    rule="below-ground",
                     message=f"{element.uid} reaches below the ground plane",
                     elements=(element.uid,),
                     region=Region.of(element.bounds),
@@ -111,8 +109,7 @@ class SchemaPass:
                 else f"{len(uids)} elements use it"
             )
             yield Diagnostic(
-                code="W104",
-                pass_name=self.name,
+                rule="color-never-made",
                 message=f"part {part_id} never came in {name}; {count}",
                 elements=tuple(uids),
             )

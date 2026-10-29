@@ -56,7 +56,7 @@ builder.place("3022", at=(4, 2, 9), color="Tan", id="floating")  # touches nothi
 The report reads like compiler output, and every element it names points back at the script:
 
 ```text
-error[E201]: base and overlap occupy the same space
+error[overlap]: base and overlap occupy the same space
   --> x 1..2  y 0..4  z 0..3
    = base: Brick 2 x 4 (3001), Red, examples/broken.py:15 in build()
    = overlap: Brick 2 x 4 (3001), Blue, examples/broken.py:16 in build()

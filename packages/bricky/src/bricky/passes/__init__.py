@@ -4,17 +4,21 @@
 from __future__ import annotations
 
 from bricky.passes.registry import (
+    BUILT_IN,
     ENTRY_POINT_GROUP,
     Pass,
-    installed_codes,
     installed_passes,
+    installed_rules,
+    resolve_levels,
     run_passes,
 )
 
 __all__ = [
+    "BUILT_IN",
     "ENTRY_POINT_GROUP",
     "Pass",
-    "installed_codes",
     "installed_passes",
+    "installed_rules",
+    "resolve_levels",
     "run_passes",
 ]

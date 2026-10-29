@@ -53,7 +53,7 @@ def test_check_states_facts_and_exits_1(
 ) -> None:
     assert run("check", str(floating)) == 1
     out = capsys.readouterr().out
-    assert "error[E301]: 1 element floats" in out
+    assert "error[floating-group]: 1 element floats" in out
     assert "= lonely: Brick 2 x 4 (3001), Red" in out
     assert "help" not in out
 
@@ -62,7 +62,8 @@ def test_check_writes_json(floating: Path, capsys: pytest.CaptureFixture[str]) -
     assert run("check", str(floating), "--output-format", "json") == 1
     report = json.loads(capsys.readouterr().out)
     assert report["ok"] is False
-    assert report["diagnostics"][0]["severity"] == "error"
+    assert report["diagnostics"][0]["rule"] == "floating-group"
+    assert report["rules"]["floating-group"] == "error"
     assert report["elements"]["lonely"]["part_name"] == "Brick 2 x 4"
 
 
@@ -77,7 +78,7 @@ def test_build_saves_checks_and_names_script_lines(
     assert (tmp_path / "tower.bricky.json").is_file()
     assert (tmp_path / "tower.bricky.map.json").is_file()
     out = capsys.readouterr().out
-    assert "error[E301]" in out
+    assert "error[floating-group]" in out
     assert "tower.py:8 in build()" in out
     assert "by source line:" in out
 
@@ -386,23 +387,56 @@ def test_colors_search(capsys: pytest.CaptureFixture[str]) -> None:
     assert "2 colors" in out
 
 
-def test_passes_lists_profiles_and_codes(capsys: pytest.CaptureFixture[str]) -> None:
-    assert run("passes") == 0
+def test_check_options_set_rule_levels(
+    floating: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert run("check", str(floating), "--warn", "floating-group") == 0
+    assert "warning[floating-group]: 1 element floats" in capsys.readouterr().out
+    assert run("check", str(floating), "--ignore", "all") == 0
     out = capsys.readouterr().out
-    assert "digital (default): schema, collision, connectivity" in out
-    assert "E201, E202" in out
+    assert "against 0 rules" in out
+    assert "0 errors, 0 warnings" in out
 
 
-def test_explain_gives_the_exact_rule(capsys: pytest.CaptureFixture[str]) -> None:
-    assert run("explain", "e301") == 0
+def test_check_options_take_a_rule_once(
+    floating: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    arguments = ("--error", "overlap", "--ignore", "overlap")
+    assert run("check", str(floating), *arguments) == 2
+    assert "give 'overlap' two levels" in capsys.readouterr().err
+
+
+def test_check_rejects_unknown_rules(
+    floating: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert run("check", str(floating), "--ignore", "colision") == 2
+    assert "no installed pass checks a rule named 'colision'" in (
+        capsys.readouterr().err
+    )
+
+
+def test_explain_gives_the_exact_condition(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert run("explain", "Floating-Group") == 0
     out = capsys.readouterr().out
-    assert out.startswith("E301 Floating group (error, pass connectivity)")
+    assert out.startswith("floating-group (error, pass connectivity)")
     assert "held only from above" in out
 
 
-def test_explain_rejects_unknown_codes(capsys: pytest.CaptureFixture[str]) -> None:
-    assert run("explain", "E999") == 2
-    assert "no installed pass reports E999" in capsys.readouterr().err
+def test_explain_lists_every_rule_at_its_level(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("BRICKY_RULES", '{"strained-studs": "ignore"}')
+    assert run("explain") == 0
+    out = capsys.readouterr().out
+    assert "unknown-part (error, pass schema)" in out
+    assert "strained-studs (ignore, by default warn, pass stability)" in out
+
+
+def test_explain_rejects_unknown_rules(capsys: pytest.CaptureFixture[str]) -> None:
+    assert run("explain", "lunar") == 2
+    assert "no installed pass checks a rule named 'lunar'" in capsys.readouterr().err
 
 
 def test_json_schema(capsys: pytest.CaptureFixture[str]) -> None:

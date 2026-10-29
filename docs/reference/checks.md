@@ -1,11 +1,13 @@
 # Checks
 
-A check runs the passes of a profile over a model and returns a report.
+A check runs the passes over a model, reports each rule at its level and returns a report.
 
 ::: bricky.check.check_model
 
+::: bricky.settings.Level
+
 ::: bricky.diagnostics
     options:
-      members: [Report, Diagnostic, Region, Severity, ElementInfo, Code, format_report]
+      members: [Report, Diagnostic, Rule, Region, ElementInfo, format_report]
 
 ::: bricky.passes.registry

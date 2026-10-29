@@ -9,8 +9,9 @@ from typing import ClassVar
 
 from bricky.analysis import Context
 from bricky.catalog import Connector, ConnectorKind
-from bricky.diagnostics import Code, Diagnostic, Region
+from bricky.diagnostics import Diagnostic, Region, Rule
 from bricky.geometry import Box, Solid, Vector, overlaps
+from bricky.settings import Level
 from bricky.units import STUD_DIAMETER, STUD_HEIGHT
 
 _STUD_RADIUS = STUD_DIAMETER // 2
@@ -42,20 +43,21 @@ class CollisionPass:
     summary: ClassVar[str] = (
         "Parts sharing space, and studs blocked by parts with no anti-stud."
     )
-    codes: ClassVar[tuple[Code, ...]] = (
-        Code(
-            code="E201",
-            title="Overlap",
-            rule=(
+    rules: ClassVar[tuple[Rule, ...]] = (
+        Rule(
+            name="overlap",
+            default_level=Level.ERROR,
+            condition=(
                 "The bodies of two elements share positive volume. Faces that only "
-                "touch do not count, and studs belong to no body (see E202). The pass "
-                "reports each overlapping pair once, with the box the two share."
+                "touch do not count, and studs belong to no body (see blocked-stud). "
+                "The pass reports each overlapping pair once, with the box the two "
+                "share."
             ),
         ),
-        Code(
-            code="E202",
-            title="Blocked stud",
-            rule=(
+        Rule(
+            name="blocked-stud",
+            default_level=Level.ERROR,
+            condition=(
                 "A stud stands inside another element's body where that element has "
                 "no anti-stud facing it at the same position, so the two elements "
                 "cannot sit where they are. A stud is 1.6 mm tall and 4.8 mm wide. The "
@@ -80,8 +82,7 @@ class CollisionPass:
                 shared = _shared(element.solids, other.solids)
                 if shared is not None:
                     yield Diagnostic(
-                        code="E201",
-                        pass_name=self.name,
+                        rule="overlap",
                         message=f"{element.uid} and {other.uid} occupy the same space",
                         elements=(element.uid, other.uid),
                         region=Region.of(shared),
@@ -113,8 +114,7 @@ class CollisionPass:
             studs = "1 stud" if count == 1 else f"{count} studs"
             push = "pushes" if count == 1 else "push"
             yield Diagnostic(
-                code="E202",
-                pass_name=self.name,
+                rule="blocked-stud",
                 message=(
                     f"{studs} of {element.uid} {push} into {other.uid}, "
                     "which has no anti-stud there"

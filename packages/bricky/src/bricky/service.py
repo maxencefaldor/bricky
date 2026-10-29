@@ -44,7 +44,7 @@ from bricky.catalog.bricklink import DOWNLOAD_PAGE, read_downloads
 from bricky.catalog.importing import Coverage, Progress, import_catalog
 from bricky.catalog.ldraw import Library
 from bricky.check import check_model
-from bricky.diagnostics import Code, Report, format_report
+from bricky.diagnostics import Report, Rule, format_report
 from bricky.errors import BrickyError
 from bricky.exports import FORMATS, Format, model_lots
 from bricky.files import (
@@ -59,17 +59,25 @@ from bricky.files import (
 from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Solid
 from bricky.instructions import ELEMENTS_PER_STEP, build_instructions
 from bricky.model import Element, Model
-from bricky.passes import installed_codes, installed_passes
+from bricky.passes import installed_rules, resolve_levels
 from bricky.provenance import Provenance
 from bricky.render import Clip, Renderer, View, build_scene, downloads, write_html
 from bricky.runner import RunResult
-from bricky.settings import Settings
+from bricky.settings import Level, Settings
 from bricky.units import PLATE, STUD, to_plates, to_studs
 
-_PROFILE_HELP: Final = (
-    "Profile to run, such as 'digital'; defaults to the configured one."
+_ERROR_HELP: Final = (
+    "Rules to report as errors, such as 'overloaded-studs', or 'all' for every rule; "
+    "overrides the configured levels."
 )
-_PASSES_HELP: Final = "Pass names to run instead of a profile."
+_WARN_HELP: Final = (
+    "Rules to report as warnings, or 'all' for every rule; overrides the configured "
+    "levels."
+)
+_IGNORE_HELP: Final = (
+    "Rules to leave out, such as 'strained-studs', or 'all' for every rule; overrides "
+    "the configured levels."
+)
 _MAX_DIAGNOSTICS_HELP: Final = (
     "Maximum diagnostics to return; defaults to the configured cap."
 )
@@ -187,8 +195,9 @@ class CheckRequest(BaseModel):
     model: CliPositionalArg[Path] = Field(
         description="Path to a .bricky.json model file."
     )
-    profile: str | None = Field(default=None, description=_PROFILE_HELP)
-    passes: list[str] | None = Field(default=None, description=_PASSES_HELP)
+    error: list[str] = Field(default_factory=list, description=_ERROR_HELP)
+    warn: list[str] = Field(default_factory=list, description=_WARN_HELP)
+    ignore: list[str] = Field(default_factory=list, description=_IGNORE_HELP)
     max_diagnostics: int | None = Field(
         default=None, ge=1, description=_MAX_DIAGNOSTICS_HELP
     )
@@ -198,15 +207,15 @@ async def check(request: CheckRequest, session: Session) -> Report:
     """Check a model file, naming script lines when its source map is current.
 
     Raises:
-        BrickyError: If the file is missing or invalid, or the profile is unknown.
+        BrickyError: If the file is missing or invalid, or a rule is unknown or given
+            two levels.
     """
     model, provenance = await asyncio.to_thread(_load, request.model)
     return await asyncio.to_thread(
         _check,
         model,
         provenance=provenance,
-        profile=request.profile,
-        passes=request.passes,
+        rules=_levels(request.error, request.warn, request.ignore),
         max_diagnostics=request.max_diagnostics,
         session=session,
     )
@@ -237,8 +246,9 @@ class BuildRequest(BaseModel):
         default=True, description="Render the model after checking it."
     )
     views: list[View] = Field(default=[View.SHEET], description=_VIEWS_HELP)
-    profile: str | None = Field(default=None, description=_PROFILE_HELP)
-    passes: list[str] | None = Field(default=None, description=_PASSES_HELP)
+    error: list[str] = Field(default_factory=list, description=_ERROR_HELP)
+    warn: list[str] = Field(default_factory=list, description=_WARN_HELP)
+    ignore: list[str] = Field(default_factory=list, description=_IGNORE_HELP)
     max_diagnostics: int | None = Field(
         default=None, ge=1, description=_MAX_DIAGNOSTICS_HELP
     )
@@ -396,9 +406,11 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
     the report intact, and the result says why in ``render_error``.
 
     Raises:
-        BrickyError: If the script is missing, fails, times out or returns no model.
+        BrickyError: If the script is missing, fails, times out or returns no model, or
+            a rule is unknown or given two levels.
     """
     settings = session.settings
+    rules = _levels(request.error, request.warn, request.ignore)
     started = time.perf_counter()
     run = await run_script(request.script, settings)
     path = request.output or request.script.with_name(request.script.stem + SUFFIX)
@@ -423,8 +435,7 @@ async def build(request: BuildRequest, session: Session) -> BuildResult:
             _check,
             run.model,
             provenance=run.provenance,
-            profile=request.profile,
-            passes=request.passes,
+            rules=rules,
             max_diagnostics=request.max_diagnostics,
             session=session,
         )
@@ -709,8 +720,7 @@ class RenderResult(BaseModel):
         if self.report is not None:
             blocks.append(
                 f"marked {self.report.errors} errors and "
-                f"{self.report.warnings} warnings "
-                f"from profile {self.report.profile or 'explicit passes'}"
+                f"{self.report.warnings} warnings"
             )
         blocks.append(_describe_timings(self.seconds))
         return "\n\n".join(blocks)
@@ -733,8 +743,7 @@ async def render(request: RenderRequest, session: Session) -> RenderResult:
             _check,
             model,
             provenance=provenance,
-            profile=None,
-            passes=None,
+            rules={},
             max_diagnostics=None,
             session=session,
         )
@@ -1601,114 +1610,68 @@ async def catalog_verify(
 
 
 # --------------------------------------------------------------------------------------
-# passes and explain
-
-
-class PassesRequest(BaseModel):
-    """List the installed check passes and the profiles that run them."""
-
-
-class PassInfo(BaseModel):
-    """An installed pass."""
-
-    name: str
-    summary: str
-    codes: tuple[str, ...] = Field(description="Codes the pass can report.")
-
-
-class PassesResult(BaseModel):
-    """Installed passes and configured profiles."""
-
-    installed: tuple[PassInfo, ...]
-    profiles: dict[str, tuple[str, ...]] = Field(
-        description="Pass names run by each profile."
-    )
-    default_profile: str
-
-    def describe(self) -> str:
-        """Return the result as text."""
-        installed = {info.name for info in self.installed}
-        table = [
-            [info.name, ", ".join(info.codes), info.summary] for info in self.installed
-        ]
-        widths = [max((len(cells[i]) for cells in table), default=0) for i in range(2)]
-        rows = [_row(cells, widths) for cells in table]
-        rows.append("")
-        for profile, names in self.profiles.items():
-            marked = ", ".join(
-                name if name in installed else f"{name} (not installed)"
-                for name in names
-            )
-            default = " (default)" if profile == self.default_profile else ""
-            rows.append(f"{profile}{default}: {marked}")
-        return "\n".join(rows)
-
-
-async def passes(request: PassesRequest, session: Session) -> PassesResult:  # noqa: ARG001 - every command takes its request
-    """List the installed passes and the configured profiles."""
-    settings = session.settings
-    installed = await asyncio.to_thread(installed_passes)
-    return PassesResult(
-        installed=tuple(
-            PassInfo(
-                name=name,
-                summary=pass_type.summary,
-                codes=tuple(code.code for code in pass_type.codes),
-            )
-            for name, pass_type in installed.items()
-        ),
-        profiles=settings.profiles,
-        default_profile=settings.profile,
-    )
+# explain
 
 
 class ExplainRequest(BaseModel):
-    """Explain diagnostic codes: what each means and the exact rule its pass checks."""
+    """Explain rules: the exact condition each checks, its level and its pass."""
 
-    code: CliPositionalArg[str] = Field(
-        default="", description="A code such as 'E301'; every code when omitted."
+    rule: CliPositionalArg[str] = Field(
+        default="",
+        description="A rule such as 'floating-group'; every rule when omitted.",
     )
 
 
-class CodeInfo(Code):
-    """A diagnostic code and the pass that reports it."""
+class RuleInfo(Rule):
+    """A rule, the level the settings give it and the pass that checks it."""
 
-    pass_name: str = Field(description="Name of the pass that reports the code.")
+    level: Level = Field(description="The level the settings give the rule.")
+    pass_name: str = Field(description="Name of the pass that checks the rule.")
 
 
 class ExplainResult(BaseModel):
-    """Explanations of diagnostic codes."""
+    """Explanations of rules."""
 
-    codes: tuple[CodeInfo, ...]
+    rules: tuple[RuleInfo, ...]
 
     def describe(self) -> str:
         """Return the explanations as text."""
-        return "\n\n".join(
-            f"{info.code} {info.title} ({info.severity}, pass {info.pass_name})\n"
-            + _indent(info.rule)
-            for info in self.codes
-        )
+        blocks = []
+        for info in self.rules:
+            default = (
+                ""
+                if info.level is info.default_level
+                else f", by default {info.default_level}"
+            )
+            heading = f"{info.name} ({info.level}{default}, pass {info.pass_name})"
+            blocks.append(heading + "\n" + _indent(info.condition))
+        return "\n\n".join(blocks)
 
 
-async def explain(request: ExplainRequest, session: Session) -> ExplainResult:  # noqa: ARG001 - every command takes the session
-    """Explain one diagnostic code, or all of them.
+async def explain(request: ExplainRequest, session: Session) -> ExplainResult:
+    """Explain one rule, or all of them, at the levels the settings give them.
 
     Raises:
-        BrickyError: If no installed pass documents the code.
+        BrickyError: If no installed pass checks the rule.
     """
-    codes = await asyncio.to_thread(installed_codes)
-    wanted = request.code.strip().upper()
-    if wanted and wanted not in codes:
-        message = f"no installed pass reports {wanted}; known codes: {', '.join(codes)}"
+    rules = await asyncio.to_thread(installed_rules)
+    levels = await asyncio.to_thread(resolve_levels, session.settings.rules)
+    wanted = request.rule.strip().lower()
+    if wanted and wanted not in rules:
+        message = (
+            f"no installed pass checks a rule named {wanted!r}; "
+            f"known rules: {', '.join(rules)}"
+        )
         raise BrickyError(message)
-    chosen = [wanted] if wanted else list(codes)
+    chosen = [wanted] if wanted else list(rules)
     return ExplainResult(
-        codes=tuple(
-            CodeInfo(
-                pass_name=codes[code][0],
-                **codes[code][1].model_dump(exclude={"severity"}),
+        rules=tuple(
+            RuleInfo(
+                **rules[name][1].model_dump(),
+                level=levels[name],
+                pass_name=rules[name][0],
             )
-            for code in chosen
+            for name in chosen
         )
     )
 
@@ -1717,24 +1680,45 @@ async def explain(request: ExplainRequest, session: Session) -> ExplainResult:  
 # helpers
 
 
-def _check(  # noqa: PLR0913 - one argument per check option
+def _check(
     model: Model,
     *,
     provenance: Provenance | None,
-    profile: str | None,
-    passes: list[str] | None,
+    rules: dict[str, Level],
     max_diagnostics: int | None,
     session: Session,
 ) -> Report:
     return check_model(
         model,
-        profile=profile,
-        passes=passes,
+        rules=rules,
         max_diagnostics=max_diagnostics or session.settings.max_diagnostics,
         provenance=provenance,
         catalog=session.catalog,
         settings=session.settings,
     )
+
+
+def _levels(
+    error: Sequence[str], warn: Sequence[str], ignore: Sequence[str]
+) -> dict[str, Level]:
+    """Return the levels that a command's options give rules, as ty's options do.
+
+    Raises:
+        BrickyError: If the options give one rule, or ``all``, two levels.
+    """
+    levels: dict[str, Level] = {}
+    for level, names in (
+        (Level.ERROR, error),
+        (Level.WARN, warn),
+        (Level.IGNORE, ignore),
+    ):
+        for name in names:
+            if levels.setdefault(name, level) is not level:
+                message = (
+                    f"the options give {name!r} two levels: {levels[name]} and {level}"
+                )
+                raise BrickyError(message)
+    return levels
 
 
 def _load(path: Path) -> tuple[Model, Provenance | None]:

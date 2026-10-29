@@ -2,23 +2,25 @@
 
 The page shows how bricky checks that a model stands under its own weight and that its studs hold it together.
 
-## The physical profile
+## The stability rules
 
-The pass `stability` checks a model as a real build that stands on a table.
-A model that only renders needs no such check, so the pass runs in the profile `physical`, which adds it to the digital passes.
-The pass solves linear programs, with solvers that the extra `bricky[stability]` installs.
-The option `--profile physical` runs the profile once, and the setting `profile = "physical"` makes it the default (see [Configuration](../reference/configuration.md)):
-
-```sh
-uv add "bricky[stability]"                              # the solvers, once per project
-uv run bricky build models/crane.py --profile physical
-```
+Every check tests whether the model stands under its own weight, as a real build on a table.
+Three rules report what fails: `unbalanced-group`, `overloaded-studs` and `strained-studs`.
+They are warnings by default, since they rest on measured clutch, friction and density, which real elements only approach.
+A project that builds its models for real can make them errors (see [Checks](checks.md#configuring-levels)).
+Here a crane's jib stands on a single stud of its mast:
 
 ```text
-error[E402]: 1 stud joining 2 elements needs 107% of its clutch to hold the model together
+warning[overloaded-studs]: 1 stud joining 2 elements needs 107% of its clutch to hold the model together
   --> x 3.2..3.8  y 7.2..7.8  z 12.5..13
    = mast3: Brick 2 x 2 (3003), Yellow, models/crane.py:8 in build()
    = jib0: Brick 2 x 10 (3006), White, models/crane.py:10 in build()
+
+by source line:
+  models/crane.py:8 in build(): 1 diagnostic
+  models/crane.py:10 in build(): 1 diagnostic
+
+checked 11 elements against 10 rules: 0 errors, 1 warning
 ```
 
 ## Forces
@@ -37,7 +39,7 @@ Each element is a rigid body that weighs its volume times a density, and forces 
 A model stands when some set of these forces balances every element: the forces and torques on each sum to zero.
 Finding such forces is a linear program, the lower bound of limit analysis that studies of masonry and of LEGO® structures use ([Whiting et al., 2009](https://doi.org/10.1145/1618452.1618458); [Liu et al., 2024](https://arxiv.org/abs/2402.10711)).
 The interior point solver [Clarabel](https://clarabel.org) settles most models in a few seconds.
-When some stud grips hard, the simplex solver [HiGHS](https://highs.dev) starts from those forces and finds the exact loads, within a minute for thousands of elements.
+When some stud grips hard, the simplex solver [HiGHS](https://highs.dev) starts from those forces and finds the exact loads, in a minute or two for thousands of elements.
 The module `bricky.analysis.stability` gives the same analysis to Python: here a 1 x 8 plate reaches 6 studs past the brick it stands on.
 
 ```python
@@ -63,9 +65,9 @@ uids = [element.uid for element in context.world.elements]
 
 A group falls when no forces balance it, however firmly its studs grip: it tips over an edge, slides, or drops off what it rests on.
 Studs that grip without limit hold elements together rigidly, so the check moves whole groups of joined elements.
-The code E401 names each group that moves, such as a post and the arm on it that reaches past its foot:
+The rule `unbalanced-group` names each group that moves, such as a post and the arm on it that reaches past its foot:
 
-![A post with a long arm on top, both tinted red, labeled E401](../images/tipping.png)
+![A post with a long arm on top, both tinted orange, labeled unbalanced-group](../images/tipping.png)
 
 ## Studs that pull out
 
@@ -74,10 +76,10 @@ Many sets of forces hold a model still, so the check takes the one where the mos
 The studs that set that share form a site, one for each group of elements that would move together to pull them out.
 The search then repeats with those studs holding without limit.
 Each site therefore needs its share of clutch however much the sites before it hold.
-The code E402 names a site that needs more than its whole clutch, and W403 one that needs more than half, the default safety factor of 2.
+The rule `overloaded-studs` names a site that needs more than its whole clutch, and `strained-studs` one that needs more than half, the default safety factor of 2.
 A heavy jib on a single stud of a crane's mast needs 107% of that stud's clutch:
 
-![A crane whose jib stands on one stud of the mast, the two elements tinted red, labeled E402](../images/crane.png)
+![A crane whose jib stands on one stud of the mast, the two elements tinted orange, labeled overloaded-studs](../images/crane.png)
 
 ## Settings
 
@@ -88,13 +90,12 @@ Four settings describe the material, and their defaults come from measurements o
 | `clutch` | 2.94 N | Force that pulls one stud out: three contact points of 0.98 N each, as [StableLego](https://arxiv.org/abs/2402.10711) measured |
 | `friction` | 0.2 | Coefficient of friction between faces, a cautious value for ABS |
 | `density` | 0.54 g/cm³ | Mass of an element's body per volume, hollows included, fitted to the bricks StableLego weighed |
-| `safety_factor` | 2 | Times a stud's clutch must exceed its load before W403 stops warning |
+| `safety_factor` | 2 | Times a stud's clutch must exceed its load before `strained-studs` leaves it out |
 
 A project that builds with worn elements might lower the clutch, in its `pyproject.toml`:
 
 ```toml
 [tool.bricky]
-profile = "physical"
 clutch = 2.0
 ```
 

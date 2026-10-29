@@ -112,8 +112,8 @@ def test_an_arch_leaves_room_under_its_middle_but_not_its_edges() -> None:
         builder.place("3024", at=(0, y, 0), color="Red")  # Plate 1 x 1
         return check_model(builder.build())
 
-    assert not any(d.code == "E201" for d in plate_under_arch(1.5).diagnostics)
-    assert any(d.code == "E201" for d in plate_under_arch(1).diagnostics)
+    assert not any(d.rule == "overlap" for d in plate_under_arch(1.5).diagnostics)
+    assert any(d.rule == "overlap" for d in plate_under_arch(1).diagnostics)
 
 
 def test_new_parts_build_together_without_errors() -> None:

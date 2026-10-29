@@ -93,8 +93,8 @@ def test_scenes_mark_the_parts_diagnostics_name() -> None:
     )
     assert flags["float"] & Flag.ERROR
     assert not flags["top"] & Flag.ERROR
-    assert [label.text for label in scene.labels] == ["E301 float"]
-    assert [mark.text for mark in scene.marks] == ["E301"]
+    assert [label.text for label in scene.labels] == ["floating-group float"]
+    assert [mark.text for mark in scene.marks] == ["floating-group"]
     assert "check: 1 error, 0 warnings" in scene.title
 
 
@@ -191,7 +191,7 @@ def test_scenes_carry_what_the_viewer_shows() -> None:
     assert [part.id for part in scene.parts] == ["3001", "3022"]
     assert scene.summary.elements == 3
     assert scene.summary.errors == report.errors > 0
-    [floats] = [d for d in scene.diagnostics if d.code == "E301"]
+    [floats] = [d for d in scene.diagnostics if d.rule == "floating-group"]
     assert floats.kind == "error"
     assert [scene.uids[i] for i in floats.elements] == ["floating"]
     color, _, part, line = scene.elements[scene.uids.index("floating")]

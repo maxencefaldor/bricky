@@ -26,9 +26,9 @@ The guide covers one concept per page, in the order a build meets them.
 
     **[Checks](checks.md)**
 
-    How to read a report, which passes run, and what changed since the last build.
+    How to read a report, set the level of each rule, and see what changed since the last build.
 
--   ![A crane whose jib stands on one stud of its mast, tinted red](../images/card-stability.png)
+-   ![A crane whose jib stands on one stud of its mast, tinted orange](../images/card-stability.png)
 
     **[Stability](stability.md)**
 

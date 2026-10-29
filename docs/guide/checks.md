@@ -18,26 +18,26 @@ builder.place("3022", at=(4, 2, 9), color="Tan", id="floating")  # touches nothi
 ```
 
 ```text
-error[E201]: base and overlap occupy the same space
+error[overlap]: base and overlap occupy the same space
   --> x 1..2  y 0..4  z 0..3
    = base: Brick 2 x 4 (3001), Red, examples/broken.py:15 in build()
    = overlap: Brick 2 x 4 (3001), Blue, examples/broken.py:16 in build()
 
-error[E202]: 4 studs of base push into offset, which has no anti-stud there
+error[blocked-stud]: 4 studs of base push into offset, which has no anti-stud there
   --> x 0.2..1.8  y 0.2..1.8  z 3..3.5
    = base: Brick 2 x 4 (3001), Red, examples/broken.py:15 in build()
    = offset: Brick 2 x 2 (3003), White, examples/broken.py:17 in build()
 
-error[E202]: 4 studs of overlap push into offset, which has no anti-stud there
+error[blocked-stud]: 4 studs of overlap push into offset, which has no anti-stud there
   --> x 1.2..2.8  y 0.2..1.8  z 3..3.5
    = overlap: Brick 2 x 4 (3001), Blue, examples/broken.py:16 in build()
    = offset: Brick 2 x 2 (3003), White, examples/broken.py:17 in build()
 
-error[E301]: 1 element floats: no chain of stud connections leads to the ground
+error[floating-group]: 1 element floats: no chain of stud connections leads to the ground
   --> x 4..6  y 2..4  z 9..10
    = floating: Plate 2 x 2 (3022), Tan, examples/broken.py:18 in build()
 
-error[E301]: 1 element floats: no chain of stud connections leads to the ground
+error[floating-group]: 1 element floats: no chain of stud connections leads to the ground
   --> x 0.5..2.5  y 0..2  z 3..6
    = offset: Brick 2 x 2 (3003), White, examples/broken.py:17 in build()
 
@@ -47,43 +47,66 @@ by source line:
   examples/broken.py:16 in build(): 2 diagnostics
   examples/broken.py:18 in build(): 1 diagnostic
 
-checked 4 elements with profile digital (schema, collision, connectivity): 5 errors, 0 warnings
+checked 4 elements against 10 rules: 5 errors, 0 warnings
 ```
 
 Each diagnostic has three parts:
 
-1. **The fact**, after the code: `error[E201]: base and overlap occupy the same space`.
+1. **The fact**, after the rule it states: `error[overlap]: base and overlap occupy the same space`.
 1. **The region**, after `-->`: x and y in studs, z in plates, the units of `at`.
 1. **The elements**, after `=`: uid, part name and id, color, and the script line that placed the element.
 
 The summary `by source line` ranks script lines by how many diagnostics name their elements.
 The first line listed is the one to read first.
 The sheet tints elements an error names red and those a warning names orange.
-Each diagnostic also labels its first element with its code and marks its region with a dashed box:
+Each diagnostic also labels its first element with its rule and marks its region with a dashed box:
 
 ![The broken example: every element a diagnostic names is tinted red and labeled](../images/broken.png)
 
-The [diagnostic codes](../reference/codes.md) page gives the exact rule behind every code, and `bricky explain E202` prints it.
+The [rules](../reference/rules.md) page gives the exact condition behind every rule, and `bricky explain blocked-stud` prints it.
 
-## Passes and profiles
+## Rules and levels
 
-A check runs the passes of a profile, and each pass tests one kind of fact.
-Passes are pure functions of the model's shared analyses, registered under the `bricky.passes` entry-point group.
-Any package can therefore add a pass without changing bricky.
-A profile is a named list of passes, and settings can add profiles (see [Configuration](../reference/configuration.md)).
-The profile `digital` runs by default, and `physical` adds the [stability](stability.md) pass for models that someone builds for real.
-The option `--profile` runs a profile, and `--passes collision` runs one pass alone.
-A pass named in `--passes` must be installed, or the command fails.
-The command `bricky passes` lists the installed passes and profiles:
+Each diagnostic states the fact of one rule, and a check reports each rule at a level: `error`, `warn` or `ignore`.
+An error fails the check, a warning reports a fact without failing it, and `ignore` leaves the rule out.
+The rules that bricky checks exactly, such as `overlap`, are errors by default.
+The [stability](stability.md) rules are warnings by default: they rest on measured clutch, friction and density, which real elements only approach.
+The command `bricky explain` prints a rule's level, the pass that checks it and its exact condition:
 
 ```text
-collision     E201, E202              Parts sharing space, and studs blocked by parts with no anti-stud.
-connectivity  E301                    Groups of parts with no connected path to the ground.
-schema        E101, E102, E103, W104  Unknown parts and colors, parts below the ground plane, and colors a part never came in.
-stability     E401, E402, W403        Groups that fall under their weight, and studs that grip near their limit.
+floating-group (error, pass connectivity)
+  Two elements are connected when a stud of one sits in an anti-stud of the other at the same position, facing it. [...]
+```
 
-digital (default): schema, collision, connectivity
-physical: schema, collision, connectivity, stability
+## Configuring levels
+
+A project sets the level of each rule in its configuration, and a command can set levels for one run, as with ty.
+The table `[tool.bricky.rules]` of `pyproject.toml`, or `[rules]` in a `bricky.toml`, maps rule names to levels.
+The key `all` sets every rule, and a rule's own entry overrides it.
+The options `--error`, `--warn` and `--ignore` take rule names or `all`, and apply over the configuration: `--ignore strained-studs` leaves one rule out of one build.
+The variable `BRICKY_RULES` takes the same table as JSON (see [Configuration](../reference/configuration.md)).
+A project that builds its models for real might make two stability rules errors and leave one out:
+
+```toml title="pyproject.toml"
+[tool.bricky.rules]
+unbalanced-group = "error"
+overloaded-studs = "error"
+strained-studs = "ignore"
+```
+
+## Passes
+
+A pass is the analysis that checks some of the rules, and any package can add passes.
+Passes are pure functions of the model's shared analyses, registered under the `bricky.passes` entry-point group, each with the rules it checks.
+A check runs every pass that checks a rule not ignored, so ignoring the three stability rules skips the stability solvers.
+The four passes of bricky itself, `schema`, `collision`, `connectivity` and `stability`, register the same way:
+
+```toml title="packages/bricky/pyproject.toml"
+[project.entry-points."bricky.passes"]
+schema = "bricky.passes.schema:SchemaPass"
+collision = "bricky.passes.collision:CollisionPass"
+connectivity = "bricky.passes.connectivity:ConnectivityPass"
+stability = "bricky.passes.stability:StabilityPass"
 ```
 
 ## Changes between builds

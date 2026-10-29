@@ -9,7 +9,6 @@ bricky-mcp = { workspace = true }
 # uv.lock pins every version; `uv lock --upgrade` moves them all to the newest releases.
 [dependency-groups]
 dev = [
-  "bricky[stability]",
   "bricky-benchmark",
   "bricky-mcp",
   "hypothesis",

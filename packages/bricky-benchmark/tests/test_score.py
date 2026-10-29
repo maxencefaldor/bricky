@@ -66,7 +66,11 @@ def test_facts_count_diagnostics_by_code() -> None:
     model = builder.build()
     score = facts(check_model(model), model.element_count())
     assert score.built
-    assert (score.errors, score.elements, score.codes) == (2, 2, {"E301": 2})
+    assert (score.errors, score.elements, score.rules) == (
+        2,
+        2,
+        {"floating-group": 2},
+    )
 
 
 def test_real_models_compare_through_voxels() -> None:

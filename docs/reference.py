@@ -1,11 +1,12 @@
 # Copyright 2026 Maxence Faldor
-"""Write the reference pages that come from the code: commands, codes and settings.
+"""Write the reference pages that come from the code: commands, rules and settings.
 
 Run from the repository root: ``uv run python docs/reference.py``. Every option's flag,
 default and description come from the request models in :mod:`bricky.service`, the
-single definition the command line and the MCP server share. Every code's title and rule
-come from the installed passes, as ``bricky explain`` prints them, and every setting
-comes from :class:`bricky.Settings`. The pages therefore match the tools exactly.
+single definition the command line and the MCP server share. Every rule's level and
+condition come from the installed passes, as ``bricky explain`` prints them, and every
+setting comes from :class:`bricky.Settings`. The pages therefore match the tools
+exactly.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from pydantic_core import PydanticUndefined
 
 from bricky import Settings
 from bricky.cli import Bricky, CatalogCommand
-from bricky.passes.registry import installed_codes
+from bricky.passes.registry import installed_rules
 
 REFERENCE: Final = Path(__file__).resolve().parent / "reference"
 _URL: Final = re.compile(r"(https?://[^\s<>]+?)([.,;:]?(?:\s|$))")
@@ -116,51 +117,47 @@ def _subcommands(
     return found
 
 
-CODES_INTRODUCTION: Final = """\
-# Diagnostic codes
+RULES_INTRODUCTION: Final = """\
+# Rules
 
-Each code names one fact a pass can state about a model, and `bricky explain` prints \
-the same rule as this page.
+Each rule names one fact a check can state about a model, and `bricky explain` prints \
+the same condition as this page.
+A check reports each rule at its level: `error`, `warn` or `ignore`.
+The default levels below hold until settings or options set others (see \
+[Checks](../guide/checks.md#rules-and-levels)).
 """
 
-CODE_IMAGES: Final = {
-    "E103": ("A brick sunk two plates below the ground", "underground.png"),
-    "E201": ("Two bricks placed into the same space", "overlap.png"),
-    "E202": (
+RULE_IMAGES: Final = {
+    "below-ground": ("A brick sunk two plates below the ground", "underground.png"),
+    "overlap": ("Two bricks placed into the same space", "overlap.png"),
+    "blocked-stud": (
         "A plate half a stud off the grid: the studs below push into it",
         "blocked.png",
     ),
-    "E301": ("A brick held by nothing", "floating.png"),
+    "floating-group": ("A brick held by nothing", "floating.png"),
 }
-"""The image beside each code that has one, with its description."""
+"""The image beside each rule that has one, with its description."""
 
 _SENTENCE_END: Final = re.compile(r"(?<=[.:])\s+(?=[A-Z`(])")
 
 
-def _anchor(code: str, title: str) -> str:
-    """Return the anchor of a code's heading, such as ``e101-unknown-part``."""
-    return f"{code} {title}".lower().replace(" ", "-")
-
-
-def codes_page() -> str:
-    """Return the page of diagnostic codes: a table, then each code's rule."""
-    codes = sorted(installed_codes().items(), key=lambda item: int(item[0][1:]))
+def rules_page() -> str:
+    """Return the page of rules: a table, then each rule's condition."""
+    rules = installed_rules()
     lines = [
-        CODES_INTRODUCTION,
-        "| Code | Title | Pass |",
+        RULES_INTRODUCTION,
+        "| Rule | Default level | Pass |",
         "| --- | --- | --- |",
         *(
-            f"| [{code}](#{_anchor(code, info.title)}) | {info.title} | {pass_name} |"
-            for code, (pass_name, info) in codes
+            f"| [`{name}`](#{name}) | `{rule.default_level}` | {pass_name} |"
+            for name, (pass_name, rule) in rules.items()
         ),
-        "",
-        "Codes that start with E are errors, and codes that start with W are warnings.",
     ]
-    for code, (_, info) in codes:
-        lines.extend(("", f"## {code} {info.title}", ""))
-        lines.extend(_SENTENCE_END.split(info.rule))
-        if code in CODE_IMAGES:
-            description, image = CODE_IMAGES[code]
+    for name, (_, rule) in rules.items():
+        lines.extend(("", f"## {name}", ""))
+        lines.extend(_SENTENCE_END.split(rule.condition))
+        if name in RULE_IMAGES:
+            description, image = RULE_IMAGES[name]
             lines.extend(("", f"![{description}](../images/{image})"))
     return "\n".join(lines) + "\n"
 
@@ -170,8 +167,10 @@ SETTINGS_INTRODUCTION: Final = """\
 
 Settings tune every command.
 Each setting comes from the first source that sets it: a command's option, a \
-`BRICKY_*` environment variable, or the `[tool.bricky]` table of the `pyproject.toml` \
-in the working directory.
+`BRICKY_*` environment variable, or the configuration file in the working directory.
+That file is `bricky.toml` when there is one, and otherwise the `[tool.bricky]` table \
+of `pyproject.toml`.
+A `bricky.toml` replaces that table entirely, as `ty.toml` replaces `[tool.ty]`.
 
 | Setting | Environment variable | Default | Description |
 | --- | --- | --- | --- |
@@ -179,12 +178,26 @@ in the working directory.
 
 SETTINGS_EXAMPLE: Final = """\
 
-A project that builds large models might raise the time limit and add a quick profile:
+A project that builds large models might raise the time limit and make two stability \
+rules errors:
 
 ```toml title="pyproject.toml"
 [tool.bricky]
 build_timeout = 300
-profiles = { quick = ["schema", "collision"] }
+
+[tool.bricky.rules]
+unbalanced-group = "error"
+overloaded-studs = "error"
+```
+
+The same settings in `bricky.toml` drop the `tool.bricky` prefix:
+
+```toml title="bricky.toml"
+build_timeout = 300
+
+[rules]
+unbalanced-group = "error"
+overloaded-studs = "error"
 ```
 """
 
@@ -192,10 +205,8 @@ profiles = { quick = ["schema", "collision"] }
 def _setting_default(field: FieldInfo) -> str:
     """Return a setting's default as the page shows it."""
     value = field.get_default(call_default_factory=True, validated_data={})
-    if value is None:
+    if value is None or value == {}:
         return "unset"
-    if isinstance(value, dict):
-        return ", ".join(f"`{name}`" for name in value)
     return f"`{value}`"
 
 
@@ -217,7 +228,7 @@ def main() -> None:
     REFERENCE.mkdir(parents=True, exist_ok=True)
     pages = {
         REFERENCE / "cli.md": "\n".join(lines).rstrip() + "\n",
-        REFERENCE / "codes.md": codes_page(),
+        REFERENCE / "rules.md": rules_page(),
         REFERENCE / "configuration.md": settings_page(),
     }
     for page, text in pages.items():

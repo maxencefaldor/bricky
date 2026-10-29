@@ -8,8 +8,9 @@ from collections.abc import Iterator
 from typing import ClassVar
 
 from bricky.analysis import Context
-from bricky.diagnostics import Code, Diagnostic, Region
+from bricky.diagnostics import Diagnostic, Region, Rule
 from bricky.geometry import Box
+from bricky.settings import Level
 
 
 class ConnectivityPass:
@@ -17,11 +18,11 @@ class ConnectivityPass:
 
     name: ClassVar[str] = "connectivity"
     summary: ClassVar[str] = "Groups of parts with no connected path to the ground."
-    codes: ClassVar[tuple[Code, ...]] = (
-        Code(
-            code="E301",
-            title="Floating group",
-            rule=(
+    rules: ClassVar[tuple[Rule, ...]] = (
+        Rule(
+            name="floating-group",
+            default_level=Level.ERROR,
+            condition=(
                 "Two elements are connected when a stud of one sits in an anti-stud of "
                 "the other at the same position, facing it. A connection works both "
                 "ways: an element held only from above is connected. A group of "
@@ -61,8 +62,7 @@ class ConnectivityPass:
                 else f"{len(members)} elements float"
             )
             yield Diagnostic(
-                code="E301",
-                pass_name=self.name,
+                rule="floating-group",
                 message=f"{what}: no chain of stud connections leads to the ground",
                 elements=tuple(elements[k].uid for k in members),
                 region=Region.of(Box.bounding(elements[k].bounds for k in members)),

@@ -48,7 +48,9 @@ that placed its elements, and an image of the model: perspective, front, right a
 views, with rulers in studs and plates. From the second build on, the result also counts
 what changed since the last build, by script line, and the image outlines new and
 changed elements. Read everything, fix the script, and build again until the report has
-no errors and the images show the intended model. render_model looks closer: it
+no errors and the images show the intended model. Weigh warnings too: the stability
+rules warn of groups that fall and studs that grip near their limit, which matter once
+someone builds the model for real. render_model looks closer: it
 highlights elements by uid or by script function, clips the model open, or renders
 other views. Once the model is done, write_instructions writes a page that shows people
 how to build it step by step, and export_model lists its parts to buy.
@@ -60,8 +62,9 @@ vertical axis. A rotation can also name where the part's x and y axes go, which 
 all 24 grid rotations: '+x+z' stands a part up facing -y. search_parts and search_colors
 find ids. search_parts also says which way a part faces unrotated, such as a slope
 falling toward -y, and show_part describes one part and can render it. Scripts can place
-only parts with a shape. explain_code gives the exact rule behind a diagnostic. In a
-script, bricky.voxels(model) maps every voxel a model fills, to compare with a plan.
+only parts with a shape. explain_rule gives the exact condition behind a diagnostic's
+rule, such as floating-group, and its level: error, warn or ignore. In a script,
+bricky.voxels(model) maps every voxel a model fills, to compare with a plan.
 """
 
 READ_ONLY: Final = ToolAnnotations(read_only_hint=True, open_world_hint=False)
@@ -250,14 +253,7 @@ def create_server(session: service.Session | None = None) -> MCPServer:
         READ_ONLY,
     )
     register(
-        "list_passes",
-        service.PassesRequest,
-        service.passes,
-        service.PassesResult,
-        READ_ONLY,
-    )
-    register(
-        "explain_code",
+        "explain_rule",
         service.ExplainRequest,
         service.explain,
         service.ExplainResult,

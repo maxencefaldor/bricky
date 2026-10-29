@@ -125,18 +125,8 @@ class ColorsCommand(service.ColorsRequest, _Output):
         self.emit(result, result.describe())
 
 
-class PassesCommand(service.PassesRequest, _Output):
-    """List the installed passes and the profiles that run them."""
-
-    async def cli_cmd(self) -> None:
-        """Run the command."""
-        async with service.Session() as session:
-            result = await service.passes(self, session)
-        self.emit(result, result.describe())
-
-
 class ExplainCommand(service.ExplainRequest, _Output):
-    """Explain diagnostic codes: what each means and the exact rule its pass checks."""
+    """Explain rules: the exact condition each checks, its level and its pass."""
 
     async def cli_cmd(self) -> None:
         """Run the command."""
@@ -258,11 +248,8 @@ class Bricky(BaseSettings):
     catalog: CliSubCommand[CatalogCommand] = Field(
         description="Import the catalog of parts and colors, and inspect it."
     )
-    passes: CliSubCommand[PassesCommand] = Field(
-        description="List installed passes and profiles."
-    )
     explain: CliSubCommand[ExplainCommand] = Field(
-        description="Explain diagnostic codes."
+        description="Explain rules and their levels."
     )
     json_schema: CliSubCommand[SchemaCommand] = Field(
         description="Print the model file schema."

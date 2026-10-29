@@ -1,25 +1,23 @@
 # Copyright 2026 Maxence Faldor
-"""Run passes over a model and assemble a report."""
+"""Run the passes over a model, at each rule's level, and assemble a report."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping
 
 from bricky.analysis import Context
 from bricky.catalog import Catalog, default_catalog
-from bricky.diagnostics import Diagnostic, ElementInfo, Report, Severity
-from bricky.errors import BrickyError
+from bricky.diagnostics import Diagnostic, ElementInfo, Report
 from bricky.model import Model
-from bricky.passes import installed_passes, run_passes
+from bricky.passes import resolve_levels, run_passes
 from bricky.provenance import Provenance
-from bricky.settings import Settings
+from bricky.settings import Level, Settings
 
 
 def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
     model: Model,
     *,
-    profile: str | None = None,
-    passes: Sequence[str] | None = None,
+    rules: Mapping[str, Level] | None = None,
     max_diagnostics: int | None = None,
     provenance: Provenance | None = None,
     catalog: Catalog | None = None,
@@ -29,49 +27,41 @@ def check_model(  # noqa: PLR0913 - keyword-only options, one per concern
 
     Args:
         model: The model to check.
-        profile: Profile to run; the configured profile, normally ``digital``, by
-            default.
-        passes: Pass names to run instead of a profile; each must be installed. A
-            profile may name passes that are not installed, and the report lists them.
+        rules: Levels by rule name, or ``all`` for every rule, over those the settings
+            give: error, warn or ignore.
         max_diagnostics: Maximum number of diagnostics in the report; the error and
             warning counts cover every diagnostic found.
         provenance: Where the build script placed each element, so the report names
             script lines; see :meth:`bricky.ModelBuilder.provenance`.
         catalog: Catalog to resolve parts and colors against;
             :func:`bricky.default_catalog` by default.
-        settings: Settings to read profiles and passes' options from; read from the
-            environment and ``pyproject.toml`` by default.
+        settings: Settings to read rule levels and passes' options from; read from the
+            environment and the configuration file by default.
 
     Raises:
-        BrickyError: If the profile is unknown, or ``passes`` names a pass that is not
-            installed.
+        BrickyError: If the settings or ``rules`` name a rule no installed pass checks.
     """
     settings = settings or Settings()
-    profile_name, names = settings.resolve_passes(profile, passes)
-    available = installed_passes()
-    if passes is not None and (
-        unknown := [name for name in names if name not in available]
-    ):
-        message = (
-            f"no installed pass is named {', '.join(map(repr, unknown))}; "
-            f"installed passes: {', '.join(available)}"
-        )
-        raise BrickyError(message)
+    levels = resolve_levels(settings.rules, rules or {})
     context = Context(model, catalog or default_catalog(), settings)
-    diagnostics, missing = run_passes(context, names, available)
-    diagnostics.sort(key=Diagnostic.sort_key)
+    diagnostics = run_passes(context, levels)
+    order = {name: i for i, name in enumerate(levels)}
+
+    def rank(diagnostic: Diagnostic) -> tuple[bool, int, str]:
+        first = diagnostic.elements[0] if diagnostic.elements else ""
+        is_warning = levels[diagnostic.rule] is not Level.ERROR
+        return is_warning, order[diagnostic.rule], first
+
+    diagnostics.sort(key=rank)
     shown = diagnostics if max_diagnostics is None else diagnostics[:max_diagnostics]
     named = {uid for diagnostic in shown for uid in diagnostic.elements}
+    errors = sum(levels[diagnostic.rule] is Level.ERROR for diagnostic in diagnostics)
     return Report(
         model=model.name,
-        profile=profile_name,
-        passes=tuple(name for name in names if name not in missing),
-        missing=tuple(missing),
+        rules=levels,
         element_count=len(context.world.elements) + len(context.world.unknown),
-        errors=sum(diagnostic.severity is Severity.ERROR for diagnostic in diagnostics),
-        warnings=sum(
-            diagnostic.severity is Severity.WARNING for diagnostic in diagnostics
-        ),
+        errors=errors,
+        warnings=len(diagnostics) - errors,
         diagnostics=tuple(shown),
         omitted=len(diagnostics) - len(shown),
         elements=_describe(context, named, provenance),

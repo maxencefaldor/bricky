@@ -10,9 +10,9 @@ const STYLE = `
 }
 .checks li button:hover { background: var(--hover); }
 .checks li button[aria-pressed="true"] { background: var(--accent-soft); }
-.checks .code { font-family: var(--mono); font-size: 12px; font-weight: 600; }
-.checks .code.error { color: var(--danger); }
-.checks .code.warning { color: var(--warning); }
+.checks .rule { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.checks .rule.error { color: var(--danger); }
+.checks .rule.warning { color: var(--warning); }
 .checks .message { display: block; margin-top: 1px; }
 .checks .who { display: block; margin-top: 2px; color: var(--ink-2); font-size: 12px; font-family: var(--mono); overflow-wrap: anywhere; }
 .checks .more { margin: 10px 0 0; color: var(--ink-2); font-size: 12px; }
@@ -65,7 +65,7 @@ export default function checks({ scene, engine, shell, format, h }) {
       { type: "button", "aria-pressed": "false", onclick: () => choose(i) },
       h("span", { class: `number ${finding.kind}` }, String(i + 1)),
       h("span", {},
-        h("span", { class: `code ${finding.kind}` }, finding.code),
+        h("span", { class: `rule ${finding.kind}` }, finding.rule),
         h("span", { class: "message" }, finding.message),
         uids.length ? h("span", { class: "who" }, uids.join(", ") + (rest > 0 ? `, and ${format.count(rest, "more element")}` : "")) : null,
       ),
@@ -90,7 +90,7 @@ export default function checks({ scene, engine, shell, format, h }) {
   // Pins: each finding's number, on top of its first element.
   const pins = findings.map((finding, i) => {
     if (!finding.elements.length) return null;
-    const pin = h("button", { type: "button", class: `pin ${finding.kind}`, "aria-label": `Finding ${i + 1}: ${finding.code}`, "data-tip": `${finding.code}: ${finding.message}` }, String(i + 1));
+    const pin = h("button", { type: "button", class: `pin ${finding.kind}`, "aria-label": `Finding ${i + 1}: ${finding.rule}`, "data-tip": `${finding.rule}: ${finding.message}` }, String(i + 1));
     pin.addEventListener("click", () => {
       shell.panel.open("checks");
       if (chosen !== i) choose(i);

@@ -23,16 +23,15 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
+  "clarabel>=0.11.1",
+  "highspy>=1.15.1",
   "numpy>=2.5.2",
   "platformdirs>=4",
   "playwright>=1.63",
   "pydantic>=2.14",
   "pydantic-settings>=2.15",
+  "scipy>=1.18",
 ]
-
-[project.optional-dependencies]
-# The stability pass solves linear programs; its solvers stay out of every other command.
-stability = ["clarabel>=0.11.1", "highspy>=1.15.1", "scipy>=1.18"]
 
 [project.urls]
 Homepage = "https://maxencefaldor.github.io/bricky/"

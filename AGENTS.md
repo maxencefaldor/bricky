@@ -28,8 +28,8 @@ Each module imports only from the modules listed before it:
 1. `catalog`: parts and colors keyed by BrickLink ids, imported from BrickLink's catalog downloads; each part's shape is read from its official name, or converted from LDraw, and its geometry generated per family, with curves built as exact facets.
 1. `model`, `provenance`, `fill`, `builder`, `files`: the canonical model format, the script lines that placed each element, the bricks and plates that fill voxels, how to write models, and their files and source maps.
 1. `exports`: a model's lots, written in formats other tools read, such as BrickLink's Wanted List; one module per format.
-1. `analysis`: derived data (world geometry, spatial index, connections, voxels), cached in `Context`, the differences between two builds, and stability: the forces that hold a model still, as a linear program, with solvers from the extra `bricky[stability]`.
-1. `passes`, `diagnostics`, `check`: plugin passes and the reports they produce.
+1. `analysis`: derived data (world geometry, spatial index, connections, voxels), cached in `Context`, the differences between two builds, and stability: the forces that hold a model still, as a linear program.
+1. `passes`, `diagnostics`, `check`: plugin passes, the rules they check, and the reports a check produces at each rule's level.
 1. `instructions`: the steps to build a model, in an order that straight moves can follow, swept exactly.
 1. `render`: scenes resolved from a model, rendered with three.js in headless Chromium, and the standalone viewer.
 1. `runner`, `service`: build scripts in child processes, and every command defined once.
@@ -65,7 +65,10 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
   A diagnostic states what is wrong, where and which elements; the report adds what each element is and the script line that placed it.
   Advice belongs in the skill, not in bricky.
 - **Passes:** pure functions of a `Context`, registered under the `bricky.passes` entry-point group.
-  Each pass documents every code it emits, with the exact rule it checks (`bricky explain`), and emits diagnostics with that code, a message, the elements involved and a region.
+  Each pass lists every rule it checks, with its default level and exact condition (`bricky explain`), and emits diagnostics with that rule, a message, the elements involved and a region.
+- **Rules, as in ty:** people configure rules, never passes.
+  A rule's name is lowercase words joined by hyphens, and its level is `error`, `warn` or `ignore`.
+  A rule that bricky checks exactly defaults to `error`, and a rule that rests on measured physics to `warn`.
 - **Build scripts run in their own process** (`bricky.runner`), never in the command line or the MCP server: their output is captured, a timeout stops them, and a canceled command kills them.
 - **Images are first-class feedback:** every build renders its model by default.
   Renderer assets live in `bricky/render/assets`; three.js is vendored unmodified, so rendering works offline.
@@ -81,7 +84,7 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
 - **Catalog data stays local:** imports write to bricky's data folder, never into the repository; tests use the sample catalog in `bricky/catalog/data`.
 - **Trademark:** never put "LEGO" in a package, module or repository name.
   In prose, use "LEGO®" as an adjective.
-- **Tests:** every pass gets a passing case and a failing case.
+- **Tests:** every rule gets a case that reports it and a case that passes.
   Geometry gets property tests.
   Rendering gets a test that checks real pixels.
 
@@ -114,8 +117,9 @@ A word missing from this table is plain English, never a second name for a conce
 | layer, course | Every voxel at one height, and the three layers a brick spans |
 | fill | What an element does to the voxels its body covers; `builder.fill` places bricks and plates in staggered courses to fill given voxels |
 | plan | A description of a model to build: views with rulers, layers, or voxels |
-| check, pass | One run of a profile's passes over a model, and one kind of fact a check tests |
-| code, diagnostic, report | A fact a pass can state, one statement of it, and all of them |
+| check, pass | One run of the rules over a model, and the analysis that checks some of them |
+| rule, level | A fact a check can state, by its name, such as `floating-group`, and how a check reports it: `error`, `warn` or `ignore` |
+| diagnostic, report | One statement of a rule's fact, and all the diagnostics of a check |
 | grounded | Said of a group of connected elements when one of them reaches z = 0 |
 | render | Make images or a viewer of a model, with three.js in headless Chromium |
 | image, view, sheet | A PNG of a model, one camera's look at it, and the four-view image every build writes |

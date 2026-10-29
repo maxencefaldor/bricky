@@ -65,14 +65,14 @@ def test_tools_mirror_the_service_requests() -> None:
         "search_parts",
         "show_part",
         "search_colors",
-        "list_passes",
-        "explain_code",
+        "explain_rule",
     }
     check = tools["check_model"]
     assert set(check.input_schema["properties"]) == {
         "model",
-        "profile",
-        "passes",
+        "error",
+        "warn",
+        "ignore",
         "max_diagnostics",
     }
     assert check.input_schema["required"] == ["model"]
@@ -97,9 +97,11 @@ def test_check_model_answers_with_text_and_a_structured_report(tmp_path: Path) -
     save_model(builder.build(), path)
     result = call("check_model", {"model": str(path)})
     assert not result.is_error
-    assert text_of(result).startswith("error[E301]")
+    assert text_of(result).startswith("error[floating-group]")
     assert result.structured_content["errors"] == 1
-    assert result.structured_content["diagnostics"][0]["code"] == "E301"
+    assert result.structured_content["diagnostics"][0]["rule"] == "floating-group"
+    ignored = call("check_model", {"model": str(path), "ignore": ["floating-group"]})
+    assert ignored.structured_content["errors"] == 0
 
 
 def test_build_model_returns_the_report_and_the_image(tmp_path: Path) -> None:
@@ -161,8 +163,8 @@ def test_catalog_tools() -> None:
     assert [p["id"] for p in parts.structured_content["parts"]] == ["3068", "14769"]
     colors = call("search_colors", {"query": "pearl gold"})
     assert [c["id"] for c in colors.structured_content["colors"]] == [115]
-    explained = call("explain_code", {"code": "E202"})
-    assert explained.structured_content["codes"][0]["title"] == "Blocked stud"
+    explained = call("explain_rule", {"rule": "blocked-stud"})
+    assert explained.structured_content["rules"][0]["level"] == "error"
 
 
 def test_scripts_that_print_cannot_corrupt_the_stdio_channel(tmp_path: Path) -> None:

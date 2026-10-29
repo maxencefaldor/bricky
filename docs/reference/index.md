@@ -1,6 +1,6 @@
 # Reference
 
-The reference pages list every command, code, setting and Python function, generated from the code itself.
+The reference pages list every command, rule, setting and Python function, generated from the code itself.
 
 <div class="grid cards bricky-links" markdown>
 
@@ -8,9 +8,9 @@ The reference pages list every command, code, setting and Python function, gener
 
     Every `bricky` command, with its options and defaults.
 
--   🚨 **[Diagnostic codes](codes.md)**
+-   🚨 **[Rules](rules.md)**
 
-    Every fact a check can state, with the exact rule behind it.
+    Every fact a check can state, with its default level and the exact condition behind it.
 
 -   ⚙️ **[Configuration](configuration.md)**
 

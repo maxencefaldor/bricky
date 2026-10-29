@@ -17,7 +17,7 @@ Studs and plates are the natural units: a brick is three plates tall, and every 
 | base unit | 0.4 mm | 1 |
 
 The ground is the plane z = 0.
-An element below it is an error (E103), and a group of connected elements that reaches it is grounded.
+An element below it is an error (`below-ground`), and a group of connected elements that reaches it is grounded.
 
 ## Exact integers
 

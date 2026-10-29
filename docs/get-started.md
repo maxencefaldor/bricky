@@ -18,6 +18,7 @@ On Linux, `uv run playwright install --with-deps chromium` also installs the bro
 To render with a Chromium already on the machine, set `BRICKY_RENDER_BROWSER` to its executable instead (see [Configuration](reference/configuration.md)).
 
 With pip, run `pip install bricky` and then `playwright install chromium`.
+Installing bricky on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
 To install bricky as a tool, run `uv tool install bricky --with-executables-from playwright`, then `playwright install chromium`.
 The command is then `bricky`, without `uv run`, wherever the docs write `uv run bricky`.
 
@@ -71,14 +72,14 @@ The report's last line, the time each step took, is left out of the outputs belo
 ```text
 saved models/wall.bricky.json: 8 elements, 8 x 1 studs, 13 plates tall
 
-error[E301]: 1 element floats: no chain of stud connections leads to the ground
+error[floating-group]: 1 element floats: no chain of stud connections leads to the ground
   --> x 3..5  y 0..1  z 10..13
    = chimney: Brick 1 x 2 (3004), Blue, models/wall.py:15 in build()
 
 by source line:
   models/wall.py:15 in build(): 1 diagnostic
 
-checked 8 elements with profile digital (schema, collision, connectivity): 1 error, 0 warnings
+checked 8 elements against 10 rules: 1 error, 0 warnings
 
 rendered (open the images to see the model):
   sheet: models/wall.png
@@ -89,7 +90,7 @@ The top course ends at z = 9 and the brick starts at z = 10, one plate higher, s
 The region after `-->` says where, in studs and plates.
 The line after `=` names the element, its part, its color and the script line that placed it.
 
-The sheet shows the same fact: it tints the floating brick red and labels it with its code.
+The sheet shows the same fact: it tints the floating brick red and labels it with its rule, `floating-group`.
 
 ![The wall with its floating chimney tinted red](images/wall-floating.png)
 
@@ -114,7 +115,7 @@ since the last build: 0 added, 0 removed, 1 changed, 7 unchanged
   changed at:
     models/wall.py:15 in build(): 1 element
 
-checked 8 elements with profile digital (schema, collision, connectivity): 0 errors, 0 warnings
+checked 8 elements against 10 rules: 0 errors, 0 warnings
 
 rendered (open the images to see the model):
   sheet: models/wall.png
@@ -145,6 +146,6 @@ Four sections of the docs go further than the tutorial:
 
 -   📚 **[Reference](reference/index.md)**
 
-    Every command, diagnostic code and setting, including the ones the tutorial used.
+    Every command, rule and setting, including the ones the tutorial used.
 
 </div>

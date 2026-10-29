@@ -38,7 +38,7 @@ Each build places every part in exact geometry, reports each error with the scri
 
 -   📚 **[Reference](reference/index.md)**
 
-    Every command, diagnostic code, setting and Python function.
+    Every command, rule, setting and Python function.
 
 </div>
 

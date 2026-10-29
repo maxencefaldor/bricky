@@ -6,8 +6,8 @@ description: Design a buildable LEGO® model with bricky. Use when asked to buil
 # Build a model with bricky
 
 Work in a loop: write a build script, build it, read the report and look at the images, fix the script, and build again.
-Stop when the report says `0 errors` and the images show what you meant.
-The report alone cannot tell you the second part.
+Stop when the report says `0 errors`, you have weighed every warning, and the images show what you meant.
+The report alone cannot tell you the last part.
 
 ## Loop
 
@@ -19,7 +19,7 @@ The report alone cannot tell you the second part.
    The command runs the script, saves the model, checks it and renders it.
    Where bricky is installed as a tool or with pip, run `bricky` without `uv run`.
 1. Read the report, then open the image it names (`models/<name>.png`): perspective, front, right and top views, with rulers in studs and plates.
-   Elements that diagnostics name are tinted red and labeled.
+   Elements that errors name are tinted red, those that warnings name orange, and each diagnostic labels its first element with its rule.
 1. Fix the script and build again.
 
 ## Writing the script
@@ -72,7 +72,7 @@ def build() -> ModelBuilder:
   The same section counts the voxels filled, emptied and recolored.
   The sheet outlines new and changed elements in purple.
   Check that an edit changed what you meant, and nothing else.
-- The command `uv run bricky explain E301` gives the exact rule behind a code.
+- Each diagnostic names its rule, such as `floating-group`, and `uv run bricky explain floating-group` gives the exact condition behind it.
 - Read positions off the orthographic views: their rulers use the same units as `at`.
 - Look closer with `uv run bricky render models/<name>.bricky.json`, which writes `models/<name>.<view>.png` and leaves the build's sheet alone:
     - `--views front --views top` for single, larger views.
@@ -82,18 +82,19 @@ def build() -> ModelBuilder:
     - `--html` to write a viewer people can orbit and inspect in a browser.
 - When the model is done, `uv run bricky export models/<name>.bricky.json` writes its parts as a BrickLink Wanted List, `models/<name>.wanted.xml`, to buy them on BrickLink.
 - `uv run bricky instructions models/<name>.bricky.json` writes `models/<name>.instructions.html`, a page that walks people through building the model step by step.
-- For a model someone will build for real, build with `--profile physical`, after `uv add "bricky[stability]"` installs its solvers.
-  The profile adds the stability pass: E401 names groups that tip or fall, however firmly their studs grip.
-  E402 names studs that need more than their clutch to hold the model, and W403 studs that need more than half of it.
+- Every build also checks that the model stands under its own weight, and reports what fails as warnings.
+  The rule `unbalanced-group` names groups that tip or fall, however firmly their studs grip.
+  The rule `overloaded-studs` names studs that need more than their clutch to hold the model, and `strained-studs` studs that need more than half of it.
+  For a model someone will build for real, fix these warnings too.
 
 ## Building well
 
 The advice below is yours to weigh; bricky only reports facts.
 
 - Stagger joints between courses, like a brick wall, so every brick bridges the ones below it.
-- Overhanging parts must reach back over something that holds them: E301 reports anything that is not connected to the ground through studs.
+- Overhanging parts must reach back over something that holds them: `floating-group` reports anything that is not connected to the ground through studs.
 - A long or heavy overhang needs many studs far from the edge it would rotate about.
-  Studs in one line, or a single stud, hold little weight at a distance: E402 and W403 name them.
+  Studs in one line, or a single stud, hold little weight at a distance: `overloaded-studs` and `strained-studs` name them.
   Interleave plates across the joint so that more studs share the load.
 - Compare the images with the subject: proportions, silhouette from each side, colors.
   A model with no errors can still look wrong.

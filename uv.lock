@@ -15,7 +15,6 @@ members = [
 
 [manifest.dependency-groups]
 dev = [
-    { name = "bricky", extras = ["stability"], editable = "packages/bricky" },
     { name = "bricky-benchmark", editable = "packages/bricky-benchmark" },
     { name = "bricky-mcp", editable = "packages/bricky-mcp" },
     { name = "hypothesis" },
@@ -66,32 +65,27 @@ name = "bricky"
 version = "0.1.0"
 source = { editable = "packages/bricky" }
 dependencies = [
+    { name = "clarabel" },
+    { name = "highspy" },
     { name = "numpy" },
     { name = "platformdirs" },
     { name = "playwright" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-]
-
-[package.optional-dependencies]
-stability = [
-    { name = "clarabel" },
-    { name = "highspy" },
     { name = "scipy" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "clarabel", marker = "extra == 'stability'", specifier = ">=0.11.1" },
-    { name = "highspy", marker = "extra == 'stability'", specifier = ">=1.15.1" },
+    { name = "clarabel", specifier = ">=0.11.1" },
+    { name = "highspy", specifier = ">=1.15.1" },
     { name = "numpy", specifier = ">=2.5.2" },
     { name = "platformdirs", specifier = ">=4" },
     { name = "playwright", specifier = ">=1.63" },
     { name = "pydantic", specifier = ">=2.14" },
     { name = "pydantic-settings", specifier = ">=2.15" },
-    { name = "scipy", marker = "extra == 'stability'", specifier = ">=1.18" },
+    { name = "scipy", specifier = ">=1.18" },
 ]
-provides-extras = ["stability"]
 
 [[package]]
 name = "bricky-benchmark"

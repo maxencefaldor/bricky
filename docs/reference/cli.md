@@ -19,8 +19,9 @@ Run a build script, then save, check and render its model.
 | `--check`, `--no-check` | `True` | Check the model after building it. |
 | `--render`, `--no-render` | `True` | Render the model after checking it. |
 | `--views` | `sheet` | Views to render: sheet (perspective, front, right and top on one image), perspective (from the south-east), perspective-south-west, perspective-north-west, perspective-north-east, front, back, left, right or top. |
-| `--profile` |  | Profile to run, such as 'digital'; defaults to the configured one. |
-| `--passes` |  | Pass names to run instead of a profile. |
+| `--error` |  | Rules to report as errors, such as 'overloaded-studs', or 'all' for every rule; overrides the configured levels. |
+| `--warn` |  | Rules to report as warnings, or 'all' for every rule; overrides the configured levels. |
+| `--ignore` |  | Rules to leave out, such as 'strained-studs', or 'all' for every rule; overrides the configured levels. |
 | `--max-diagnostics` |  | Maximum diagnostics to return; defaults to the configured cap. |
 
 ## `bricky check`
@@ -31,8 +32,9 @@ Check a model file.
 | --- | --- | --- |
 | `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
 | `MODEL` | required | Path to a .bricky.json model file. |
-| `--profile` |  | Profile to run, such as 'digital'; defaults to the configured one. |
-| `--passes` |  | Pass names to run instead of a profile. |
+| `--error` |  | Rules to report as errors, such as 'overloaded-studs', or 'all' for every rule; overrides the configured levels. |
+| `--warn` |  | Rules to report as warnings, or 'all' for every rule; overrides the configured levels. |
+| `--ignore` |  | Rules to leave out, such as 'strained-studs', or 'all' for every rule; overrides the configured levels. |
 | `--max-diagnostics` |  | Maximum diagnostics to return; defaults to the configured cap. |
 
 ## `bricky render`
@@ -132,22 +134,14 @@ Check every shaped part's geometry.
 | --- | --- | --- |
 | `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
 
-## `bricky passes`
-
-List installed passes and profiles.
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
-
 ## `bricky explain`
 
-Explain diagnostic codes.
+Explain rules and their levels.
 
 | Option | Default | Description |
 | --- | --- | --- |
 | `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
-| `CODE` |  | A code such as 'E301'; every code when omitted. |
+| `RULE` |  | A rule such as 'floating-group'; every rule when omitted. |
 
 ## `bricky json-schema`
 

@@ -2,37 +2,50 @@
 """Configuration shared by every front end.
 
 Settings come, in order of precedence, from explicit arguments, ``BRICKY_*`` environment
-variables and the ``[tool.bricky]`` table of the ``pyproject.toml`` in the working
-directory.
+variables and a configuration file in the working directory: ``bricky.toml`` when there
+is one, or else the ``[tool.bricky]`` table of ``pyproject.toml``.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import tomllib
+from enum import StrEnum
 from pathlib import Path
-from typing import Final, override
+from typing import Annotated, Any, Final, override
 
-from pydantic import Field, field_validator
+from pydantic import Field, StringConstraints
 from pydantic_settings import (
     BaseSettings,
+    InitSettingsSource,
     PydanticBaseSettingsSource,
-    PyprojectTomlConfigSettingsSource,
     SettingsConfigDict,
 )
 
 from bricky.errors import BrickyError
 
-DIGITAL: Final = ("schema", "collision", "connectivity")
-"""Passes every model needs, whether or not anyone builds it for real."""
+CONFIG_FILE: Final = Path("bricky.toml")
+"""The configuration file that, when present, replaces ``[tool.bricky]``."""
 
-PHYSICAL: Final = (*DIGITAL, "stability")
-"""Passes for models that someone builds for real: the digital ones, and stability."""
+PYPROJECT: Final = Path("pyproject.toml")
+"""The project file whose ``[tool.bricky]`` table configures bricky otherwise."""
 
-DEFAULT_PROFILES: Final[dict[str, tuple[str, ...]]] = {
-    "digital": DIGITAL,
-    "physical": PHYSICAL,
-}
-"""Built-in profiles by name; settings can add profiles that name installed passes."""
+ALL: Final = "all"
+"""The key that sets the level of every rule at once."""
+
+RULE_NAME: Final = r"^[a-z]+(-[a-z]+)*$"
+"""A rule's name: lowercase words joined by hyphens, such as ``floating-group``."""
+
+
+class Level(StrEnum):
+    """How a check reports a rule's diagnostics, as ty and Clippy name their levels."""
+
+    ERROR = "error"
+    WARN = "warn"
+    IGNORE = "ignore"
+
+
+type RuleKey = Annotated[str, StringConstraints(pattern=RULE_NAME)]
+"""A rule's name, or ``all`` for every rule."""
 
 
 class Settings(BaseSettings):
@@ -41,13 +54,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="BRICKY_",
         env_ignore_empty=True,
-        pyproject_toml_table_header=("tool", "bricky"),
         extra="ignore",
     )
 
-    profile: str = Field(
-        default="digital", description="Profile used when a command names none."
-    )
     max_diagnostics: int = Field(
         default=20, ge=1, description="Maximum number of diagnostics a report lists."
     )
@@ -94,21 +103,15 @@ class Settings(BaseSettings):
     safety_factor: float = Field(
         default=2.0,
         ge=1,
-        description="Times a stud's clutch must exceed what it holds before the "
-        "stability pass stops warning.",
+        description="Times a stud's clutch must exceed what it holds before the rule "
+        "strained-studs leaves it out.",
     )
-    profiles: dict[str, tuple[str, ...]] = Field(
-        default_factory=lambda: dict(DEFAULT_PROFILES),
-        description="Named pass lists; "
-        "entries extend or override the built-in profiles.",
+    rules: dict[RuleKey, Level] = Field(
+        default_factory=dict,
+        description="Level of each rule by name, or of every rule with 'all': error, "
+        "warn or ignore. A rule's own entry overrides 'all', and rules left out keep "
+        "their default level.",
     )
-
-    @field_validator("profiles", mode="after")
-    @classmethod
-    def _extend_defaults(
-        cls, value: dict[str, tuple[str, ...]]
-    ) -> dict[str, tuple[str, ...]]:
-        return {**DEFAULT_PROFILES, **value}
 
     @classmethod
     @override
@@ -120,33 +123,26 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        """Read explicit values, then the environment, then ``pyproject.toml``."""
-        return (
-            init_settings,
-            env_settings,
-            PyprojectTomlConfigSettingsSource(settings_cls),
-        )
+        """Read explicit values, then the environment, then the configuration file."""
+        configuration = InitSettingsSource(settings_cls, _configuration())
+        return (init_settings, env_settings, configuration)
 
-    def resolve_passes(
-        self,
-        profile: str | None = None,
-        passes: Sequence[str] | None = None,
-    ) -> tuple[str | None, tuple[str, ...]]:
-        """Return the profile name and the passes to run.
 
-        Explicit passes override any profile, and the profile name is then ``None``.
-        Otherwise the named profile applies, or the default one.
+def _configuration() -> dict[str, Any]:
+    """Return the settings of the configuration file in the working directory.
 
-        Raises:
-            BrickyError: If the profile is unknown.
-        """
-        if passes is not None and len(passes) > 0:
-            return None, tuple(passes)
-        name = profile or self.profile
-        try:
-            return name, self.profiles[name]
-        except KeyError:
-            message = (
-                f"unknown profile {name!r}; known profiles: {', '.join(self.profiles)}"
-            )
-            raise BrickyError(message) from None
+    The file ``bricky.toml``, when there is one, replaces the ``[tool.bricky]`` table of
+    ``pyproject.toml``, as ``ty.toml`` replaces ``[tool.ty]``.
+
+    Raises:
+        BrickyError: If the file is not valid TOML.
+    """
+    path = CONFIG_FILE if CONFIG_FILE.is_file() else PYPROJECT
+    if not path.is_file():
+        return {}
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as error:
+        message = f"{path}: {error}"
+        raise BrickyError(message) from error
+    return data if path == CONFIG_FILE else data.get("tool", {}).get("bricky", {})

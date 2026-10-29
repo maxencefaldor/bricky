@@ -18,11 +18,11 @@ from bricky.analysis.voxels import model_voxels as voxels
 from bricky.builder import ComponentBuilder, ModelBuilder
 from bricky.catalog import Catalog, default_catalog
 from bricky.check import check_model
-from bricky.diagnostics import Diagnostic, Region, Report, Severity, format_report
+from bricky.diagnostics import Diagnostic, Region, Report, Rule, format_report
 from bricky.errors import BrickyError
 from bricky.files import load_model, save_model
 from bricky.model import Component, Element, Instance, Model
-from bricky.settings import Settings
+from bricky.settings import Level, Settings
 
 __version__ = _package_version("bricky")
 """The installed version of bricky, such as ``0.1.0``."""
@@ -35,12 +35,13 @@ __all__ = [
     "Diagnostic",
     "Element",
     "Instance",
+    "Level",
     "Model",
     "ModelBuilder",
     "Region",
     "Report",
+    "Rule",
     "Settings",
-    "Severity",
     "Voxel",
     "check_model",
     "default_catalog",

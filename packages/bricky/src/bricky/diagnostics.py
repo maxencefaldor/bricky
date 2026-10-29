@@ -1,62 +1,48 @@
 # Copyright 2026 Maxence Faldor
 """Diagnostics: the facts that passes report, and the reports that collect them.
 
-A diagnostic states a fact about the model: a stable code whose letter gives its
-severity (``E`` error, ``W`` warning, ``I`` info), what is wrong, the elements involved
-and the region they occupy, in studs and plates. A diagnostic never prescribes a fix:
-the agent decides what to change. The pass that reports a code documents its exact rule
-(see ``bricky explain``).
+A rule is one kind of fact a pass checks, by a name such as ``floating-group``, with a
+default level and the exact condition behind it (see ``bricky explain``). A diagnostic
+states one such fact about the model: what is wrong, the elements involved and the
+region they occupy, in studs and plates. A diagnostic never prescribes a fix: the agent
+decides what to change.
 
-A report adds what the model and its source map know about each element a diagnostic
-names: the part, the color and the build-script line that placed it.
+A check reports each rule at a level: error, warn or ignore. A report gives the level of
+every rule, and adds what the model and its source map know about each element a
+diagnostic names: the part, the color and the build-script line that placed it.
 """
 
 from __future__ import annotations
 
 from collections import Counter
-from enum import StrEnum
 from typing import Final, override
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from bricky.geometry import Box
 from bricky.provenance import Frame, InstanceStep, Source
+from bricky.settings import RULE_NAME, Level
 from bricky.units import to_plates, to_studs
 
-
-class Severity(StrEnum):
-    """How serious a diagnostic is."""
-
-    ERROR = "error"
-    WARNING = "warning"
-    INFO = "info"
-
-
-_SEVERITY: Final = {"E": Severity.ERROR, "W": Severity.WARNING, "I": Severity.INFO}
-_RANK: Final = {Severity.ERROR: 0, Severity.WARNING: 1, Severity.INFO: 2}
-_CODE_PATTERN: Final = r"^[EWI]\d{3}$"
 _LISTED_ELEMENTS: Final = 6
 _LISTED_SITES: Final = 10
 
 
-class Code(BaseModel):
-    """A diagnostic code, its title and the exact rule behind it."""
+class Rule(BaseModel):
+    """A fact a pass checks: its name, its default level and the exact condition."""
 
     model_config = ConfigDict(frozen=True)
 
-    code: str = Field(
-        pattern=_CODE_PATTERN, description="Stable code; its letter is the severity."
+    name: str = Field(
+        pattern=RULE_NAME,
+        description="Lowercase words joined by hyphens, such as 'floating-group'.",
     )
-    title: str = Field(description="Short name, such as 'Floating group'.")
-    rule: str = Field(
+    default_level: Level = Field(
+        description="The level checks report it at unless settings or options set one."
+    )
+    condition: str = Field(
         description="The exact condition the pass checks, in plain words."
     )
-
-    @computed_field
-    @property
-    def severity(self) -> Severity:
-        """The severity, read from the code's letter."""
-        return _SEVERITY[self.code[0]]
 
 
 class Region(BaseModel):
@@ -87,14 +73,13 @@ class Region(BaseModel):
 
 
 class Diagnostic(BaseModel):
-    """One fact about the model, found by a pass."""
+    """One fact about the model, found by a pass under one rule."""
 
     model_config = ConfigDict(frozen=True)
 
-    code: str = Field(
-        pattern=_CODE_PATTERN, description="Stable code; its letter is the severity."
+    rule: str = Field(
+        pattern=RULE_NAME, description="Name of the rule whose fact it states."
     )
-    pass_name: str = Field(description="Name of the pass that found it.")
     message: str = Field(description="What is wrong, as a statement of fact.")
     elements: tuple[str, ...] = Field(
         default=(), description="Uids of the elements involved."
@@ -102,20 +87,6 @@ class Diagnostic(BaseModel):
     region: Region | None = Field(
         default=None, description="Where, in studs, studs and plates."
     )
-
-    @computed_field
-    @property
-    def severity(self) -> Severity:
-        """The severity, read from the code's letter."""
-        return _SEVERITY[self.code[0]]
-
-    def sort_key(self) -> tuple[int, str, str]:
-        """Return the sort key: most serious first, then by code and first uid."""
-        return (
-            _RANK[self.severity],
-            self.code,
-            self.elements[0] if self.elements else "",
-        )
 
 
 class ElementInfo(BaseModel):
@@ -146,12 +117,8 @@ class Report(BaseModel):
     """The result of a check: a model's diagnostics and what each named element is."""
 
     model: str = Field(description="Name of the model checked.")
-    profile: str | None = Field(
-        description="Profile used, or null when the caller named the passes."
-    )
-    passes: tuple[str, ...] = Field(description="Passes that ran.")
-    missing: tuple[str, ...] = Field(
-        default=(), description="Requested passes that are not installed."
+    rules: dict[str, Level] = Field(
+        description="The level of every installed rule in this check, by name."
     )
     element_count: int = Field(description="Number of elements checked.")
     errors: int = Field(description="Number of errors found, omitted ones included.")
@@ -159,7 +126,7 @@ class Report(BaseModel):
         description="Number of warnings found, omitted ones included."
     )
     diagnostics: tuple[Diagnostic, ...] = Field(
-        description="Diagnostics, most serious first."
+        description="Diagnostics, errors first, then by rule and first element."
     )
     omitted: int = Field(
         default=0, description="Number of diagnostics left out by the cap."
@@ -175,12 +142,15 @@ class Report(BaseModel):
         """Whether the model is free of errors."""
         return self.errors == 0
 
+    def is_error(self, diagnostic: Diagnostic) -> bool:
+        """Whether the check reported a diagnostic as an error, not as a warning."""
+        return self.rules[diagnostic.rule] is Level.ERROR
+
 
 def format_report(report: Report) -> str:
     """Format a report as compiler-style text."""
     blocks = [
-        _format_diagnostic(diagnostic, report.elements)
-        for diagnostic in report.diagnostics
+        _format_diagnostic(diagnostic, report) for diagnostic in report.diagnostics
     ]
     if report.omitted:
         blocks.append(f"... {_plural(report.omitted, 'more diagnostic')} not shown")
@@ -194,17 +164,14 @@ def format_report(report: Report) -> str:
         if len(sites) > _LISTED_SITES:
             lines.append(f"  ... and {len(sites) - _LISTED_SITES} more lines")
         blocks.append("\n".join(lines))
-    profile = (
-        "explicit passes" if report.profile is None else f"profile {report.profile}"
-    )
-    passes = ", ".join(report.passes) or "none"
-    summary = (
-        f"checked {report.element_count} elements with {profile} ({passes}): "
+    ignored = [name for name, level in report.rules.items() if level is Level.IGNORE]
+    rules = _plural(len(report.rules) - len(ignored), "rule")
+    if ignored:
+        rules += f" ({', '.join(ignored)} ignored)"
+    blocks.append(
+        f"checked {report.element_count} elements against {rules}: "
         f"{_plural(report.errors, 'error')}, {_plural(report.warnings, 'warning')}"
     )
-    if report.missing:
-        summary += f"\nnot installed, skipped: {', '.join(report.missing)}"
-    blocks.append(summary)
     return "\n\n".join(blocks)
 
 
@@ -228,12 +195,13 @@ def describe_element(uid: str, info: ElementInfo | None) -> str:
     return text
 
 
-def _format_diagnostic(diagnostic: Diagnostic, elements: dict[str, ElementInfo]) -> str:
-    lines = [f"{diagnostic.severity}[{diagnostic.code}]: {diagnostic.message}"]
+def _format_diagnostic(diagnostic: Diagnostic, report: Report) -> str:
+    severity = "error" if report.is_error(diagnostic) else "warning"
+    lines = [f"{severity}[{diagnostic.rule}]: {diagnostic.message}"]
     if diagnostic.region is not None:
         lines.append(f"  --> {diagnostic.region}")
     lines.extend(
-        f"   = {describe_element(uid, elements.get(uid))}"
+        f"   = {describe_element(uid, report.elements.get(uid))}"
         for uid in diagnostic.elements[:_LISTED_ELEMENTS]
     )
     hidden = len(diagnostic.elements) - _LISTED_ELEMENTS
@@ -243,16 +211,20 @@ def _format_diagnostic(diagnostic: Diagnostic, elements: dict[str, ElementInfo])
 
 
 def _sites(report: Report) -> Counter[Frame]:
-    """Count, per script line, the listed diagnostics naming an element it placed."""
+    """Count, per script line, the listed diagnostics naming an element it placed.
+
+    Lines count in the order diagnostics first name them, so ties list the same way on
+    every run.
+    """
     counts: Counter[Frame] = Counter()
     for diagnostic in report.diagnostics:
-        sites = {
+        sites = dict.fromkeys(
             info.source.site
             for uid in diagnostic.elements
             if (info := report.elements.get(uid)) is not None
             and info.source is not None
-        }
-        counts.update(sites)
+        )
+        counts.update(sites.keys())
     return counts
 
 

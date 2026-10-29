@@ -41,8 +41,7 @@ The guide [Connect an agent](https://maxencefaldor.github.io/bricky/agents/conne
 | `search_parts` | Searches the catalog's parts |
 | `show_part` | Describes one part, and can render it |
 | `search_colors` | Searches the catalog's colors |
-| `list_passes` | Lists the installed passes, their codes and the profiles that run them |
-| `explain_code` | Gives the exact rule behind a diagnostic code |
+| `explain_rule` | Gives the exact condition behind a rule, its level and its pass |
 
 Each tool takes the same arguments as its command on the command line.
 Each tool answers with the text the command prints and with the result as structured content.

@@ -88,9 +88,6 @@ class Figure:
     """Render the model built up to this step of its instructions, outlining the step's
     elements as changed."""
 
-    profile: str | None = None
-    """The profile to check the model with; the configured one when unset."""
-
 
 # --------------------------------------------------------------------------------------
 # Coordinates
@@ -330,11 +327,11 @@ def filled(catalog: Catalog) -> ModelBuilder:
 
 
 # --------------------------------------------------------------------------------------
-# Checks: one small model per diagnostic code
+# Checks: one small model per rule
 
 
 def overlap(catalog: Catalog) -> ModelBuilder:
-    """E201: two bricks placed into the same space."""
+    """The rule overlap: two bricks placed into the same space."""
     builder = ModelBuilder("overlap", catalog=catalog)
     builder.place("3020", at=(0, 0, 0), color="Dark Bluish Gray", id="base")
     builder.place("3001", at=(0, 0, 1), color="Red", id="left")
@@ -343,7 +340,7 @@ def overlap(catalog: Catalog) -> ModelBuilder:
 
 
 def blocked(catalog: Catalog) -> ModelBuilder:
-    """E202: a plate half a stud off the grid.
+    """The rule blocked-stud: a plate half a stud off the grid.
 
     The studs below push into the plate's underside.
     """
@@ -354,7 +351,7 @@ def blocked(catalog: Catalog) -> ModelBuilder:
 
 
 def floating(catalog: Catalog) -> ModelBuilder:
-    """E301: a brick held by nothing."""
+    """The rule floating-group: a brick held by nothing."""
     builder = ModelBuilder("floating", catalog=catalog)
     builder.place("3001", at=(0, 0, 0), color="Red", id="ground")
     builder.place("3003", at=(0, 0, 5), color="Blue", id="cloud")
@@ -362,7 +359,7 @@ def floating(catalog: Catalog) -> ModelBuilder:
 
 
 def underground(catalog: Catalog) -> ModelBuilder:
-    """E103: a brick sunk below the ground plane."""
+    """The rule below-ground: a brick sunk below the ground plane."""
     builder = ModelBuilder("underground", catalog=catalog)
     builder.place("3001", at=(0, 0, 0), color="Red", id="standing")
     builder.place("3001", at=(3, 0, -2), color="Blue", id="sunk")
@@ -374,7 +371,7 @@ def underground(catalog: Catalog) -> ModelBuilder:
 
 
 def tipping(catalog: Catalog) -> ModelBuilder:
-    """E401: an arm that reaches past the post it stands on, so both tip over."""
+    """The rule unbalanced-group: an arm reaching past its post, so both tip over."""
     builder = ModelBuilder("tipping", catalog=catalog)
     for level in range(3):
         builder.place("3003", at=(0, 0, 3 * level), color="Yellow", id=f"post{level}")
@@ -383,7 +380,7 @@ def tipping(catalog: Catalog) -> ModelBuilder:
 
 
 def crane(catalog: Catalog) -> ModelBuilder:
-    """E402: a heavy jib on a mast, held by a single stud."""
+    """The rule overloaded-studs: a heavy jib on a mast, held by a single stud."""
     builder = ModelBuilder("crane", catalog=catalog)
     builder.place("3867", at=(0, 0, 0), color="Dark Bluish Gray", id="base")
     for level in range(4):
@@ -509,7 +506,6 @@ FIGURES: Final = (
         view=View.FRONT,
         size=(1000, 800),
         check=True,
-        profile="physical",
     ),
     Figure(
         "crane",
@@ -517,7 +513,6 @@ FIGURES: Final = (
         view=View.FRONT,
         size=(1000, 900),
         check=True,
-        profile="physical",
     ),
     # Voxels
     Figure(
@@ -540,7 +535,7 @@ FIGURES: Final = (
     card("card-catalog", converted, imported=True),
     card("card-exports", inventory),
     card("card-instructions", EXAMPLES / "cottage.py", step=17),
-    card("card-stability", crane, check=True, profile="physical"),
+    card("card-stability", crane, check=True),
     *(
         Figure(
             f"gallery-{name}", EXAMPLES / script, view=view, size=(1200, 900), bare=True
@@ -618,7 +613,6 @@ async def render(
     model, provenance = await model_of(figure, catalog, settings)
     report = check_model(
         model,
-        profile=figure.profile,
         provenance=provenance,
         catalog=catalog,
         settings=settings,

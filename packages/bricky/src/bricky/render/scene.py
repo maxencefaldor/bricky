@@ -25,7 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from bricky.analysis import PlacedElement, World, build_world
 from bricky.analysis.connections import anti_stud_index
 from bricky.catalog import Catalog, ColorType, ConnectorKind, Family
-from bricky.diagnostics import Region, Report, Severity
+from bricky.diagnostics import Region, Report
 from bricky.errors import BrickyError
 from bricky.geometry import AXES, Box, Convex, Vector
 from bricky.instructions import Instructions
@@ -179,7 +179,7 @@ class ScenePart(BaseModel):
 class SceneDiagnostic(BaseModel):
     """An error or warning of the report, with the elements it names."""
 
-    code: str
+    rule: str
     kind: Literal["error", "warning"]
     message: str
     elements: list[int] = Field(description="Indices into Scene.elements.")
@@ -472,13 +472,12 @@ def _diagnostics(
     index = {element.uid: i for i, element in enumerate(elements)}
     return [
         SceneDiagnostic(
-            code=diagnostic.code,
-            kind=kind,
+            rule=diagnostic.rule,
+            kind="error" if report.is_error(diagnostic) else "warning",
             message=diagnostic.message,
             elements=[index[uid] for uid in diagnostic.elements if uid in index],
         )
         for diagnostic in report.diagnostics
-        if (kind := _mark_kind(diagnostic.severity)) is not None
     ]
 
 
@@ -495,19 +494,18 @@ def _mark_diagnostics(
     """
     index = {element.uid: i for i, element in enumerate(elements)}
     for diagnostic in report.diagnostics:
-        kind = _mark_kind(diagnostic.severity)
-        if kind is None:
-            continue
-        flag = Flag.ERROR if kind == "error" else Flag.WARNING
+        error = report.is_error(diagnostic)
+        kind: Literal["error", "warning"] = "error" if error else "warning"
+        flag = Flag.ERROR if error else Flag.WARNING
         members = [index[uid] for uid in diagnostic.elements if uid in index]
         for i in members:
             flags[i] |= flag
         if members:
-            text = f"{diagnostic.code} {elements[members[0]].uid}"
+            text = f"{diagnostic.rule} {elements[members[0]].uid}"
             labels.append(Label(element=members[0], text=text, kind=kind))
         if diagnostic.region is not None:
             marks.append(
-                Mark(box=_box(diagnostic.region), text=diagnostic.code, kind=kind)
+                Mark(box=_box(diagnostic.region), text=diagnostic.rule, kind=kind)
             )
 
 
@@ -703,14 +701,6 @@ def _clipped(bounds: Box, clips: Sequence[Clip]) -> Box:
         message = f"{which} nothing of the model to render"
         raise BrickyError(message)
     return Box(Vector(*low), Vector(*high))
-
-
-def _mark_kind(severity: Severity) -> Literal["error", "warning"] | None:
-    if severity is Severity.ERROR:
-        return "error"
-    if severity is Severity.WARNING:
-        return "warning"
-    return None
 
 
 def _box(region: Region) -> tuple[int, int, int, int, int, int]:
