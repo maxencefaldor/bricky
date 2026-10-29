@@ -8,6 +8,8 @@ again; the figures of converted LDraw parts need an imported catalog and are ski
 without one. Bare figures, for cards and the home page, carry no text at all.
 """
 
+from __future__ import annotations
+
 import asyncio
 import base64
 import os
@@ -191,7 +193,7 @@ COLORS: Final = (
 def colors(catalog: Catalog) -> ModelBuilder:
     """Round bricks in two rows, one stack per color.
 
-    The colors are solid, pearl, metallic and transparent.
+    The colors are solid, pearl and transparent.
     """
     builder = ModelBuilder("colors", catalog=catalog)
     for index, color in enumerate(COLORS):
@@ -456,6 +458,7 @@ FIGURES: Final = (
             ("street-corner", "street_corner.py", View.PERSPECTIVE),
             ("japanese-garden", "japanese_garden.py", View.PERSPECTIVE),
             ("pirate-ship", "pirate_ship.py", View.PERSPECTIVE),
+            ("pumpkin-manor", "pumpkin_manor.py", View.PERSPECTIVE),
             ("lighthouse-island", "lighthouse_island.py", View.PERSPECTIVE),
             ("steam-train", "steam_train.py", View.PERSPECTIVE),
             ("macaw", "macaw.py", View.PERSPECTIVE),

@@ -1,10 +1,11 @@
 # Copyright 2026 Maxence Faldor
-"""Write a standalone 3D viewer of every example for the docs' gallery.
+"""Write a standalone 3D viewer of every example the docs' gallery shows.
 
 Run from the repository root: ``uv run python docs/gallery.py``, or name examples, such
-as ``cottage``, to write only those. Each script in ``examples`` runs in its own
-process. Its viewer goes to ``docs/gallery/<name>.html``, named after the script with
-hyphens, such as ``elizabeth-tower.html``. The viewers mark what the checks find, as
+as ``cottage``, to write only those. The gallery page's links to ``gallery/<name>.html``
+choose the examples, and each script in ``examples`` runs in its own process. Its viewer
+goes to ``docs/gallery/<name>.html``, named after the script with hyphens, such as
+``elizabeth-tower.html``. The viewers mark what the checks find, as
 ``bricky render --html`` does. Each viewer loads three.js from jsDelivr when opened.
 
 Writing a viewer needs no browser, so the docs workflow runs this script on a plain
@@ -12,8 +13,11 @@ runner. The examples use the sample catalog, so every machine writes the same vi
 The viewers are build output, left out of the repository.
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -27,6 +31,15 @@ from bricky.service import run_script
 ROOT: Final = Path(__file__).resolve().parent.parent
 EXAMPLES: Final = ROOT / "examples"
 GALLERY: Final = ROOT / "docs" / "gallery"
+GALLERY_PAGE: Final = ROOT / "docs" / "gallery.md"
+VIEWER_LINK: Final = re.compile(r"\(gallery/([a-z0-9-]+)\.html\)")
+"""A link from the gallery page to a viewer, such as ``(gallery/cottage.html)``."""
+
+
+def gallery_scripts() -> list[Path]:
+    """Return the example scripts whose viewers the gallery page links to, in order."""
+    names = dict.fromkeys(VIEWER_LINK.findall(GALLERY_PAGE.read_text(encoding="utf-8")))
+    return [EXAMPLES / (name.replace("-", "_") + ".py") for name in names]
 
 
 def viewer_path(script: Path) -> Path:
@@ -68,7 +81,7 @@ async def main() -> None:
     wanted = set(sys.argv[1:])
     scripts = [
         script
-        for script in sorted(EXAMPLES.glob("*.py"))
+        for script in gallery_scripts()
         if not wanted or script.stem in wanted or viewer_path(script).stem in wanted
     ]
     started = time.perf_counter()

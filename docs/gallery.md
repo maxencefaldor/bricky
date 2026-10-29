@@ -22,7 +22,7 @@ Each scene sets a subject in its surroundings, with the details that make it liv
     **[Street corner](gallery/street-corner.html)** · 3,372 elements
 
     Four townhouses meet at a corner café with a turret, an onion dome and striped awnings.
-    Components place the windows, doors and signs 76 times.
+    Components place the windows, doors, shop fronts, awnings, signs and dormers 76 times.
 
     [Open in 3D](gallery/street-corner.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/street_corner.py)
 
@@ -34,6 +34,15 @@ Each scene sets a subject in its surroundings, with the details that make it liv
     Side studs hold the cannons and the anchor, and jumpers center the topmasts.
 
     [Open in 3D](gallery/pirate-ship.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/pirate_ship.py)
+
+-   ![The pumpkin manor example](images/gallery-pumpkin-manor.png)
+
+    **[Pumpkin manor](gallery/pumpkin-manor.html)** · 5,325 elements
+
+    A crooked manor rises on a twisted hill, its tower a giant jack-o'-lantern in a witch's hat, before a full moon crossed by bats.
+    Ghosts haunt the graveyard, a scarecrow guards the pumpkins, and a cauldron bubbles green.
+
+    [Open in 3D](gallery/pumpkin-manor.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/pumpkin_manor.py)
 
 -   ![The lighthouse island example](images/gallery-lighthouse-island.png)
 
@@ -89,15 +98,16 @@ Each sculpture shapes its subject from voxels, so curves come out of the same br
 
 ## Landmarks
 
-Each landmark rebuilds a real building at scale, described as voxels and filled with bricks and plates.
+Each landmark rebuilds a real building at scale, with the details that make it recognizable.
 
 <div class="grid cards bricky-cards bricky-gallery" markdown>
 
 -   ![The Elizabeth Tower example](images/gallery-elizabeth-tower.png)
 
-    **[Elizabeth Tower](gallery/elizabeth-tower.html)** · 1,526 elements
+    **[Elizabeth Tower](gallery/elizabeth-tower.html)** · 10,683 elements
 
-    Big Ben's tower, described as voxels and filled with bricks and plates.
+    Big Ben's tower rises 301 plates over Bridge Street, beside the Palace of Westminster, with red buses and a black cab at its foot.
+    Its blue and gold dials are built sideways on side studs, under a belfry and a spire of gilded slopes.
 
     [Open in 3D](gallery/elizabeth-tower.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/elizabeth_tower.py)
 
@@ -105,7 +115,7 @@ Each landmark rebuilds a real building at scale, described as voxels and filled 
 
     **[Colosseum](gallery/colosseum.html)** · 44,968 elements
 
-    Rome's amphitheater at 1:150, filled from 242,576 voxels, with its ruined south side and hypogeum.
+    Rome's amphitheater at 1:150, filled from 273,616 voxels, with its ruined south side and hypogeum.
 
     [Open in 3D](gallery/colosseum.html) · [Script](https://github.com/maxencefaldor/bricky/blob/main/examples/colosseum.py)
 
