@@ -106,6 +106,7 @@ uv run bricky render examples/cottage.bricky.json --html
 | Parts panel | Every lot, to select all its elements, and the [Wanted List](exports.md) to download |
 | Checks panel | Each error and warning, numbered like the pins on the model, to find its elements |
 | Clip panel | A range along x, y and z to keep, and a build-up from the bottom, layer by layer |
+| Instructions | The [building steps](instructions.md), one at a time, with the parts each adds |
 | Isolate, hide | Render the rest faintly, or leave the selection out; Escape brings everything back |
 
 The key `?` lists every keyboard shortcut.

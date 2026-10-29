@@ -30,6 +30,7 @@ Each module imports only from the modules listed before it:
 1. `exports`: a model's lots, written in formats other tools read, such as BrickLink's Wanted List; one module per format.
 1. `analysis`: derived data (world geometry, spatial index, connections, voxels), cached in `Context`, and the differences between two builds.
 1. `passes`, `diagnostics`, `check`: plugin passes and the reports they produce.
+1. `instructions`: the steps to build a model, in an order that straight moves can follow, swept exactly.
 1. `render`: scenes resolved from a model, rendered with three.js in headless Chromium, and the standalone viewer.
 1. `runner`, `service`: build scripts in child processes, and every command defined once.
 1. `cli`, and `bricky_mcp` in its own package: front ends that only adapt `service`.
@@ -117,6 +118,8 @@ A word missing from this table is plain English, never a second name for a conce
 | image, view, sheet | A PNG of a model, one camera's look at it, and the four-view image every build writes |
 | viewer | A standalone HTML page that renders a model in 3D, to orbit and inspect in a browser |
 | export | A file another tool reads, listing a model's lots, such as a BrickLink Wanted List |
+| instructions, step | The order to build a model in, and the few elements that go on together |
+| approach, section | The direction an element goes on along, and the function that `build()` called to place it |
 | scene, mesh | What bricky renders from a model, and an element rendered by its faces |
 | mark | A tint, label, outline or box that an image adds to show a diagnostic or a change |
 | clip, highlight | Keep one side of a plane; render some elements in full and the rest faintly |

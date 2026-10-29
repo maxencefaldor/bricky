@@ -95,6 +95,16 @@ class ExportCommand(service.ExportRequest, _Output):
         self.emit(result, result.describe())
 
 
+class InstructionsCommand(service.InstructionsRequest, _Output):
+    """Write building instructions: a page that shows a model's steps in 3D."""
+
+    async def cli_cmd(self) -> None:
+        """Run the command."""
+        async with service.Session() as session:
+            result = await service.instructions(self, session)
+        self.emit(result, result.describe())
+
+
 class PartsCommand(service.PartsRequest, _Output):
     """Search the parts catalog."""
 
@@ -234,6 +244,9 @@ class Bricky(BaseSettings):
     check: CliSubCommand[CheckCommand] = Field(description="Check a model file.")
     render: CliSubCommand[RenderCommand] = Field(
         description="Render images of a model file."
+    )
+    instructions: CliSubCommand[InstructionsCommand] = Field(
+        description="Write building instructions to follow step by step."
     )
     export: CliSubCommand[ExportCommand] = Field(
         description="Export a model file for another tool."

@@ -21,7 +21,7 @@ from html import escape
 from importlib.resources import files
 from pathlib import Path
 from string import Template
-from typing import Final
+from typing import Final, Literal
 
 from pydantic import BaseModel, Field
 
@@ -49,6 +49,7 @@ COMPONENTS: Final = (
     "parts",
     "checks",
     "clip",
+    "instructions",
     "fit",
     "screenshot",
     "fullscreen",
@@ -169,6 +170,7 @@ def write_html(
     downloads: Sequence[Download] = (),
     *,
     heading: str | None = None,
+    mode: Literal["explore", "instructions"] = "explore",
 ) -> Path:
     """Write a standalone HTML viewer for a scene and return its path.
 
@@ -178,6 +180,8 @@ def write_html(
         downloads: Files the viewer offers to download, such as the model's exports.
         heading: The model's name as people read it; by default, the model's name with
             spaces for hyphens and a capital first letter.
+        mode: What the page opens on: the model to explore, or its first building
+            step, which needs a scene with steps.
 
     Raises:
         BrickyError: If the file cannot be written.
@@ -197,6 +201,7 @@ def write_html(
         "heading": title,
         "components": list(COMPONENTS),
         "downloads": [download.model_dump() for download in downloads],
+        "mode": mode,
     }
     page = _PAGE.substitute(
         title=escape(f"{title} · bricky"),

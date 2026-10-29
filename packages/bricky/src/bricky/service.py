@@ -57,6 +57,7 @@ from bricky.files import (
     write_file,
 )
 from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Solid
+from bricky.instructions import ELEMENTS_PER_STEP, build_instructions
 from bricky.model import Element, Model
 from bricky.passes import installed_codes, installed_passes
 from bricky.provenance import Provenance
@@ -681,8 +682,8 @@ class RenderRequest(BaseModel):
     html: bool = Field(
         default=False,
         description=(
-            "Also write a standalone HTML viewer people can orbit and inspect, "
-            "highlighted like the images, with the model's exports to download."
+            "Also write a standalone HTML viewer to orbit, inspect and build step "
+            "by step, highlighted like the images, with the model's exports."
         ),
     )
 
@@ -762,6 +763,9 @@ async def render(request: RenderRequest, session: Session) -> RenderResult:
     )
     html = None
     if request.html:
+        steps = await asyncio.to_thread(
+            build_instructions, model, session.catalog, provenance=provenance
+        )
         scene = await asyncio.to_thread(
             build_scene,
             model,
@@ -771,6 +775,7 @@ async def render(request: RenderRequest, session: Session) -> RenderResult:
             highlight=request.highlight,
             clips=clips,
             cull=False,
+            instructions=steps,
         )
         files = await asyncio.to_thread(downloads, model, session.catalog)
         html = await asyncio.to_thread(write_html, scene, viewer, files)
@@ -817,6 +822,117 @@ def _view_paths(base: Path, views: Sequence[View]) -> list[Path]:
     if len(views) == 1:
         return [base]
     return [base.with_name(f"{base.stem}.{view.value}{base.suffix}") for view in views]
+
+
+# --------------------------------------------------------------------------------------
+# instructions
+
+
+class InstructionsRequest(BaseModel):
+    """Write building instructions: a page that shows a model's steps in 3D."""
+
+    model: CliPositionalArg[Path] = Field(
+        description="Path to a .bricky.json model file."
+    )
+    elements_per_step: int = Field(
+        default=ELEMENTS_PER_STEP,
+        ge=1,
+        le=100,
+        description="How many elements a step adds at most.",
+    )
+    output: Path | None = Field(
+        default=None,
+        description=(
+            "HTML file to write; defaults to <model>.instructions.html beside the "
+            "model."
+        ),
+    )
+
+
+class StepNote(BaseModel):
+    """A build-order rule a step breaks, because elements lock one another in."""
+
+    step: int = Field(description="The step's number, from 1.")
+    message: str = Field(
+        description=(
+            "What goes on early, such as 'e7 goes on before e3, which holds it'."
+        )
+    )
+
+
+class InstructionsResult(BaseModel):
+    """Building instructions, written as a page."""
+
+    path: Path = Field(description="The page written.")
+    steps: int = Field(description="How many steps the instructions take.")
+    elements: int = Field(description="How many elements the steps place.")
+    notes: list[StepNote] = Field(
+        description=(
+            "Every build-order rule a step breaks; empty when each element goes on "
+            "with nothing in its way and something to hold it."
+        )
+    )
+
+    def describe(self) -> str:
+        """Return the result as text for people and agents."""
+        average = self.elements / max(self.steps, 1)
+        lines = [
+            (
+                f"wrote {self.path}: {_count(self.steps, 'step')} for "
+                f"{_count(self.elements, 'element')}, {average:.1f} a step on average"
+            )
+        ]
+        if self.notes:
+            steps = len({note.step for note in self.notes})
+            verb = "breaks" if steps == 1 else "break"
+            lines.append(
+                f"{_count(steps, 'step')} {verb} the build order, where elements "
+                "lock one another in:"
+            )
+            lines.extend(f"  step {note.step}: {note.message}" for note in self.notes)
+        return "\n".join(lines)
+
+
+async def instructions(
+    request: InstructionsRequest, session: Session
+) -> InstructionsResult:
+    """Write building instructions for a model file.
+
+    Raises:
+        BrickyError: If the file is missing or invalid, the model has no element to
+            place, or the page cannot be written.
+    """
+    model, provenance = await asyncio.to_thread(_load, request.model)
+    steps = await asyncio.to_thread(
+        build_instructions,
+        model,
+        session.catalog,
+        provenance=provenance,
+        elements_per_step=request.elements_per_step,
+    )
+    scene = await asyncio.to_thread(
+        build_scene,
+        model,
+        session.catalog,
+        provenance=provenance,
+        cull=False,
+        instructions=steps,
+    )
+    files = await asyncio.to_thread(downloads, model, session.catalog)
+    path = request.output or request.model.with_name(
+        model_stem(request.model) + ".instructions.html"
+    )
+    await asyncio.to_thread(write_html, scene, path, files, mode="instructions")
+    return InstructionsResult(
+        path=path,
+        steps=len(scene.steps),
+        elements=sum(len(step.elements) for step in scene.steps),
+        notes=[
+            StepNote(step=k + 1, message=message)
+            for k, step in enumerate(scene.steps)
+            for message in step.notes
+        ],
+    )
 
 
 # --------------------------------------------------------------------------------------

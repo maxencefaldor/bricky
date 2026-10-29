@@ -31,6 +31,7 @@ from playwright.async_api import Page, Route, async_playwright
 from bricky import ModelBuilder, Settings, check_model, default_catalog, voxels
 from bricky.analysis import build_world, diff_worlds
 from bricky.catalog import IMPORTED_CATALOG, SAMPLE_CATALOG, Catalog, load_catalog
+from bricky.instructions import build_instructions
 from bricky.model import Model
 from bricky.provenance import Provenance
 from bricky.render import (
@@ -82,6 +83,10 @@ class Figure:
 
     bare: bool = False
     """Render a perspective with no text on it: no title, caption, compass or labels."""
+
+    step: int | None = None
+    """Render the model built up to this step of its instructions, outlining the step's
+    elements as changed."""
 
 
 # --------------------------------------------------------------------------------------
@@ -488,6 +493,7 @@ FIGURES: Final = (
     card("card-voxels", voxelized, buildable=False),
     card("card-catalog", converted, imported=True),
     card("card-exports", inventory),
+    card("card-instructions", EXAMPLES / "cottage.py", step=17),
     *(
         Figure(
             f"gallery-{name}", EXAMPLES / script, view=view, size=(1200, 900), bare=True
@@ -535,6 +541,25 @@ async def model_of(
     return builder.build(), builder.provenance()
 
 
+def built_up_to(
+    model: Model, provenance: Provenance | None, catalog: Catalog, step: int
+) -> tuple[Model, list[str]]:
+    """Return the model as built up to a step, and the uids of the step's elements.
+
+    Raises:
+        ValueError: If the model places instances, which this keeps whole or not at all.
+    """
+    if model.instances:
+        message = f"{model.name} places instances: only its own elements can be kept"
+        raise ValueError(message)
+    uids = [element.uid for element in build_world(model, catalog).elements]
+    steps = build_instructions(model, catalog, provenance=provenance).steps
+    kept = {uids[i] for done in steps[:step] for i in done.elements}
+    elements = tuple(element for element in model.elements if element.id in kept)
+    added = [uids[i] for i in steps[step - 1].elements]
+    return model.model_copy(update={"elements": elements}), added
+
+
 async def render(
     figure: Figure, renderer: Renderer, page: Page, settings: Settings
 ) -> Path | None:
@@ -557,6 +582,8 @@ async def render(
         before = build_world(figure.before(catalog).build(), catalog)
         difference = diff_worlds(before, build_world(model, catalog))
         changed = [*difference.added, *difference.changed]
+    if figure.step is not None:
+        model, changed = built_up_to(model, provenance, catalog, figure.step)
     scene = build_scene(
         model,
         catalog,
@@ -822,6 +849,9 @@ class Screenshot:
     clicks: tuple[str, ...] = ()
     """Selectors of what to click, in order, once the viewer is ready."""
 
+    link: str = ""
+    """What the viewer's address ends with, such as ``#step-12`` to open a step."""
+
     size: tuple[int, int] = (1600, 1000)
 
 
@@ -831,6 +861,7 @@ SCREENSHOTS: Final = (
         EXAMPLES / "lighthouse_island.py",
         clicks=("[aria-label='Parts'][data-tip]", ".parts li:nth-child(10) button"),
     ),
+    Screenshot("instructions", EXAMPLES / "cottage.py", link="#step-17"),
 )
 
 CDN: Final = f"https://cdn.jsdelivr.net/npm/three@{THREE_VERSION}/"
@@ -856,8 +887,14 @@ async def screenshot(shot: Screenshot, settings: Settings, folder: Path) -> Path
     report = check_model(
         run.model, provenance=run.provenance, catalog=catalog, settings=settings
     )
+    steps = build_instructions(run.model, catalog, provenance=run.provenance)
     scene = build_scene(
-        run.model, catalog, provenance=run.provenance, report=report, cull=False
+        run.model,
+        catalog,
+        provenance=run.provenance,
+        report=report,
+        cull=False,
+        instructions=steps,
     )
     viewer = write_html(
         scene, folder / f"{shot.name}.html", downloads(run.model, catalog)
@@ -872,7 +909,7 @@ async def screenshot(shot: Screenshot, settings: Settings, folder: Path) -> Path
         page = await browser.new_page(viewport={"width": width, "height": height})
         page.on("pageerror", lambda error: problems.append(str(error)))
         await page.route(CDN + "**", serve_three)
-        await page.goto(viewer.as_uri())
+        await page.goto(viewer.as_uri() + shot.link)
         await page.wait_for_function(
             "() => document.getElementById('app').dataset.state !== 'loading'"
         )
@@ -889,8 +926,9 @@ async def screenshot(shot: Screenshot, settings: Settings, folder: Path) -> Path
     return path
 
 
-async def settle(page: Page) -> None:
-    """Wait until the viewer has drawn the same number of frames twice in a row."""
+    """Wait until nothing moves and the viewer draws no new frame for two seconds."""
+    """Wait until nothing moves and the viewer has drawn no new frame for two seconds."""
+    await page.wait_for_function("() => !window.bricky.engine.moving")
     frames, still = -1, 0
     while still < 2:
         await page.wait_for_timeout(1000)

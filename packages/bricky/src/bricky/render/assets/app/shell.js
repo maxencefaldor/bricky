@@ -306,13 +306,15 @@ export function createShell(root, { heading }) {
     return { open: () => element.showModal(), close: () => element.close(), element };
   };
 
-  // Keyboard shortcuts: single keys, ignored while typing or with a modifier held. Escape undoes
-  // the latest thing that asked for it: the handlers added last run first, until one handles it.
+  // Keyboard shortcuts: single keys, ignored while typing or with a modifier held. A shortcut
+  // can apply only when its condition holds; among those that apply, the one added last wins, so
+  // a component can take over a key while it needs it. Escape undoes the latest thing that asked
+  // for it: the handlers added last run first, until one handles it.
   const shortcutList = [];
   const escapes = [];
   const shortcuts = {
-    add({ key, label, group = "View", run }) {
-      shortcutList.push({ key, label, group, run });
+    add({ key, label, group = "View", run, when }) {
+      shortcutList.push({ key, label, group, run, when });
     },
     describe({ key, label, group = "View" }) {
       shortcutList.push({ key, label, group });
@@ -336,7 +338,7 @@ export function createShell(root, { heading }) {
       return;
     }
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
-    const match = shortcutList.find((item) => item.run && item.key.toLowerCase() === key.toLowerCase());
+    const match = shortcutList.findLast((item) => item.run && item.key.toLowerCase() === key.toLowerCase() && (!item.when || item.when()));
     if (!match) return;
     event.preventDefault();
     hideTip();
@@ -347,6 +349,22 @@ export function createShell(root, { heading }) {
     panel.close();
     return true;
   });
+
+  // A component can claim a region for a while, such as a mode with its own controls: the
+  // region then shows only the claimant, and the others come back when the claim ends.
+  const claim = (name, element) => {
+    const region = regions[name];
+    element.classList.add("claimant");
+    region.dataset.claimed = "";
+    region.append(element);
+    emit("layout");
+    return () => {
+      element.remove();
+      element.classList.remove("claimant");
+      if (!region.querySelector(":scope > .claimant")) delete region.dataset.claimed;
+      emit("layout");
+    };
+  };
 
   let toastTimer = 0;
   const toast = (text) => {
@@ -360,10 +378,11 @@ export function createShell(root, { heading }) {
     requestAnimationFrame(() => (live.textContent = text));
   };
 
-  return { root, stage, overlay, regions, h, icon, style, button, toolbar, panel, menu, dialog, shortcuts, toast, announce, on };
+  return { root, stage, overlay, regions, h, icon, style, button, toolbar, panel, menu, dialog, shortcuts, claim, toast, announce, on };
 }
 
 const SHELL_STYLE = `
+.region[data-claimed] > :not(.claimant) { display: none !important; }
 @container stage (max-width: 720px) {
   .region.top-right .toolbar { flex-direction: column; }
   .region.top-right .toolbar .divider { width: 20px; height: 1px; margin: 4px 0; }

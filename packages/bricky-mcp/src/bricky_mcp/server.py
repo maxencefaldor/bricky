@@ -50,7 +50,8 @@ what changed since the last build, by script line, and the image outlines new an
 changed elements. Read everything, fix the script, and build again until the report has
 no errors and the images show the intended model. render_model looks closer: it
 highlights elements by uid or by script function, clips the model open, or renders
-other views.
+other views. Once the model is done, write_instructions writes a page that shows people
+how to build it step by step, and export_model lists its parts to buy.
 
 Coordinates: x points east and y north, both in studs; z points up, in plates (a brick
 is 3 plates). `at` is the minimum corner of the rotated bounding box of what a script
@@ -213,6 +214,13 @@ def create_server(session: service.Session | None = None) -> MCPServer:
         WRITES_FILES,
     )
     register("check_model", service.CheckRequest, service.check, Report, READ_ONLY)
+    register(
+        "write_instructions",
+        service.InstructionsRequest,
+        service.instructions,
+        service.InstructionsResult,
+        WRITES_FILES,
+    )
     register(
         "export_model",
         service.ExportRequest,

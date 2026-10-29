@@ -40,6 +40,12 @@ The guide covers one concept per page, in the order a build meets them.
 
     The parts a model needs, as a BrickLink Wanted List to buy them.
 
+-   ![The cottage half built, the roof slopes of step 17 outlined](../images/card-instructions.png)
+
+    **[Instructions](instructions.md)**
+
+    Steps to build a model, in an order that straight moves can follow.
+
 -   ![A slope and an arch beside the voxels they fill](../images/card-voxels.png)
 
     **[Voxels](voxels.md)**

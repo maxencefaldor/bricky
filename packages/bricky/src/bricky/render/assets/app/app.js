@@ -31,10 +31,10 @@ function insets(shell) {
   };
 }
 
-export async function start(root, scene, { heading, downloads = [], components = [] }) {
+export async function start(root, scene, { heading, downloads = [], components = [], mode = "explore" }) {
   const shell = createShell(root, { heading });
   const engine = createEngine(shell.stage, scene, { insets: () => insets(shell) });
-  const viewer = { scene, heading, downloads, engine, shell, h, format };
+  const viewer = { scene, heading, downloads, mode, engine, shell, h, format };
 
   const credits = [...scene.credits];
   shell.regions.bottomLeft.append(

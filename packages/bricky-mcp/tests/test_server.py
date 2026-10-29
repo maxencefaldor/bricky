@@ -60,6 +60,7 @@ def test_tools_mirror_the_service_requests() -> None:
         "build_model",
         "render_model",
         "check_model",
+        "write_instructions",
         "export_model",
         "search_parts",
         "show_part",

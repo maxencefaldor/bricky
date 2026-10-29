@@ -50,7 +50,18 @@ Render images of a model file.
 | `--width` | `1600` | Image width in pixels. |
 | `--height` | `1200` | Image height in pixels. |
 | `--output` |  | Image file to write; with several views, each file name gets the view's name added. Defaults to &lt;model&gt;.&lt;view&gt;.png beside the model, so renders keep the sheet a build rendered. |
-| `--html`, `--no-html` | `False` | Also write a standalone HTML viewer people can orbit and inspect, highlighted like the images, with the model's exports to download. |
+| `--html`, `--no-html` | `False` | Also write a standalone HTML viewer to orbit, inspect and build step by step, highlighted like the images, with the model's exports. |
+
+## `bricky instructions`
+
+Write building instructions to follow step by step.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
+| `MODEL` | required | Path to a .bricky.json model file. |
+| `--elements-per-step` | `6` | How many elements a step adds at most. |
+| `--output` |  | HTML file to write; defaults to &lt;model&gt;.instructions.html beside the model. |
 
 ## `bricky export`
 

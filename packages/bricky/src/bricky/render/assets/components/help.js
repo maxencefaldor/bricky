@@ -26,7 +26,7 @@ const TOUCH = [
   ["Tap", "Select a part"],
   ["Double tap", "Bring a part close"],
 ];
-const KEY_NAMES = { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓", Esc: "Esc" };
+const KEY_NAMES = { ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓", Esc: "Esc", Home: "Home", End: "End" };
 
 export default function help({ shell, h }) {
   shell.style(STYLE);

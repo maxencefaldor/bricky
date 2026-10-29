@@ -15,6 +15,7 @@ from playwright.async_api import Route, async_playwright
 
 from bricky import BrickyError, ModelBuilder, Settings, check_model, default_catalog
 from bricky.geometry import Box, Vector
+from bricky.instructions import build_instructions
 from bricky.render import (
     COMPONENTS,
     THREE_VERSION,
@@ -200,21 +201,25 @@ def test_scenes_carry_what_the_viewer_shows() -> None:
     assert scene.lines == []
 
 
+CDN = f"https://cdn.jsdelivr.net/npm/three@{THREE_VERSION}/"
+
+
+async def serve_three(route: Route) -> None:
+    """Answer the viewer's requests for three.js from bricky's vendored copy."""
+    name = route.request.url.removeprefix(CDN).removeprefix("build/")
+    three = files("bricky.render").joinpath("assets", "three")
+    await route.fulfill(
+        body=three.joinpath(*name.split("/")).read_bytes(),
+        content_type="text/javascript",
+    )
+
+
 def test_the_viewer_shows_the_model_and_names_what_is_clicked(tmp_path: Path) -> None:
     model = stack().build()
     scene = build_scene(model, default_catalog(), cull=False)
     path = write_html(
         scene, tmp_path / "stack.html", downloads(model, default_catalog())
     )
-    three = files("bricky.render").joinpath("assets", "three")
-    cdn = f"https://cdn.jsdelivr.net/npm/three@{THREE_VERSION}/"
-
-    async def serve(route: Route) -> None:
-        name = route.request.url.removeprefix(cdn).removeprefix("build/")
-        await route.fulfill(
-            body=three.joinpath(*name.split("/")).read_bytes(),
-            content_type="text/javascript",
-        )
 
     async def inspect() -> tuple[dict[str, object], dict[str, int]]:
         async with async_playwright() as playwright:
@@ -225,7 +230,16 @@ def test_the_viewer_shows_the_model_and_names_what_is_clicked(tmp_path: Path) ->
             page = await browser.new_page(viewport={"width": 640, "height": 480})
             problems: list[str] = []
             page.on("pageerror", lambda error: problems.append(str(error)))
-            await page.route(cdn + "**", serve)
+            # The graphics driver reports misused textures and shaders as errors.
+            page.on(
+                "console",
+                lambda message: (
+                    problems.append(message.text)
+                    if "GL_INVALID" in message.text
+                    else None
+                ),
+            )
+            await page.route(CDN + "**", serve_three)
             await page.goto(path.as_uri())
             await page.wait_for_function(
                 "() => document.getElementById('app').dataset.state !== 'loading'"
@@ -260,6 +274,84 @@ def test_the_viewer_shows_the_model_and_names_what_is_clicked(tmp_path: Path) ->
     }
 
 
+def test_scenes_carry_steps_and_the_studs_they_reveal() -> None:
+    model = stack().build()
+    plain = build_scene(model, default_catalog())
+    steps = build_instructions(model, default_catalog(), elements_per_step=1)
+    scene = build_scene(model, default_catalog(), instructions=steps)
+    assert plain.steps == []
+    assert [step.elements for step in scene.steps] == [[0], [1]]
+    assert [step.approaches for step in scene.steps] == [[5], [5]]
+    # The top brick hides the studs of the bottom one, which show until it goes on.
+    assert len(scene.studs) == len(plain.studs) + 8
+
+
+def test_instructions_show_the_model_one_step_at_a_time(tmp_path: Path) -> None:
+    model = stack().build()
+    steps = build_instructions(model, default_catalog(), elements_per_step=1)
+    scene = build_scene(model, default_catalog(), cull=False, instructions=steps)
+    path = write_html(scene, tmp_path / "stack.html", mode="instructions")
+
+    async def follow() -> list[dict[str, object]]:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(
+                executable_path=Settings().render_browser,
+                args=["--enable-unsafe-swiftshader"],
+            )
+            page = await browser.new_page(viewport={"width": 640, "height": 480})
+            problems: list[str] = []
+            page.on("pageerror", lambda error: problems.append(str(error)))
+            await page.route(CDN + "**", serve_three)
+            await page.goto(path.as_uri())
+
+            async def look() -> dict[str, object]:
+                await page.wait_for_function(
+                    "() => window.bricky && !window.bricky.engine.moving"
+                )
+                image = base64.b64encode(await page.screenshot()).decode()
+                colors = await page.evaluate(COUNT_COLORS, image)
+                return {
+                    "step": await page.text_content(".step-card .number"),
+                    "lots": await page.locator(".step-card .lot").count(),
+                    "hash": await page.evaluate("() => location.hash"),
+                    "red": colors["red"] > 2000,
+                    "blue": colors["blue"] > 2000,
+                }
+
+            seen = [await look()]
+            await page.keyboard.press("ArrowRight")
+            await page.wait_for_function("() => location.hash === '#step-2'")
+            seen.append(await look())
+            await page.keyboard.press("Escape")
+            after: dict[str, object] = {
+                "card": await page.locator(".step-card").count(),
+                "title": await page.is_visible(".title-card"),
+                "hash": await page.evaluate("() => location.hash"),
+                "problems": problems,
+            }
+            seen.append(after)
+            await browser.close()
+            return seen
+
+    first, second, after = asyncio.run(follow())
+    # Step 1 places the red brick alone; step 2 adds the blue one on top.
+    assert first == {
+        "step": "1",
+        "lots": 1,
+        "hash": "#step-1",
+        "red": True,
+        "blue": False,
+    }
+    assert second == {
+        "step": "2",
+        "lots": 1,
+        "hash": "#step-2",
+        "red": True,
+        "blue": True,
+    }
+    assert after == {"card": 0, "title": True, "hash": "", "problems": []}
+
+
 def test_every_view_frames_the_whole_model(tmp_path: Path) -> None:
     # A big baseplate: views must frame big models as well as small ones.
     builder = ModelBuilder("square")
@@ -268,15 +360,6 @@ def test_every_view_frames_the_whole_model(tmp_path: Path) -> None:
         builder.place("3001", at=(14, 14, 0.5 + 3 * level), color="Red")
     scene = build_scene(builder.build(), default_catalog(), cull=False)
     path = write_html(scene, tmp_path / "square.html")
-    three = files("bricky.render").joinpath("assets", "three")
-    cdn = f"https://cdn.jsdelivr.net/npm/three@{THREE_VERSION}/"
-
-    async def serve(route: Route) -> None:
-        name = route.request.url.removeprefix(cdn).removeprefix("build/")
-        await route.fulfill(
-            body=three.joinpath(*name.split("/")).read_bytes(),
-            content_type="text/javascript",
-        )
 
     async def frame_every_view() -> dict[str, list[float]]:
         async with async_playwright() as playwright:
@@ -287,7 +370,7 @@ def test_every_view_frames_the_whole_model(tmp_path: Path) -> None:
             page = await browser.new_page(viewport={"width": 640, "height": 480})
             # Reduced motion moves the camera at once: views measure where they land.
             await page.emulate_media(reduced_motion="reduce")
-            await page.route(cdn + "**", serve)
+            await page.route(CDN + "**", serve_three)
             await page.goto(path.as_uri())
             await page.wait_for_function(
                 "() => document.getElementById('app').dataset.state === 'ready'"

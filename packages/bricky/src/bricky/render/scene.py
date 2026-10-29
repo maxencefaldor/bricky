@@ -28,6 +28,7 @@ from bricky.catalog import Catalog, ColorType, ConnectorKind, Family
 from bricky.diagnostics import Region, Report, Severity
 from bricky.errors import BrickyError
 from bricky.geometry import AXES, Box, Convex, Vector
+from bricky.instructions import Instructions
 from bricky.model import Model
 from bricky.provenance import Frame, Provenance
 from bricky.units import PLATE, STUD, STUD_HEIGHT, plates, studs, to_plates, to_studs
@@ -184,6 +185,25 @@ class SceneDiagnostic(BaseModel):
     elements: list[int] = Field(description="Indices into Scene.elements.")
 
 
+class SceneStep(BaseModel):
+    """One building step: the elements it adds, and how each goes on."""
+
+    elements: list[int] = Field(description="Indices into Scene.elements.")
+    approaches: list[int] = Field(
+        description=(
+            "Per element, the axis it goes on along (+x -x +y -y +z -z): 5 for "
+            "downward."
+        )
+    )
+    section: str = Field(
+        description="The part of the build script that placed them, such as 'Roof'."
+    )
+    notes: list[str] = Field(
+        default_factory=list,
+        description="The build-order rules the step breaks, when elements lock in.",
+    )
+
+
 class Summary(BaseModel):
     """The numbers the title states, for a viewer to lay out its own way."""
 
@@ -252,8 +272,8 @@ class Scene(BaseModel):
     )
     studs: list[tuple[int, int, int, int, int]] = Field(
         description=(
-            "Per stud not seated in an anti-stud: x, y, z of its base, axis code "
-            "(+x -x +y -y +z -z), element index."
+            "Per stud: x, y, z of its base, axis code (+x -x +y -y +z -z), element "
+            "index. Studs seated in an anti-stud stay out, unless steps reveal them."
         )
     )
     labels: list[Label] = Field(default_factory=list)
@@ -263,6 +283,9 @@ class Scene(BaseModel):
         description="Credits for the sources of the part shapes, shown with the views.",
     )
     clips: list[Clip] = Field(default_factory=list)
+    steps: list[SceneStep] = Field(
+        default_factory=list, description="The building steps, when requested."
+    )
     bounds: tuple[int, int, int, int, int, int] = Field(
         description=(
             "Corners of what the views show: all solids and stud tips, "
@@ -281,6 +304,7 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
     clips: Sequence[Clip] = (),
     changed: Sequence[str] = (),
     cull: bool = True,
+    instructions: Instructions | None = None,
 ) -> Scene:
     """Resolve a model into the scene to render.
 
@@ -298,6 +322,9 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
         cull: Whether to leave out faces pressed against opaque neighbors. A viewer that
             clips the model interactively sets it to false, as clipping can bring buried
             faces into view.
+        instructions: The steps to build the model, for a viewer to show one by one.
+            Each step reveals the studs the next steps cover, so the scene then keeps
+            every stud.
 
     Raises:
         BrickyError: If the model has no element to render, a selector matches
@@ -333,7 +360,7 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
     ]
     boxes = _boxes(catalog, elements, flags, clips, cull=cull, skip=set(meshed))
     meshes = [_mesh(i, elements[i]) for i in meshed]
-    studs = _exposed_studs(world)
+    studs = _exposed_studs(world, every=instructions is not None)
     body = Box.bounding(element.bounds for element in elements)
     axes = list(AXES.values())
     tips = [Vector(x, y, z) + axes[axis] * STUD_HEIGHT for x, y, z, axis, _ in studs]
@@ -373,6 +400,7 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
         labels=labels,
         marks=marks,
         clips=list(clips),
+        steps=[] if instructions is None else _steps(instructions, elements),
         bounds=(*bounds.min, *bounds.max),
     )
 
@@ -611,9 +639,30 @@ def _dot(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 
 
-def _exposed_studs(world: World) -> list[tuple[int, int, int, int, int]]:
-    """Return every stud that no other element's anti-stud hides."""
-    anti_studs = anti_stud_index(world)
+def _steps(
+    instructions: Instructions, elements: Sequence[PlacedElement]
+) -> list[SceneStep]:
+    """The steps, with each section named as a heading and each forced rule noted."""
+    uids = [element.uid for element in elements]
+    notes: dict[int, list[str]] = {}
+    for forced in instructions.forced:
+        notes.setdefault(forced.step, []).append(forced.describe(uids))
+    return [
+        SceneStep(
+            elements=list(step.elements),
+            approaches=[_AXIS_CODES[approach] for approach in step.approaches],
+            section=step.section.replace("_", " ").strip().capitalize(),
+            notes=notes.get(k, []),
+        )
+        for k, step in enumerate(instructions.steps)
+    ]
+
+
+def _exposed_studs(
+    world: World, *, every: bool = False
+) -> list[tuple[int, int, int, int, int]]:
+    """Return every stud that no other element's anti-stud hides, or every stud."""
+    anti_studs = {} if every else anti_stud_index(world)
     return [
         (
             connector.position.x,

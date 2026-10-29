@@ -22,6 +22,7 @@ nav = [
     { "Checks" = "guide/checks.md" },
     { "Images" = "guide/images.md" },
     { "Exports" = "guide/exports.md" },
+    { "Instructions" = "guide/instructions.md" },
     { "Voxels" = "guide/voxels.md" },
     { "Catalog" = "guide/catalog.md" },
   ] },

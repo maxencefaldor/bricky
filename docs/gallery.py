@@ -6,9 +6,9 @@ as ``cottage``, to write only those. The gallery page's links to ``gallery/<name
 choose the examples, and the first link's text names each model, such as ``Elizabeth
 Tower``. Each script in ``examples`` runs in its own process. Its viewer goes to
 ``docs/gallery/<name>.html``, named after the script with hyphens, such as
-``elizabeth-tower.html``. The viewers mark what the checks find and offer the model's
-exports, as ``bricky render --html`` does. Each viewer loads three.js from jsDelivr when
-opened.
+``elizabeth-tower.html``. The viewers mark what the checks find, show the building
+steps and offer the model's exports, as ``bricky render --html`` does. Each viewer loads
+three.js from jsDelivr when opened.
 
 Writing a viewer needs no browser, so the docs workflow runs this script on a plain
 runner. The examples use the sample catalog, so every machine writes the same viewers.
@@ -27,6 +27,7 @@ from typing import Final
 
 from bricky import Settings, check_model, default_catalog
 from bricky.catalog import SAMPLE_CATALOG
+from bricky.instructions import build_instructions
 from bricky.render import build_scene, downloads, write_html
 from bricky.service import run_script
 
@@ -74,6 +75,9 @@ async def write_viewer(script: Path, settings: Settings) -> Path:
         catalog=catalog,
         settings=settings,
     )
+    steps = await asyncio.to_thread(
+        build_instructions, run.model, catalog, provenance=run.provenance
+    )
     scene = await asyncio.to_thread(
         build_scene,
         run.model,
@@ -81,6 +85,7 @@ async def write_viewer(script: Path, settings: Settings) -> Path:
         provenance=run.provenance,
         report=report,
         cull=False,
+        instructions=steps,
     )
     path = viewer_path(script)
     files = downloads(run.model, catalog)

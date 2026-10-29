@@ -81,6 +81,7 @@ def build() -> ModelBuilder:
     - `--clip "z<130"` (plates) or `--clip "x<10"` (studs) to clip the model open and look inside.
     - `--html` to write a viewer people can orbit and inspect in a browser.
 - When the model is done, `uv run bricky export models/<name>.bricky.json` writes its parts as a BrickLink Wanted List, `models/<name>.wanted.xml`, to buy them on BrickLink.
+- `uv run bricky instructions models/<name>.bricky.json` writes `models/<name>.instructions.html`, a page that walks people through building the model step by step.
 
 ## Building well
 

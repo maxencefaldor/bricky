@@ -2,13 +2,17 @@
 // views, element states for selection, isolation and hiding, picking, clipping and screenshots.
 //
 // Element states live in a texture with one texel per element, read by every material's shader:
-// red holds the visibility (0 shown, 1 ghosted, 2 hidden) and green the mark (1 hovered, 2
-// selected). Changing a state rewrites one texel, so restyling elements costs nothing per frame,
+// red holds the visibility (0 shown, 1 ghosted, 2 hidden), green the mark (1 hovered, 2 selected),
+// and blue and alpha an element arriving in place: the axis it moves along, and how far it still
+// has to go. Changing a state rewrites one texel, so restyling elements costs nothing per frame,
 // however large the model.
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 import { BASE_UNIT, CLIP_SLACK, PLATE, STUD, buildModel, clipPlane, orderInstances, pushEdges, pushMeshEdges, pushRim, toThree } from "bricky/viewer.js";
 
 const COLUMNS = 1024; // texels per row of the element state texture
@@ -17,6 +21,8 @@ const HOVERED = 1, SELECTED = 2;
 const FIELD_OF_VIEW = 30; // degrees, vertically
 const DURATION = 480; // milliseconds a view change takes
 const FILL = 0.86; // the share of the free area a framed model fills
+const LIFT_UNIT = 0.5; // millimeters per step of an arriving element's distance
+const ARRIVAL = { distance: 32, duration: 420, stagger: 70 }; // millimeters and milliseconds
 
 // Every named view: where the camera looks from, and in which projection.
 export const VIEWS = {
@@ -33,13 +39,14 @@ export const VIEWS = {
 
 // The direction from the target to the camera, in three.js axes, for an azimuth and elevation in
 // degrees. Azimuth 0 looks north from the south; 90 looks west from the east.
-function direction(azimuth, elevation) {
+export function direction(azimuth, elevation) {
   const a = THREE.MathUtils.degToRad(azimuth);
   const e = THREE.MathUtils.degToRad(Math.min(elevation, 89.99));
   return new THREE.Vector3(Math.sin(a) * Math.cos(e), Math.sin(e), Math.cos(a) * Math.cos(e)).normalize();
 }
 
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
 export function createEngine(stage, scene, { insets = () => ({ top: 0, right: 0, bottom: 0, left: 0 }) } = {}) {
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -128,7 +135,19 @@ flat varying vec2 vElementState;
 flat varying float vElement;`)
         .replace("#include <begin_vertex>", `#include <begin_vertex>
 vElement = element;
-vElementState = floor(texelFetch(elementStates, ivec2(int(mod(element, ${COLUMNS}.0)), int(floor(element / ${COLUMNS}.0))), 0).rg * 255.0 + 0.5);`);
+vec4 elementTexel = floor(texelFetch(elementStates, ivec2(int(mod(element, ${COLUMNS}.0)), int(floor(element / ${COLUMNS}.0))), 0) * 255.0 + 0.5);
+vElementState = elementTexel.rg;
+if (elementTexel.b > 0.0) {
+  // An arriving element sits back along its axis, by its remaining distance.
+  float axis = elementTexel.b;
+  vec3 along = axis == 1.0 ? vec3(1.0, 0.0, 0.0) : axis == 2.0 ? vec3(-1.0, 0.0, 0.0) : axis == 3.0 ? vec3(0.0, 0.0, -1.0)
+    : axis == 4.0 ? vec3(0.0, 0.0, 1.0) : axis == 5.0 ? vec3(0.0, 1.0, 0.0) : vec3(0.0, -1.0, 0.0);
+  vec3 shift = -along * elementTexel.a * ${LIFT_UNIT.toFixed(2)};
+#ifdef USE_INSTANCING
+  shift = transpose(mat3(instanceMatrix)) * shift;
+#endif
+  transformed += shift;
+}`);
       const keep = pass === "ghost" ? "vElementState.x == 1.0" : "vElementState.x == 0.0";
       let fragment = shader.fragmentShader
         .replace("#include <common>", `#include <common>
@@ -185,10 +204,12 @@ flat varying float vElement;`)
   const pickTarget = new THREE.WebGLRenderTarget(1, 1);
   const pickPixel = new Uint8Array(4);
 
-  const visibility = new Uint8Array(count);
+  const visibility = new Uint8Array(count); // what the reader hides or isolates
+  const beyond = new Uint8Array(count); // past the build's progress, so hidden whatever the reader does
   const marks = new Uint8Array(count);
+  const shown = (i) => (beyond[i] ? HIDDEN : visibility[i]);
   const writeState = (i) => {
-    states[i * 4] = visibility[i];
+    states[i * 4] = shown(i);
     states[i * 4 + 1] = marks[i];
   };
   const commitStates = () => {
@@ -376,7 +397,7 @@ flat varying float vElement;`)
     const box = new THREE.Box3();
     const isolated = isolation !== null;
     for (let i = 0; i < count; i++) {
-      if (visibility[i] === HIDDEN || (isolated && visibility[i] === GHOSTED)) continue;
+      if (shown(i) === HIDDEN || (isolated && shown(i) === GHOSTED)) continue;
       box.union(model.elementBounds[i]);
     }
     if (box.isEmpty()) box.copy(bounds);
@@ -403,6 +424,13 @@ flat varying float vElement;`)
     const along = currentDirection();
     const projection = camera === orthographic ? "orthographic" : "perspective";
     travel(projection, frame(visibleBox(), along, projection), along, options);
+  };
+
+  // Frame a box from a direction, the camera's own by default.
+  const frameBox = (box, { along = currentDirection(), ...options } = {}) => {
+    const projection = camera === orthographic ? "orthographic" : "perspective";
+    travel(projection, frame(box, along, projection), along, options);
+    setView(null);
   };
 
   const focus = (elements, options = {}) => {
@@ -502,6 +530,7 @@ flat varying float vElement;`)
 
   let hovered = null;
   let selection = new Set();
+  let emphasis = new Set();
   let isolation = null;
 
   const hover = (index) => {
@@ -546,32 +575,100 @@ flat varying float vElement;`)
     visibility.fill(VISIBLE);
     refreshVisibility();
   };
+  // Show only the elements built so far, or every element again with null. The reader's own
+  // hiding and isolating apply within what is built.
+  const limit = (indices) => {
+    beyond.fill(indices === null ? 0 : 1);
+    if (indices !== null) for (const i of indices) beyond[i] = 0;
+    refreshVisibility();
+  };
+  // Outline elements in the mark color, keeping their own colors, such as the ones a step adds.
+  const emphasize = (indices) => {
+    emphasis = new Set(indices ?? []);
+    updateOutline();
+  };
+
+  // ------------------------------------------------------------------------------------------
+  // Arrivals: elements moving into place, one after another
+
+  let arrivals = [];
+  const settle = (item) => {
+    states[item.element * 4 + 2] = 0;
+    states[item.element * 4 + 3] = 0;
+  };
+  // Move elements in along their axes: codes 0 to 5 for +x, -x, +y, -y, +z and -z.
+  const arrive = (elements, axes) => {
+    arrivals.forEach(settle);
+    arrivals = [];
+    if (!reducedMotion.matches) {
+      const start = performance.now();
+      const stagger = Math.min(ARRIVAL.stagger, 360 / Math.max(1, elements.length));
+      arrivals = elements.map((element, k) => ({ element, axis: axes[k] + 1, start: start + k * stagger }));
+      advance(start);
+    }
+    commitStates();
+    refreshShadows();
+  };
+  const advance = (time) => {
+    if (!arrivals.length) return;
+    let moving = false;
+    for (const item of arrivals) {
+      const t = Math.min(1, Math.max(0, (time - item.start) / ARRIVAL.duration));
+      const left = (1 - easeOut(t)) * ARRIVAL.distance;
+      if (t < 1) moving = true;
+      states[item.element * 4 + 2] = t < 1 ? item.axis : 0;
+      states[item.element * 4 + 3] = Math.round(left / LIFT_UNIT);
+    }
+    stateTexture.needsUpdate = true;
+    invalidate();
+    if (!moving) {
+      arrivals.forEach(settle);
+      arrivals = [];
+      refreshShadows();
+    }
+  };
 
   // The outline of the selection: bold where it shows, faint where other parts hide it.
   const outlineMaterials = [
     new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, clippingPlanes: planes }),
     new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, depthTest: false, clippingPlanes: planes }),
   ];
+  // Emphasized elements get wide lines, which read at a glance over the model's own edges.
+  const emphasisMaterial = new LineMaterial({ color: 0xffffff, linewidth: 2.5, clippingPlanes: planes });
   const outline = new THREE.Group();
   outline.renderOrder = 8;
   three.add(outline);
+  // The selection shows its outline faintly through what hides it, so a hidden selection can be
+  // found; emphasized elements, such as a step's, outline only where they show.
   const updateOutline = () => {
-    outline.children[0]?.geometry.dispose();
+    const geometries = new Set(outline.children.map((lines) => lines.geometry));
+    geometries.forEach((geometry) => geometry.dispose());
     outline.clear();
-    const chosen = [...selection].filter((i) => visibility[i] !== HIDDEN);
-    if (!chosen.length) return invalidate();
-    const set = new Set(chosen);
-    const points = [];
-    for (const box of scene.boxes) if (set.has(box[6])) pushEdges(points, box);
-    for (const mesh of scene.meshes) if (set.has(mesh.element)) pushMeshEdges(points, mesh);
-    for (const stud of scene.studs) if (set.has(stud[4])) pushRim(points, stud);
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
-    outlineMaterials.forEach((material, i) => {
-      const lines = new THREE.LineSegments(geometry, material);
-      lines.renderOrder = 8 + i;
+    const showing = (indices) => new Set([...indices].filter((i) => shown(i) !== HIDDEN));
+    const chosen = showing(selection);
+    const emphasized = showing([...emphasis].filter((i) => !selection.has(i)));
+    const edges = (set, { rims }) => {
+      const points = [];
+      for (const box of scene.boxes) if (set.has(box[6])) pushEdges(points, box);
+      for (const mesh of scene.meshes) if (set.has(mesh.element)) pushMeshEdges(points, mesh);
+      // Stud rims would crowd a large plate a step adds, so only the selection gets them.
+      if (rims) for (const stud of scene.studs) if (set.has(stud[4])) pushRim(points, stud);
+      return points;
+    };
+    if (chosen.size) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(edges(chosen, { rims: true }), 3));
+      outlineMaterials.forEach((material, i) => {
+        const lines = new THREE.LineSegments(geometry, material);
+        lines.renderOrder = 8 + i;
+        outline.add(lines);
+      });
+    }
+    if (emphasized.size) {
+      const lines = new LineSegments2(new LineSegmentsGeometry().setPositions(edges(emphasized, { rims: false })), emphasisMaterial);
+      lines.renderOrder = 8;
       outline.add(lines);
-    });
+    }
     invalidate();
   };
 
@@ -604,6 +701,99 @@ flat varying float vElement;`)
     return id === 0 ? null : id - 1;
   };
 
+  // How many pixels of some elements show from each of several directions, each framing a box:
+  // the elements can hide behind others, which count against them.
+  const coverageTarget = new THREE.WebGLRenderTarget(1, 1);
+  const coverage = (elements, box, directions) => {
+    const wanted = new Set(elements);
+    const { width, height } = size();
+    const across = 160, down = Math.max(16, Math.round((across * height) / width));
+    coverageTarget.setSize(across, down);
+    const pixels = new Uint8Array(across * down * 4);
+    const probe = new THREE.PerspectiveCamera(FIELD_OF_VIEW, width / height, perspective.near, perspective.far);
+    const hidden = decorations().filter((object) => object.visible);
+    hidden.forEach((object) => (object.visible = false));
+    const shadows = renderer.shadowMap.needsUpdate;
+    renderer.shadowMap.needsUpdate = false;
+    three.overrideMaterial = pickMaterial;
+    renderer.setRenderTarget(coverageTarget);
+    renderer.setClearColor(0x000000, 0);
+    const counts = directions.map((along) => {
+      const framing = frame(box, along, "perspective");
+      probe.position.copy(framing.target).addScaledVector(along, framing.distance);
+      probe.up.set(0, 1, 0);
+      probe.lookAt(framing.target);
+      probe.updateMatrixWorld();
+      renderer.clear();
+      renderer.render(three, probe);
+      renderer.readRenderTargetPixels(coverageTarget, 0, 0, across, down, pixels);
+      let total = 0;
+      for (let k = 0; k < pixels.length; k += 4) {
+        const id = pixels[k] * 65536 + pixels[k + 1] * 256 + pixels[k + 2];
+        if (id && wanted.has(id - 1)) total += 1;
+      }
+      return total;
+    });
+    renderer.setRenderTarget(null);
+    renderer.setClearColor(canvasColor(), 1);
+    three.overrideMaterial = null;
+    renderer.shadowMap.needsUpdate = shadows;
+    hidden.forEach((object) => (object.visible = true));
+    return counts;
+  };
+
+  // ------------------------------------------------------------------------------------------
+  // Portraits: one element alone, as a small picture, such as for a step's list of parts
+
+  let portraits = null;
+  const plainElements = scene.elements.map(([color, , part, line]) => [color, 0, part, line]);
+  const portrait = (element, pixels = 96) => {
+    if (!portraits) {
+      const painter = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      painter.toneMapping = THREE.NeutralToneMapping;
+      const stage = new THREE.Scene();
+      const light = new THREE.PMREMGenerator(painter);
+      stage.environment = light.fromScene(new RoomEnvironment(), 0.04).texture;
+      stage.environmentIntensity = 0.3;
+      light.dispose();
+      const key = new THREE.DirectionalLight(0xffffff, 2.0);
+      key.position.set(-0.5, 1.6, 0.6);
+      stage.add(new THREE.HemisphereLight(0xffffff, 0x8d949e, 1.15), key);
+      portraits = { painter, stage, cache: new Map() };
+    }
+    if (portraits.cache.has(element)) return portraits.cache.get(element);
+    const { painter, stage } = portraits;
+    const alone = {
+      ...scene,
+      elements: plainElements,
+      boxes: scene.boxes.filter((box) => box[6] === element).map((box) => [...box.slice(0, 7), 63]),
+      meshes: scene.meshes.filter((mesh) => mesh.element === element),
+      studs: scene.studs.filter((stud) => stud[4] === element),
+      marks: [],
+      clips: [],
+    };
+    const built = buildModel(alone);
+    const box = built.elementBounds[element].clone().expandByScalar(1.2);
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    const camera = new THREE.PerspectiveCamera(20, 1, 0.1, sphere.radius * 20);
+    const distance = sphere.radius / Math.sin(THREE.MathUtils.degToRad(10)) * 1.02;
+    camera.position.copy(sphere.center).addScaledVector(direction(35, 30), distance);
+    camera.lookAt(sphere.center);
+    stage.add(built.root);
+    painter.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    painter.setSize(pixels, pixels, false);
+    painter.setClearColor(0x000000, 0);
+    painter.render(stage, camera);
+    const url = painter.domElement.toDataURL("image/png");
+    stage.remove(built.root);
+    built.root.traverse((object) => {
+      object.geometry?.dispose();
+      for (const material of [object.material].flat()) material?.dispose();
+    });
+    portraits.cache.set(element, url);
+    return url;
+  };
+
   // ------------------------------------------------------------------------------------------
   // Drawing
 
@@ -634,6 +824,7 @@ flat varying float vElement;`)
     renderer.setSize(width, height, false);
     perspective.aspect = width / height;
     perspective.updateProjectionMatrix();
+    emphasisMaterial.resolution.set(width, height);
     updateOrthographic();
     // Resizing clears the canvas: draw now, before the browser shows it empty.
     if (running) draw();
@@ -648,6 +839,7 @@ flat varying float vElement;`)
     if (!running) return;
     requestAnimationFrame(loop);
     step(time);
+    advance(time);
     if (!tween && controls.update()) invalidate();
     if (!needsRender) return;
     needsRender = false;
@@ -701,22 +893,32 @@ flat varying float vElement;`)
     get isolation() { return isolation; },
     get section() { return section; },
     get frames() { return frames; },
-    isHidden: (i) => visibility[i] === HIDDEN,
-    hiddenCount: () => visibility.reduce((total, value) => total + (value === HIDDEN ? 1 : 0), 0),
+    get direction() { return currentDirection(); },
+    // Whether the camera or an element is still moving, for a screenshot to wait out.
+    get moving() { return tween !== null || arrivals.length > 0; },
+    along: direction,
+    isHidden: (i) => shown(i) === HIDDEN,
+    // The elements the reader hid, leaving out those past the build's progress.
+    hiddenCount: () => visibility.reduce((total, value, i) => total + (value === HIDDEN && !beyond[i] ? 1 : 0), 0),
     elementBox: (i) => model.elementBounds[i].clone(),
     start() {
       running = true;
       applyTheme();
       showInsides();
+      // The first frame renders the shadows too: until they exist, no material may sample them.
+      refreshShadows();
       resize();
       look("perspective", { animate: false });
-      refreshShadows();
       requestAnimationFrame(loop);
     },
     stop() { running = false; },
-    look, fit, focus, setProjection, orbit, zoom, setSection,
-    hover, select, isolate, hide, showAll, pick, project, inSection, azimuth, screenshot, invalidate,
-    setMarkColor(color) { accent.set(color); outlineMaterials.forEach((material) => material.color.set(color)); invalidate(); },
+    look, fit, focus, frameBox, setProjection, orbit, zoom, setSection,
+    hover, select, isolate, hide, showAll, limit, emphasize, arrive, coverage, portrait, pick, project, inSection, azimuth, screenshot, invalidate,
+    setMarkColor(color) {
+      accent.set(color);
+      for (const material of [...outlineMaterials, emphasisMaterial]) material.color.set(color);
+      invalidate();
+    },
     on(event, listener) {
       listeners.set(event, [...(listeners.get(event) ?? []), listener]);
     },
