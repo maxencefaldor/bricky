@@ -1,6 +1,7 @@
-// The inspector: point at a part to name it, click to select it, double-click to bring it close.
-// A card says what the selection is and where the build script placed it, with actions to isolate,
-// hide, or select every part like it.
+// The inspector: point at a part to name it, click to select it, double-click to bring it close,
+// and right-click for what to do with it. Shift- or Ctrl-click adds a part to the selection. A card
+// says what the selection is and where the build script placed it, with actions to isolate, hide,
+// or select every part like it.
 
 const STYLE = `
 .hover-label {
@@ -21,6 +22,8 @@ const STYLE = `
 .info-card dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 12px; margin: 10px 0 8px; font-size: 12px; }
 .info-card dt { color: var(--ink-2); }
 .info-card dd { margin: 0; font-family: var(--mono); font-size: 11.5px; overflow-wrap: anywhere; }
+.info-card dl:empty { display: none; }
+.info-card dl:empty + .actions { margin-top: 8px; }
 .info-card .actions { display: flex; flex-wrap: wrap; gap: 2px; margin: 0 -6px; }
 .info-card .actions .button { padding: 0 8px; }
 .visibility-pill {
@@ -28,9 +31,17 @@ const STYLE = `
   z-index: 3; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; font-size: 12px; white-space: nowrap;
 }
 .visibility-pill[hidden] { display: none; }
-@media (max-width: 720px) {
-  .visibility-pill { top: auto; bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + 52px); }
-  .info-card { width: calc(100vw - 2 * var(--gap)); }
+@container stage (max-width: 720px) {
+  .visibility-pill { top: auto; bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet) + 56px); }
+  .stage:has(.info-card:not([hidden])) .visibility-pill { display: none; }
+  .info-card { width: calc(100cqw - 2 * var(--gap)); }
+  /* Over a phone's sheet the card keeps to the part's name and its actions, as icons. */
+  .sheet-open .info-card { padding: 8px 8px 6px 12px; }
+  .sheet-open .info-card dl { display: none; }
+  .sheet-open .info-card .swatch { width: 22px; height: 22px; }
+  .sheet-open .info-card .actions { margin-top: 4px; }
+  .sheet-open .info-card .actions .button span { display: none; }
+  .sheet-open .info-card .actions .button { width: var(--control); padding: 0; }
 }`;
 
 const DRAG = 5; // pixels a pointer may move and still click
@@ -50,11 +61,11 @@ export default function inspector({ scene, engine, shell, format, h }) {
     return lot;
   };
 
-  // Hover: name the part under the pointer, after a short rest.
+  // Hover: once the pointer rests, outline the part under it, then name it.
   const label = h("div", { class: "hover-label", "aria-hidden": "true" });
   shell.overlay.append(label);
   let pointer = null;
-  let picking = false;
+  let pickTimer = 0;
   let restTimer = 0;
   const canvas = engine.canvas;
   const showLabel = (index, x, y) => {
@@ -76,20 +87,20 @@ export default function inspector({ scene, engine, shell, format, h }) {
     pointer = { x: event.clientX, y: event.clientY };
     label.classList.remove("shown");
     clearTimeout(restTimer);
-    if (picking) return;
-    picking = true;
-    requestAnimationFrame(() => {
-      picking = false;
+    clearTimeout(pickTimer);
+    // Picking renders the scene once: it waits until the pointer rests, never on every move.
+    pickTimer = setTimeout(() => {
       if (!pointer) return;
       const index = engine.pick(pointer.x, pointer.y);
       engine.hover(index);
       canvas.style.cursor = index === null ? "" : "pointer";
       const at = pointer;
-      restTimer = setTimeout(() => showLabel(index, at.x, at.y), 350);
-    });
+      restTimer = setTimeout(() => showLabel(index, at.x, at.y), 300);
+    }, 60);
   });
   canvas.addEventListener("pointerleave", () => {
     pointer = null;
+    clearTimeout(pickTimer);
     clearTimeout(restTimer);
     label.classList.remove("shown");
     engine.hover(null);
@@ -101,15 +112,29 @@ export default function inspector({ scene, engine, shell, format, h }) {
   for (const event of ["interact", "selection", "visibility", "section", "projection", "view"]) engine.on(event, hideLabel);
   shell.on("panel", hideLabel);
 
-  // Click selects, double-click brings the part close, both only when the pointer barely moved.
+  // A click selects, a double-click brings the part close, and a right-click opens the actions:
+  // each only when one pointer pressed and barely moved, so orbiting, panning and pinching never
+  // select anything.
   let down = null;
+  let pressed = 0;
   let lastClick = 0;
+  canvas.addEventListener("contextmenu", (event) => event.preventDefault());
   canvas.addEventListener("pointerdown", (event) => {
-    down = { x: event.clientX, y: event.clientY, time: performance.now() };
+    pressed += 1;
+    down = event.isPrimary && pressed === 1 ? { x: event.clientX, y: event.clientY, button: event.button } : null;
+  });
+  canvas.addEventListener("pointercancel", () => {
+    pressed = Math.max(0, pressed - 1);
+    down = null;
   });
   canvas.addEventListener("pointerup", (event) => {
-    if (!down || Math.hypot(event.clientX - down.x, event.clientY - down.y) > DRAG) return;
+    pressed = Math.max(0, pressed - 1);
+    const start = down;
+    down = null;
+    if (!start || !event.isPrimary || Math.hypot(event.clientX - start.x, event.clientY - start.y) > DRAG) return;
     const index = engine.pick(event.clientX, event.clientY);
+    if (start.button === 2) return openActions(index, event);
+    if (start.button !== 0) return;
     const now = performance.now();
     if (now - lastClick < 320) {
       lastClick = 0;
@@ -118,8 +143,36 @@ export default function inspector({ scene, engine, shell, format, h }) {
       return;
     }
     lastClick = now;
+    if (event.shiftKey || event.ctrlKey || event.metaKey) {
+      if (index === null) return;
+      const chosen = new Set(engine.selection);
+      if (chosen.has(index)) chosen.delete(index);
+      else chosen.add(index);
+      engine.select([...chosen]);
+      return;
+    }
     engine.select(index === null ? [] : [index]);
   });
+
+  // The actions at the pointer: on the part right-clicked, which joins the selection, or on the
+  // whole model.
+  const openActions = (index, event) => {
+    if (index !== null && !engine.selection.has(index)) engine.select([index]);
+    const chosen = engine.selection.size > 0;
+    const items = [];
+    if (chosen) {
+      items.push(
+        { label: engine.isolation ? "Show all" : "Isolate", icon: "crosshair", hint: "I", onSelect: toggleIsolation },
+        { label: "Hide", icon: "eye-off", hint: "H", onSelect: hideSelection },
+        { label: "Select all alike", icon: "blocks", onSelect: selectAlike },
+        { label: "Focus", icon: "focus", onSelect: () => engine.focus([...engine.selection]) },
+      );
+    }
+    const away = engine.isolation || engine.hiddenCount();
+    if (away && !(chosen && engine.isolation)) items.push({ label: "Show all", icon: "eye", onSelect: () => engine.showAll() });
+    if (!chosen) items.push({ label: "Fit to view", icon: "focus", hint: "F", onSelect: () => engine.fit() });
+    shell.menu({ x: event.clientX, y: event.clientY }, items);
+  };
 
   // The card describes the selection: one part, or many alike.
   const swatch = h("span", { class: "swatch" });

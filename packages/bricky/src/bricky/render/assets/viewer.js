@@ -85,6 +85,11 @@ export function buildModel(scene) {
   // edge carries its element's index, in an attribute named "element", for the viewer to pick and
   // restyle elements one by one.
   const faces = { solid: new FaceBuffer(), pearl: new FaceBuffer(), clear: new FaceBuffer(), ghost: new FaceBuffer() };
+  // Count first, so each buffer fills typed arrays of the exact size: a large model never holds
+  // its vertices twice.
+  for (const box of scene.boxes) faces[kindOf(scene.elements[box[6]])].reserveBox(box);
+  for (const mesh of scene.meshes) faces[kindOf(scene.elements[mesh.element])].reserveMesh(mesh);
+  for (const buffer of Object.values(faces)) buffer.allocate();
   for (const box of scene.boxes) {
     const element = scene.elements[box[6]];
     faces[kindOf(element)].addBox(box, colorOf(element), box[6]);
@@ -326,12 +331,47 @@ const FACES = [
 
 class FaceBuffer {
   constructor() {
-    this.positions = [];
-    this.normals = [];
-    this.colors = [];
-    this.owners = [];
-    this.indices = [];
+    this.vertexCount = 0;
+    this.indexCount = 0;
     this.count = 0;
+  }
+
+  // Count the vertices and indices a box or a mesh adds, before allocate.
+  reserveBox(box) {
+    for (const face of FACES) {
+      if (!(box[7] & (1 << face.bit))) continue;
+      this.vertexCount += 4;
+      this.indexCount += 6;
+      this.count += 1;
+    }
+  }
+
+  reserveMesh(mesh) {
+    for (const face of mesh.faces) {
+      this.vertexCount += face.length;
+      this.indexCount += (face.length - 2) * 3;
+      this.count += 1;
+    }
+  }
+
+  allocate() {
+    this.positions = new Float32Array(this.vertexCount * 3);
+    this.normals = new Float32Array(this.vertexCount * 3);
+    this.colors = new Float32Array(this.vertexCount * 3);
+    this.owners = new Float32Array(this.vertexCount);
+    this.indices = this.indexCount > 65535 ? new Uint32Array(this.indexCount) : new Uint16Array(this.indexCount);
+    this.vertex = 0;
+    this.index = 0;
+  }
+
+  // Write one vertex: its position, normal, color and element.
+  vertexAt(x, y, z, nx, ny, nz, color, element) {
+    const v = this.vertex++;
+    this.positions[3 * v] = x; this.positions[3 * v + 1] = y; this.positions[3 * v + 2] = z;
+    this.normals[3 * v] = nx; this.normals[3 * v + 1] = ny; this.normals[3 * v + 2] = nz;
+    this.colors[3 * v] = color.r; this.colors[3 * v + 1] = color.g; this.colors[3 * v + 2] = color.b;
+    this.owners[v] = element;
+    return v;
   }
 
   addBox(box, color, element) {
@@ -339,19 +379,16 @@ class FaceBuffer {
     const high = [box[3] * BASE_UNIT, box[5] * BASE_UNIT, -box[1] * BASE_UNIT];
     for (const face of FACES) {
       if (!(box[7] & (1 << face.bit))) continue;
-      const base = this.positions.length / 3;
+      const base = this.vertex;
       const point = [0, 0, 0];
       point[face.axis] = face.high ? high[face.axis] : low[face.axis];
       for (const [corner1, corner2] of [[low, low], [high, low], [high, high], [low, high]]) {
         point[face.tangent1] = corner1[face.tangent1];
         point[face.tangent2] = corner2[face.tangent2];
-        this.positions.push(point[0], point[1], point[2]);
-        this.normals.push(...face.normal);
-        this.colors.push(color.r, color.g, color.b);
-        this.owners.push(element);
+        this.vertexAt(point[0], point[1], point[2], face.normal[0], face.normal[1], face.normal[2], color, element);
       }
-      this.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
-      this.count += 1;
+      this.indices.set([base, base + 1, base + 2, base, base + 2, base + 3], this.index);
+      this.index += 6;
     }
   }
 
@@ -368,25 +405,22 @@ class FaceBuffer {
         z += (p[0] - q[0]) * (p[1] + q[1]);
       }
       const length = Math.hypot(x, y, z) || 1;
-      const base = this.positions.length / 3;
-      for (const p of points) {
-        this.positions.push(p[0], p[1], p[2]);
-        this.normals.push(x / length, y / length, z / length);
-        this.colors.push(color.r, color.g, color.b);
-        this.owners.push(element);
+      const base = this.vertex;
+      for (const p of points) this.vertexAt(p[0], p[1], p[2], x / length, y / length, z / length, color, element);
+      for (let k = 1; k + 1 < points.length; k++) {
+        this.indices.set([base, base + k, base + k + 1], this.index);
+        this.index += 3;
       }
-      for (let k = 1; k + 1 < points.length; k++) this.indices.push(base, base + k, base + k + 1);
-      this.count += 1;
     }
   }
 
   geometry() {
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(this.positions, 3));
-    geometry.setAttribute("normal", new THREE.Float32BufferAttribute(this.normals, 3));
-    geometry.setAttribute("color", new THREE.Float32BufferAttribute(this.colors, 3));
-    geometry.setAttribute("element", new THREE.Float32BufferAttribute(this.owners, 1));
-    geometry.setIndex(this.indices.length > 65535 ? new THREE.Uint32BufferAttribute(this.indices, 1) : new THREE.Uint16BufferAttribute(this.indices, 1));
+    geometry.setAttribute("position", new THREE.BufferAttribute(this.positions, 3));
+    geometry.setAttribute("normal", new THREE.BufferAttribute(this.normals, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(this.colors, 3));
+    geometry.setAttribute("element", new THREE.BufferAttribute(this.owners, 1));
+    geometry.setIndex(new THREE.BufferAttribute(this.indices, 1));
     return geometry;
   }
 }

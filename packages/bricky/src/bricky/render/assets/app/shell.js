@@ -96,7 +96,7 @@ export function createShell(root, { heading }) {
         "data-tip": text ? undefined : label,
         "data-shortcut": shortcut,
         "aria-pressed": pressed === undefined ? undefined : String(pressed),
-        "aria-keyshortcuts": shortcut,
+        "aria-keyshortcuts": shortcut === "Esc" ? "Escape" : shortcut,
         onclick: onClick,
         ...attributes,
       },
@@ -131,22 +131,63 @@ export function createShell(root, { heading }) {
   // The panel: one view per tab, docked beside the stage, or a sheet on phones.
   const tabs = h("div", { class: "panel-tabs", role: "tablist", "aria-label": "Panels" });
   const body = h("div", { class: "panel-body" });
-  const panelElement = h(
-    "aside",
-    { class: "panel", hidden: true, "aria-label": "Panel" },
-    h("div", { class: "panel-handle", "aria-hidden": "true" }),
-    h("div", { class: "panel-header" }, tabs, button({ icon: "x", label: "Close panel", shortcut: "Esc", onClick: () => panel.close() })),
-    body,
-  );
+  const handle = h("div", { class: "panel-handle", "aria-hidden": "true" });
+  const header = h("div", { class: "panel-header" }, tabs, button({ icon: "x", label: "Close panel", shortcut: "Esc", onClick: () => panel.close() }));
+  const panelElement = h("aside", { class: "panel", hidden: true, "aria-label": "Panel" }, handle, header, body);
   root.append(panelElement);
+
+  // On phones the panel is a sheet over the stage: the controls at the bottom of the stage rise
+  // above it, and dragging its handle down closes it.
+  const sheetQuery = matchMedia("(max-width: 720px)");
+  const sheetHeight = () => (sheetQuery.matches && !panelElement.hidden ? panelElement.offsetHeight : 0);
+  const updateSheet = () => {
+    stage.style.setProperty("--sheet", `${sheetHeight()}px`);
+    root.classList.toggle("sheet-open", sheetHeight() > 0);
+    emit("sheet", sheetHeight());
+  };
+  new ResizeObserver(updateSheet).observe(panelElement);
+  sheetQuery.addEventListener("change", updateSheet);
+  let drag = null;
+  const startDrag = (event) => {
+    if (!sheetQuery.matches || event.target.closest("button")) return;
+    drag = { y: event.clientY, id: event.pointerId };
+    panelElement.setPointerCapture(event.pointerId);
+    panelElement.style.transition = "none";
+  };
+  const moveDrag = (event) => {
+    if (!drag || event.pointerId !== drag.id) return;
+    panelElement.style.transform = `translateY(${Math.max(0, event.clientY - drag.y)}px)`;
+  };
+  const endDrag = (event) => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const moved = event.clientY - drag.y;
+    drag = null;
+    panelElement.style.transition = "";
+    panelElement.style.transform = "";
+    if (moved > Math.min(96, panelElement.offsetHeight / 3)) panel.close();
+  };
+  for (const part of [handle, header]) part.addEventListener("pointerdown", startDrag);
+  panelElement.addEventListener("pointermove", moveDrag);
+  panelElement.addEventListener("pointerup", endDrag);
+  panelElement.addEventListener("pointercancel", endDrag);
   const views = new Map();
   let current = null;
   const panel = {
     add({ id, label, icon: name, shortcut, order = 50, view, onOpen }) {
       const tab = h("button", {
-        type: "button", class: "button", role: "tab", id: `tab-${id}`, "aria-selected": "false",
+        type: "button", class: "button", role: "tab", id: `tab-${id}`, "aria-selected": "false", tabindex: "-1",
         "aria-controls": `view-${id}`, onclick: () => panel.open(id),
       }, icon(name), h("span", {}, label));
+      // Arrow keys move between tabs, as in every tab list.
+      tab.addEventListener("keydown", (event) => {
+        const keys = { ArrowRight: 1, ArrowLeft: -1 };
+        if (!(event.key in keys)) return;
+        const order = [...views.entries()].sort((a, b) => a[1].order - b[1].order).map(([key]) => key);
+        const next = order[(order.indexOf(id) + keys[event.key] + order.length) % order.length];
+        panel.open(next);
+        views.get(next).tab.focus();
+        event.preventDefault();
+      });
       const container = h("section", { class: "panel-view", role: "tabpanel", id: `view-${id}`, "aria-labelledby": `tab-${id}`, hidden: true }, view);
       const toggle = toolbar.add({ group: "panels", order, icon: name, label, shortcut, pressed: false, onClick: () => panel.toggle(id) });
       views.set(id, { tab, container, toggle, order, onOpen });
@@ -165,19 +206,27 @@ export function createShell(root, { heading }) {
       for (const [key, item] of views) {
         const selected = key === id;
         item.tab.setAttribute("aria-selected", String(selected));
+        item.tab.tabIndex = selected ? 0 : -1;
         item.container.hidden = !selected;
         item.toggle.setAttribute("aria-pressed", String(selected));
       }
       views.get(id).onOpen?.();
+      updateSheet();
       emit("panel", id);
     },
     close() {
       if (current === null) return;
+      const toggle = views.get(current).toggle;
+      const focused = panelElement.contains(document.activeElement);
       current = null;
       panelElement.hidden = true;
       for (const item of views.values()) item.toggle.setAttribute("aria-pressed", "false");
+      // Focus inside the closed panel would be lost: it returns to the button that opens it.
+      if (focused) toggle.focus();
+      updateSheet();
       emit("panel", null);
     },
+    sheetHeight,
     toggle(id) {
       if (current === id) panel.close();
       else panel.open(id);
@@ -186,38 +235,48 @@ export function createShell(root, { heading }) {
 
   // Menus: a list of choices under a button, closed by a choice, a click elsewhere or Escape.
   let openMenu = null;
-  const closeMenu = () => {
+  const closeMenu = ({ refocus = false } = {}) => {
     if (!openMenu) return;
-    openMenu.element.remove();
-    openMenu.anchor.setAttribute("aria-expanded", "false");
+    const { element, anchor } = openMenu;
     openMenu = null;
+    element.remove();
+    if (anchor instanceof Element) {
+      anchor.setAttribute("aria-expanded", "false");
+      if (refocus) anchor.focus();
+    }
   };
+  // Open a menu under a button, or at a point of the page such as where a right-click landed.
   const menu = (anchor, items) => {
-    if (openMenu?.anchor === anchor) return closeMenu();
+    if (openMenu && openMenu.anchor === anchor) return closeMenu();
     closeMenu();
     const element = h("div", { class: "menu", role: "menu" }, items.map((item) => h(
       "button",
       {
         type: "button", class: "button", role: item.checked === undefined ? "menuitem" : "menuitemradio",
         "aria-checked": item.checked === undefined ? undefined : String(item.checked),
-        onclick: () => { closeMenu(); item.onSelect(); },
+        onclick: () => { closeMenu({ refocus: true }); item.onSelect(); },
       },
       item.icon ? icon(item.icon) : null,
       h("span", {}, item.label),
       item.hint ? h("span", { class: "hint" }, item.hint) : null,
     )));
     root.append(element);
-    const box = anchor.getBoundingClientRect();
+    const box = anchor instanceof Element
+      ? anchor.getBoundingClientRect()
+      : { left: anchor.x, top: anchor.y, bottom: anchor.y };
+    const gap = anchor instanceof Element ? 8 : 2;
     const height = element.offsetHeight, width = element.offsetWidth;
-    const above = box.top - 8 - height > 0 && box.bottom + 8 + height > window.innerHeight;
-    element.style.top = `${above ? box.top - 8 - height : box.bottom + 8}px`;
+    const above = box.top - gap - height > 0 && box.bottom + gap + height > window.innerHeight;
+    element.style.top = `${above ? box.top - gap - height : box.bottom + gap}px`;
     element.style.left = `${Math.max(8, Math.min(box.left, window.innerWidth - width - 8))}px`;
-    anchor.setAttribute("aria-expanded", "true");
+    if (anchor instanceof Element) anchor.setAttribute("aria-expanded", "true");
     openMenu = { element, anchor };
     element.querySelector("[aria-checked='true']")?.focus() ?? element.querySelector("button")?.focus();
   };
   root.addEventListener("pointerdown", (event) => {
-    if (openMenu && !openMenu.element.contains(event.target) && !openMenu.anchor.contains(event.target)) closeMenu();
+    if (!openMenu || openMenu.element.contains(event.target)) return;
+    if (openMenu.anchor instanceof Element && openMenu.anchor.contains(event.target)) return;
+    closeMenu();
   });
   root.addEventListener("keydown", (event) => {
     if (!openMenu || !openMenu.element.contains(event.target)) return;
@@ -225,7 +284,8 @@ export function createShell(root, { heading }) {
     const index = items.indexOf(event.target);
     if (event.key === "ArrowDown") items[(index + 1) % items.length].focus();
     else if (event.key === "ArrowUp") items[(index - 1 + items.length) % items.length].focus();
-    else if (event.key === "Escape") { const anchor = openMenu.anchor; closeMenu(); anchor.focus(); }
+    else if (event.key === "Escape") closeMenu({ refocus: true });
+    else if (event.key === "Tab") { closeMenu({ refocus: true }); return; }
     else return;
     event.preventDefault();
     event.stopPropagation();
@@ -263,8 +323,14 @@ export function createShell(root, { heading }) {
     list: () => shortcutList.slice(),
   };
   window.addEventListener("keydown", (event) => {
-    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.target.closest?.("input, textarea, select, dialog[open]")) return;
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || openMenu) return;
+    if (event.target.closest?.("dialog[open]")) return;
+    const field = event.target.closest?.("input, textarea, select");
+    if (field) {
+      // Escape in an empty field leaves it, and then works as anywhere else.
+      if (event.key !== "Escape" || field.value) return;
+      field.blur();
+    }
     if (event.key === "Escape") {
       if (escapes.slice().reverse().some((handler) => handler())) event.preventDefault();
       return;
@@ -298,7 +364,7 @@ export function createShell(root, { heading }) {
 }
 
 const SHELL_STYLE = `
-@media (max-width: 720px) {
+@container stage (max-width: 720px) {
   .region.top-right .toolbar { flex-direction: column; }
   .region.top-right .toolbar .divider { width: 20px; height: 1px; margin: 4px 0; }
 }`;

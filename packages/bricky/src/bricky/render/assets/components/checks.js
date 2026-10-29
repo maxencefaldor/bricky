@@ -26,6 +26,10 @@ const STYLE = `
   box-shadow: 0 1px 4px rgb(1 4 9 / 0.35); pointer-events: auto; transition: transform 120ms var(--ease);
 }
 .pin:hover { transform: translate(-50%, -50%) scale(1.12); }
+@media (prefers-color-scheme: dark) {
+  .pin, .checks .number { color: #0d1117; }
+  .pin { border-color: #0d1117; }
+}
 .pin[hidden] { display: none; }`;
 
 export default function checks({ scene, engine, shell, format, h }) {

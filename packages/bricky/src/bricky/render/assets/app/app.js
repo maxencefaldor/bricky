@@ -24,7 +24,8 @@ function insets(shell) {
   const narrow = stage.clientWidth < 720;
   return {
     top: Math.max(height(regions.topLeft), vertical ? 0 : height(regions.topRight)) + gap,
-    bottom: Math.max(height(regions.bottom), narrow ? 0 : height(regions.bottomRight)) + gap,
+    // On a narrow stage the selection card and the credit stack above the view bar.
+    bottom: Math.max(height(regions.bottom), narrow ? height(regions.bottomLeft) + 56 : height(regions.bottomRight)) + gap + shell.panel.sheetHeight(),
     left: gap,
     right: (vertical ? regions.topRight.offsetWidth + gap : 0) + gap,
   };
@@ -40,8 +41,8 @@ export async function start(root, scene, { heading, downloads = [], components =
     h("p", { class: "credit" }, credits.length ? `${credits.join("; ")} · ` : "", "Made with ", h("a", { href: "https://maxencefaldor.github.io/bricky/", target: "_blank", rel: "noopener" }, "bricky")),
   );
 
-  // Orbit and zoom from the keyboard, when no control holds the focus.
-  const free = () => document.activeElement === document.body || document.activeElement === engine.canvas;
+  // Orbit and zoom from the keyboard, unless the focus is in a field, a list or a menu.
+  const free = () => !document.activeElement?.closest("input, textarea, select, .panel, .menu, dialog");
   const orbit = (azimuth, elevation) => () => free() && engine.orbit(azimuth, elevation);
   shell.shortcuts.add({ key: "ArrowLeft", label: "Orbit left", group: "Navigate", run: orbit(-15, 0) });
   shell.shortcuts.add({ key: "ArrowRight", label: "Orbit right", group: "Navigate", run: orbit(15, 0) });
@@ -56,6 +57,11 @@ export async function start(root, scene, { heading, downloads = [], components =
   engine.setMarkColor(getComputedStyle(root).getPropertyValue("--accent").trim() || "#0969da");
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
     engine.setMarkColor(getComputedStyle(root).getPropertyValue("--accent").trim());
+  });
+  // The browser can take the graphics context back, on a phone short of memory for instance.
+  engine.on("lost", () => {
+    root.dataset.state = "failed";
+    root.querySelector(".splash p").textContent = "The browser stopped the 3D view to free graphics memory. Reload the page to see the model again.";
   });
   engine.start();
   root.dataset.state = "ready";

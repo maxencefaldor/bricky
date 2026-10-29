@@ -7,7 +7,7 @@ const STYLE = `
 .view-bar .split .button:last-child { border-radius: 0 var(--radius-control) var(--radius-control) 0; min-width: 24px; width: 24px; padding: 0; }
 .view-bar .divider { width: 1px; height: 20px; margin: 0 4px; background: var(--line); }
 .view-bar .narrow { display: none; }
-@media (max-width: 600px) {
+@container stage (max-width: 600px) {
   .view-bar .wide { display: none; }
   .view-bar .narrow { display: inline-flex; }
 }`;

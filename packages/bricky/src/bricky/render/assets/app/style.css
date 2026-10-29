@@ -83,8 +83,11 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
 
 /* Layout: the stage and its floating chrome, beside a docked panel. */
 .app { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-.stage { position: relative; min-width: 0; overflow: hidden; background: var(--canvas); }
-.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+/* Controls follow the stage's width, not the window's: a docked panel narrows the stage. */
+.stage { position: relative; min-width: 0; overflow: hidden; background: var(--canvas); container: stage / inline-size; --sheet: 0px; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.stage canvas:focus { outline: none; }
+.stage canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 0; }
 .region { position: absolute; display: flex; gap: 8px; pointer-events: none; z-index: 2; }
 .region > * { pointer-events: auto; }
 .region.top-left {
@@ -95,16 +98,22 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
   top: max(var(--gap), env(safe-area-inset-top)); right: max(var(--gap), env(safe-area-inset-right));
   align-items: flex-start;
 }
+/* The bottom controls rise above the panel's sheet on phones, by --sheet. */
 .region.bottom {
-  bottom: max(var(--gap), env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+  bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet)); left: 50%; transform: translateX(-50%);
 }
 .region.bottom-left {
-  bottom: max(var(--gap), env(safe-area-inset-bottom)); left: max(var(--gap), env(safe-area-inset-left));
-  flex-direction: column; align-items: flex-start; max-width: min(360px, calc(100% - 2 * var(--gap)));
+  bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet)); left: max(var(--gap), env(safe-area-inset-left));
+  flex-direction: column; align-items: flex-start; max-width: min(400px, calc(100% - 2 * var(--gap)));
 }
 .region.bottom-right {
-  bottom: max(var(--gap), env(safe-area-inset-bottom)); right: max(var(--gap), env(safe-area-inset-right));
+  bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet)); right: max(var(--gap), env(safe-area-inset-right));
   flex-direction: column; align-items: flex-end;
+}
+/* On a narrow stage, the card and the credit stack above the view bar. */
+@container stage (max-width: 720px) {
+  .region.bottom-left { bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet) + 56px); max-width: calc(100% - 2 * var(--gap)); }
+  .region.bottom-right { bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet)); }
 }
 .overlay { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
 
@@ -204,7 +213,7 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
 }
 .menu[hidden] { display: none; }
 .menu .button { width: 100%; justify-content: flex-start; }
-.menu .button .hint { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+.menu .button .hint { margin-left: auto; color: var(--ink-2); font-size: 12px; }
 
 /* Dialogs: help, centered over everything. */
 dialog.dialog {
@@ -240,7 +249,7 @@ dialog.dialog::backdrop { background: rgb(1 4 9 / 0.35); }
 .app[data-state="failed"] .spinner { display: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.credit { font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.credit { margin: 0; font-size: 11px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .credit a { color: inherit; }
 
 /* Phones: the panel becomes a sheet over the bottom of the stage. */
@@ -248,13 +257,16 @@ dialog.dialog::backdrop { background: rgb(1 4 9 / 0.35); }
   :root { --gap: 10px; }
   .app { grid-template-columns: minmax(0, 1fr); }
   .panel {
-    position: absolute; left: 0; right: 0; bottom: 0; width: auto; max-height: 62vh;
+    position: absolute; left: 0; right: 0; bottom: 0; width: auto; max-height: 50vh;
     border-left: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0;
     box-shadow: var(--shadow-strong); padding-bottom: env(safe-area-inset-bottom);
+    transition: transform 200ms var(--ease);
   }
   .panel-handle {
     display: block; width: 36px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line-strong);
+    cursor: grab; touch-action: none;
   }
+  .panel-header { touch-action: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

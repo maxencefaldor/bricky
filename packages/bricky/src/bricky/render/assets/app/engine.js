@@ -55,8 +55,14 @@ export function createEngine(stage, scene, { insets = () => ({ top: 0, right: 0,
   renderer.localClippingEnabled = true;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
+  // The sun and the model never move: shadows render again only when what casts them changes.
+  renderer.shadowMap.autoUpdate = false;
   renderer.toneMapping = THREE.NeutralToneMapping;
   const canvas = renderer.domElement;
+  canvas.addEventListener("webglcontextlost", (event) => {
+    event.preventDefault();
+    emit("lost");
+  });
   canvas.tabIndex = 0;
   canvas.setAttribute("role", "img");
   canvas.setAttribute("aria-label", "The model in 3D. Drag to orbit, scroll to zoom, right-drag to pan.");
@@ -136,8 +142,8 @@ flat varying float vElement;`)
       if (pass === "ghost") fragment = fragment.replace("#include <color_fragment>", "");
       if (pass === "normal") {
         fragment = fragment.replace("#include <color_fragment>", `#include <color_fragment>
-  if (vElementState.y == 2.0) diffuseColor.rgb = mix(diffuseColor.rgb, markColor, 0.42);
-  else if (vElementState.y == 1.0) diffuseColor.rgb = mix(diffuseColor.rgb, markColor, 0.18);`);
+  if (vElementState.y == 2.0) diffuseColor.rgb = mix(diffuseColor.rgb, markColor, 0.18);
+  else if (vElementState.y == 1.0) diffuseColor.rgb = mix(diffuseColor.rgb, markColor, 0.1);`);
       }
       if (pass === "pick") {
         fragment = fragment.replace("#include <dithering_fragment>", `#include <dithering_fragment>
@@ -189,6 +195,10 @@ flat varying float vElement;`)
     stateTexture.needsUpdate = true;
     invalidate();
   };
+  const refreshShadows = () => {
+    renderer.shadowMap.needsUpdate = true;
+    invalidate();
+  };
 
   // ------------------------------------------------------------------------------------------
   // Cameras, controls and framing
@@ -209,14 +219,27 @@ flat varying float vElement;`)
   controls.target.copy(center);
 
   let view = "perspective";
+  let preferred = null; // the projection the reader chose, which every view then keeps
   let tween = null;
   let needsRender = true;
   let sorted = false;
+  let moved = 0;
+  let restTimer = 0;
   const invalidate = () => {
     needsRender = true;
   };
+  // Studs render nearest first, which spares the depth test work; sorting them waits until the
+  // camera rests, so a drag never pays for it.
+  const cameraMoved = () => {
+    sorted = false;
+    moved = performance.now();
+    clearTimeout(restTimer);
+    restTimer = setTimeout(invalidate, 200);
+    invalidate();
+  };
 
-  const size = () => ({ width: Math.max(1, stage.clientWidth), height: Math.max(1, stage.clientHeight) });
+  let stageSize = { width: 1, height: 1 };
+  const size = () => stageSize;
   const updateOrthographic = (halfHeight) => {
     const { width, height } = size();
     const aspect = width / height;
@@ -296,12 +319,19 @@ flat varying float vElement;`)
     if (camera === orthographic) updateOrthographic(halfHeight);
     else camera.updateProjectionMatrix();
     controls.update();
-    sorted = false;
-    invalidate();
+    cameraMoved();
+  };
+
+  // Drop what remains of a drag's momentum, so it cannot carry the camera past a new view.
+  const stopMomentum = () => {
+    controls.enableDamping = false;
+    controls.update();
+    controls.enableDamping = !reducedMotion.matches;
   };
 
   // Move the camera to a framing, animated unless the reader asked for reduced motion.
   const travel = (projection, framing, along, { animate = true } = {}) => {
+    stopMomentum();
     const from = {
       target: controls.target.clone(),
       along: currentDirection(),
@@ -345,14 +375,16 @@ flat varying float vElement;`)
       box.union(model.elementBounds[i]);
     }
     if (box.isEmpty()) box.copy(bounds);
-    return box.intersect(clipBox()).isEmpty() ? bounds.clone() : box.intersect(clipBox());
+    box.intersect(clipBox());
+    return box.isEmpty() ? bounds.clone() : box;
   };
 
   const look = (name, options = {}) => {
     const named = VIEWS[name];
     if (!named) return;
     const along = direction(named.azimuth, named.elevation);
-    travel(named.projection, frame(visibleBox(), along, named.projection), along, options);
+    const projection = preferred ?? named.projection;
+    travel(projection, frame(visibleBox(), along, projection), along, options);
     setView(name);
   };
 
@@ -380,8 +412,12 @@ flat varying float vElement;`)
     setView(null);
   };
 
+  // Switch projection, and keep the choice for every view after.
   const setProjection = (projection) => {
+    preferred = projection;
     if ((projection === "orthographic") === (camera === orthographic)) return;
+    tween = null;
+    stopMomentum();
     const along = currentDirection();
     const halfHeight = camera === orthographic ? 1 / orthographic.zoom : halfHeightAt(currentDistance());
     const distance = projection === "perspective" ? halfHeight / Math.tan(THREE.MathUtils.degToRad(FIELD_OF_VIEW / 2)) : radius * 4;
@@ -398,8 +434,8 @@ flat varying float vElement;`)
     camera.lookAt(controls.target);
     controls.update();
     setView(null);
-    sorted = false;
-    invalidate();
+    hover(null);
+    cameraMoved();
   };
   const zoom = (factor) => {
     if (camera === orthographic) {
@@ -411,17 +447,17 @@ flat varying float vElement;`)
       camera.position.copy(controls.target).add(offset.setLength(length));
     }
     controls.update();
-    invalidate();
+    cameraMoved();
   };
 
   controls.addEventListener("start", () => {
     tween = null;
     setView(null);
+    hover(null);
     emit("interact");
   });
   controls.addEventListener("change", () => {
-    sorted = false;
-    invalidate();
+    cameraMoved();
     emit("camera");
   });
 
@@ -434,6 +470,11 @@ flat varying float vElement;`)
   const fixedPlanes = planes.slice();
   pickMaterial.clippingPlanes = ghostMaterial.clippingPlanes = ghostDepth.clippingPlanes = planes;
   const clipBox = () => new THREE.Box3(toThree(section.x[0], section.y[1], section.z[0]), toThree(section.x[1], section.y[0], section.z[1]));
+  // The inner sides of parts only show where a clip opens the model, so they render only then.
+  const showInsides = () => {
+    const open = planes.length > 0;
+    for (const mesh of Object.values(model.meshes.insides)) mesh.visible = open;
+  };
   const setSection = (next) => {
     section = { ...section, ...next };
     planes.length = 0;
@@ -443,7 +484,8 @@ flat varying float vElement;`)
       if (low > full[axis][0]) planes.push(clipPlane({ axis, keep: "above", value: low }));
       if (high < full[axis][1]) planes.push(clipPlane({ axis, keep: "below", value: high }));
     }
-    invalidate();
+    showInsides();
+    refreshShadows();
     emit("section", section);
   };
 
@@ -475,6 +517,7 @@ flat varying float vElement;`)
   const refreshVisibility = () => {
     for (let i = 0; i < count; i++) writeState(i);
     commitStates();
+    refreshShadows();
     updateOutline();
     emit("visibility");
   };
@@ -505,6 +548,7 @@ flat varying float vElement;`)
   outline.renderOrder = 8;
   three.add(outline);
   const updateOutline = () => {
+    outline.children[0]?.geometry.dispose();
     outline.clear();
     const chosen = [...selection].filter((i) => visibility[i] !== HIDDEN);
     if (!chosen.length) return invalidate();
@@ -531,13 +575,12 @@ flat varying float vElement;`)
     const box = canvas.getBoundingClientRect();
     const x = clientX - box.left, y = clientY - box.top;
     if (x < 0 || y < 0 || x >= box.width || y >= box.height) return null;
-    const ratio = renderer.getPixelRatio();
     const hidden = decorations().filter((object) => object.visible);
     hidden.forEach((object) => (object.visible = false));
     camera.setViewOffset(box.width, box.height, x, y, 1, 1);
     three.overrideMaterial = pickMaterial;
-    const shadows = renderer.shadowMap.autoUpdate;
-    renderer.shadowMap.autoUpdate = false;
+    const shadows = renderer.shadowMap.needsUpdate;
+    renderer.shadowMap.needsUpdate = false;
     renderer.setRenderTarget(pickTarget);
     renderer.setClearColor(0x000000, 0);
     renderer.clear();
@@ -545,11 +588,10 @@ flat varying float vElement;`)
     renderer.readRenderTargetPixels(pickTarget, 0, 0, 1, 1, pickPixel);
     renderer.setRenderTarget(null);
     renderer.setClearColor(canvasColor(), 1);
-    renderer.shadowMap.autoUpdate = shadows;
+    renderer.shadowMap.needsUpdate = shadows;
     three.overrideMaterial = null;
     camera.clearViewOffset();
     hidden.forEach((object) => (object.visible = true));
-    void ratio;
     const id = pickPixel[0] * 65536 + pickPixel[1] * 256 + pickPixel[2];
     return id === 0 ? null : id - 1;
   };
@@ -558,7 +600,7 @@ flat varying float vElement;`)
   // Drawing
 
   const draw = () => {
-    if (!sorted && !tween) {
+    if (!sorted && !tween && performance.now() - moved >= 180) {
       orderInstances(model.studMeshes, camera);
       sorted = true;
     }
@@ -568,13 +610,10 @@ flat varying float vElement;`)
       const hidden = [...decorations(), ...Object.values(model.meshes.insides)].filter((object) => object.visible);
       hidden.forEach((object) => (object.visible = false));
       renderer.autoClear = false;
-      const shadows = renderer.shadowMap.autoUpdate;
-      renderer.shadowMap.autoUpdate = false;
       three.overrideMaterial = ghostDepth;
       renderer.render(three, camera);
       three.overrideMaterial = ghostMaterial;
       renderer.render(three, camera);
-      renderer.shadowMap.autoUpdate = shadows;
       renderer.autoClear = true;
       three.overrideMaterial = null;
       hidden.forEach((object) => (object.visible = true));
@@ -582,23 +621,26 @@ flat varying float vElement;`)
   };
 
   const resize = () => {
-    const { width, height } = size();
+    stageSize = { width: Math.max(1, stage.clientWidth), height: Math.max(1, stage.clientHeight) };
+    const { width, height } = stageSize;
     renderer.setSize(width, height, false);
     perspective.aspect = width / height;
     perspective.updateProjectionMatrix();
     updateOrthographic();
-    invalidate();
+    // Resizing clears the canvas: draw now, before the browser shows it empty.
+    if (running) draw();
     emit("camera");
+    emit("render");
   };
   new ResizeObserver(resize).observe(stage);
 
-  let running = true;
+  let running = false;
   let frames = 0;
   const loop = (time) => {
     if (!running) return;
     requestAnimationFrame(loop);
     step(time);
-    if (controls.update()) invalidate();
+    if (!tween && controls.update()) invalidate();
     if (!needsRender) return;
     needsRender = false;
     frames += 1;
@@ -606,10 +648,11 @@ flat varying float vElement;`)
     emit("render");
   };
 
+  // Twice the screen's resolution, within 4,096 pixels a side and 16 megapixels in all.
   const screenshot = async () => {
     const { width, height } = size();
     const ratio = renderer.getPixelRatio();
-    const scale = Math.min(2 * Math.max(ratio, 1), 4096 / Math.max(width, height));
+    const scale = Math.min(2 * Math.max(ratio, 1), 4096 / Math.max(width, height), Math.sqrt(16e6 / (width * height)));
     renderer.setPixelRatio(scale);
     renderer.setSize(width, height, false);
     draw();
@@ -654,9 +697,12 @@ flat varying float vElement;`)
     hiddenCount: () => visibility.reduce((total, value) => total + (value === HIDDEN ? 1 : 0), 0),
     elementBox: (i) => model.elementBounds[i].clone(),
     start() {
+      running = true;
       applyTheme();
+      showInsides();
       resize();
       look("perspective", { animate: false });
+      refreshShadows();
       requestAnimationFrame(loop);
     },
     stop() { running = false; },

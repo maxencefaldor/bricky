@@ -8,7 +8,7 @@ const STYLE = `
 .compass .north { fill: var(--danger); }
 .compass .south { fill: var(--ink-3); }
 .compass text { font: 600 9px var(--font); fill: var(--ink); text-anchor: middle; }
-@media (max-width: 720px) { .compass { width: 40px; height: 40px; } }`;
+@container stage (max-width: 720px) { .compass { width: 40px; height: 40px; } }`;
 
 export default function compass({ engine, shell, h }) {
   shell.style(STYLE);

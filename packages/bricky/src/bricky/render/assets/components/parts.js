@@ -62,6 +62,7 @@ export default function parts({ scene, downloads, engine, shell, format, h }) {
     none.hidden = shown > 0;
   };
   search.addEventListener("input", filter);
+  search.addEventListener("search", filter);
 
   const choose = (lot) => {
     const same = engine.selection.size === lot.elements.length && lot.elements.every((i) => engine.selection.has(i));
