@@ -167,6 +167,7 @@ class Mark(BaseModel):
     )
     text: str
     kind: Literal["error", "warning"]
+    diagnostic: int = Field(description="Index into Scene.diagnostics.")
 
 
 class ScenePart(BaseModel):
@@ -493,7 +494,7 @@ def _mark_diagnostics(
     Each diagnostic also labels its first element and outlines its region.
     """
     index = {element.uid: i for i, element in enumerate(elements)}
-    for diagnostic in report.diagnostics:
+    for k, diagnostic in enumerate(report.diagnostics):
         error = report.is_error(diagnostic)
         kind: Literal["error", "warning"] = "error" if error else "warning"
         flag = Flag.ERROR if error else Flag.WARNING
@@ -504,9 +505,8 @@ def _mark_diagnostics(
             text = f"{diagnostic.rule} {elements[members[0]].uid}"
             labels.append(Label(element=members[0], text=text, kind=kind))
         if diagnostic.region is not None:
-            marks.append(
-                Mark(box=_box(diagnostic.region), text=diagnostic.rule, kind=kind)
-            )
+            box = _box(diagnostic.region)
+            marks.append(Mark(box=box, text=diagnostic.rule, kind=kind, diagnostic=k))
 
 
 def _highlight(

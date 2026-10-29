@@ -1,5 +1,6 @@
 // The checks panel: every error and warning of the check, numbered, with a matching pin on the
-// model. Choosing one selects the elements it names and brings them into view.
+// model. Choosing one selects the elements it names and brings them into view. A pin shows while
+// the model shows its diagnostic, which instructions reveal once every element it names is built.
 
 const STYLE = `
 .checks .result { display: flex; align-items: center; gap: 8px; margin: 2px 0 12px; }
@@ -99,7 +100,7 @@ export default function checks({ scene, engine, shell, format, h }) {
     const box = engine.elementBox(finding.elements[0]);
     const middle = box.getCenter(box.min.clone());
     const anchor = middle.clone().setY(box.max.y);
-    return { pin, anchor, middle, element: finding.elements[0] };
+    return { pin, anchor, middle, element: finding.elements[0], index: i };
   });
   // Pins that would land on one another line up side by side instead.
   const place = () => {
@@ -107,7 +108,7 @@ export default function checks({ scene, engine, shell, format, h }) {
     for (const item of pins) {
       if (!item) continue;
       const where = engine.project(item.anchor);
-      item.pin.hidden = !where.front || engine.isHidden(item.element) || !engine.inSection(item.middle);
+      item.pin.hidden = !where.front || !engine.showsDiagnostic(item.index) || engine.isHidden(item.element) || !engine.inSection(item.middle);
       if (item.pin.hidden) continue;
       let x = where.x;
       while (placed.some((other) => Math.abs(other.x - x) < 24 && Math.abs(other.y - where.y) < 24)) x += 26;

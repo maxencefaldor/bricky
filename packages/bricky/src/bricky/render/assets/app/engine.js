@@ -2,10 +2,13 @@
 // views, element states for selection, isolation and hiding, picking, clipping and screenshots.
 //
 // Element states live in a texture with one texel per element, read by every material's shader:
-// red holds the visibility (0 shown, 1 ghosted, 2 hidden), green the mark (1 hovered, 2 selected),
-// and blue and alpha an element arriving in place: the axis it moves along, and how far it still
-// has to go. Changing a state rewrites one texel, so restyling elements costs nothing per frame,
-// however large the model.
+// red holds the visibility (0 shown, 1 ghosted, 2 hidden), green the mark (1 hovered, 2 selected)
+// plus the diagnostics shown (4 an error, 8 a warning), and blue and alpha an element arriving in
+// place: the axis it moves along, and how far it still has to go. Changing a state rewrites one
+// texel, so restyling elements costs nothing per frame, however large the model.
+//
+// A diagnostic shows once every element it names is built: instructions reveal it at the step that
+// places the last of them.
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -13,11 +16,12 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
-import { BASE_UNIT, CLIP_SLACK, PLATE, STUD, buildModel, clipPlane, orderInstances, pushEdges, pushMeshEdges, pushRim, toThree } from "bricky/viewer.js";
+import { BASE_UNIT, CLIP_SLACK, PLATE, STUD, TINT, buildModel, clipPlane, orderInstances, pushEdges, pushMeshEdges, pushRim, toThree } from "bricky/viewer.js";
 
 const COLUMNS = 1024; // texels per row of the element state texture
 const VISIBLE = 0, GHOSTED = 1, HIDDEN = 2;
 const HOVERED = 1, SELECTED = 2;
+const SHOWS_ERROR = 4, SHOWS_WARNING = 8; // the diagnostics an element shows, added to its mark
 const FIELD_OF_VIEW = 30; // degrees, vertically
 const DURATION = 480; // milliseconds a view change takes
 const FILL = 0.86; // the share of the free area a framed model fills
@@ -88,7 +92,7 @@ export function createEngine(stage, scene, { insets = () => ({ top: 0, right: 0,
   sun.shadow.normalBias = 0.6;
   three.add(hemisphere, sun, sun.target);
 
-  const model = buildModel(scene);
+  const model = buildModel(scene, { live: true });
   three.add(model.root);
   const bounds = model.bounds.clone();
   const center = bounds.getCenter(new THREE.Vector3());
@@ -120,11 +124,19 @@ export function createEngine(stage, scene, { insets = () => ({ top: 0, right: 0,
   stateTexture.magFilter = stateTexture.minFilter = THREE.NearestFilter;
   stateTexture.needsUpdate = true;
   const accent = new THREE.Color();
-  const uniforms = { elementStates: { value: stateTexture }, markColor: { value: accent } };
+  const uniforms = {
+    elementStates: { value: stateTexture },
+    markColor: { value: accent },
+    errorTint: { value: new THREE.Color(TINT.error.color) },
+    warningTint: { value: new THREE.Color(TINT.warning.color) },
+  };
 
   // Patch a material to read each element's state. A pass of "normal" discards ghosted and hidden
   // elements; "ghost" draws only ghosted ones; "pick" writes element indices instead of colors.
-  const patch = (material, pass) => {
+  // Surfaces in their elements' colors take the tint of the diagnostics they show, as images bake
+  // it into those colors. An outline drawn for a kind of diagnostic shows while its element shows
+  // one of that kind, and an element's own outline while it shows none.
+  const patch = (material, pass, { outline } = {}) => {
     material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
       shader.vertexShader = shader.vertexShader
@@ -148,21 +160,32 @@ if (elementTexel.b > 0.0) {
 #endif
   transformed += shift;
 }`);
-      const keep = pass === "ghost" ? "vElementState.x == 1.0" : "vElementState.x == 0.0";
+      const outlines = { own: " && !error && !warning", warning: " && warning && !error", error: " && error" };
+      const keep = pass === "ghost" ? "vElementState.x == 1.0" : `vElementState.x == 0.0${outlines[outline] ?? ""}`;
       let fragment = shader.fragmentShader
         .replace("#include <common>", `#include <common>
 uniform vec3 markColor;
+uniform vec3 errorTint;
+uniform vec3 warningTint;
 flat varying vec2 vElementState;
 flat varying float vElement;`)
         .replace("void main() {", `void main() {
+  float mark = mod(vElementState.y, 4.0);
+  bool error = mod(floor(vElementState.y / 4.0), 2.0) == 1.0;
+  bool warning = vElementState.y >= 8.0;
   if (!(${keep})) discard;`);
       // An override material still takes instance colors from instanced studs: the ghost pass
       // drops them, so every ghosted surface takes the ghost's one color.
       if (pass === "ghost") fragment = fragment.replace("#include <color_fragment>", "");
+      // Vertex or instance colors, which three.js marks with USE_COLOR, hold elements' own colors.
       if (pass === "normal") {
         fragment = fragment.replace("#include <color_fragment>", `#include <color_fragment>
-  if (vElementState.y == 2.0) diffuseColor.rgb = mix(diffuseColor.rgb, markColor, 0.18);
-  else if (vElementState.y == 1.0) diffuseColor.rgb = mix(diffuseColor.rgb, markColor, 0.1);`);
+#ifdef USE_COLOR
+  if (error) diffuseColor.rgb = mix(diffuseColor.rgb, diffuse * errorTint, ${TINT.error.share.toFixed(2)});
+  else if (warning) diffuseColor.rgb = mix(diffuseColor.rgb, diffuse * warningTint, ${TINT.warning.share.toFixed(2)});
+#endif
+  if (mark == 2.0) diffuseColor.rgb = mix(diffuseColor.rgb, markColor, 0.18);
+  else if (mark == 1.0) diffuseColor.rgb = mix(diffuseColor.rgb, markColor, 0.1);`);
       }
       if (pass === "pick") {
         fragment = fragment.replace("#include <dithering_fragment>", `#include <dithering_fragment>
@@ -171,12 +194,12 @@ flat varying float vElement;`)
       }
       shader.fragmentShader = fragment;
     };
-    material.customProgramCacheKey = () => `bricky-${pass}`;
+    material.customProgramCacheKey = () => `bricky-${pass}-${outline}`;
     return material;
   };
 
   for (const set of Object.values(model.materials)) for (const material of Object.values(set)) patch(material, "normal");
-  for (const material of Object.values(model.edgeMaterials)) patch(material, "normal");
+  for (const segments of model.meshes.edges) patch(segments.material, "normal", { outline: segments.userData.kind ?? "own" });
   // Clipping opens the model: the inner sides of opaque parts render flat, in a darker shade of
   // their color, so a clipped part reads as solid.
   for (const [kind, mesh] of Object.entries(model.meshes.insides)) {
@@ -207,11 +230,25 @@ flat varying float vElement;`)
   const visibility = new Uint8Array(count); // what the reader hides or isolates
   const beyond = new Uint8Array(count); // past the build's progress, so hidden whatever the reader does
   const marks = new Uint8Array(count);
+  const diagnosed = new Uint8Array(count); // the kinds of diagnostic each element shows
   const shown = (i) => (beyond[i] ? HIDDEN : visibility[i]);
   const writeState = (i) => {
     states[i * 4] = shown(i);
-    states[i * 4 + 1] = marks[i];
+    states[i * 4 + 1] = marks[i] | diagnosed[i];
   };
+  // Show each diagnostic whose elements are all built: on its elements, and as its region's box.
+  let showing = [];
+  const showDiagnostics = () => {
+    diagnosed.fill(0);
+    showing = scene.diagnostics.map(({ kind, elements }) => {
+      if (elements.some((i) => beyond[i])) return false;
+      for (const i of elements) diagnosed[i] |= kind === "error" ? SHOWS_ERROR : SHOWS_WARNING;
+      return true;
+    });
+    for (const box of model.meshes.marks) box.visible = showing[box.userData.diagnostic];
+  };
+  showDiagnostics();
+  for (let i = 0; i < count; i++) writeState(i);
   const commitStates = () => {
     stateTexture.needsUpdate = true;
     invalidate();
@@ -580,6 +617,7 @@ flat varying float vElement;`)
   const limit = (indices) => {
     beyond.fill(indices === null ? 0 : 1);
     if (indices !== null) for (const i of indices) beyond[i] = 0;
+    showDiagnostics();
     refreshVisibility();
   };
   // Outline elements in the mark color, keeping their own colors, such as the ones a step adds.
@@ -898,6 +936,8 @@ flat varying float vElement;`)
     get moving() { return tween !== null || arrivals.length > 0; },
     along: direction,
     isHidden: (i) => shown(i) === HIDDEN,
+    // Whether the model shows a diagnostic, by its index in the scene's diagnostics.
+    showsDiagnostic: (k) => showing[k],
     // The elements the reader hid, leaving out those past the build's progress.
     hiddenCount: () => visibility.reduce((total, value, i) => total + (value === HIDDEN && !beyond[i] ? 1 : 0), 0),
     elementBox: (i) => model.elementBounds[i].clone(),

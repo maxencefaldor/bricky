@@ -3,7 +3,7 @@
 // find. The camera frames each step from a side where its elements show.
 
 const STYLE = `
-.step-card { padding: 12px 12px 12px 14px; width: max-content; min-width: 220px; max-width: min(372px, calc(100cqw - 2 * var(--gap) - 52px)); }
+.step-card { padding: 12px 12px 12px 14px; width: max-content; min-width: 220px; max-width: min(372px, var(--beside-toolbar)); }
 .step-card .head { display: flex; align-items: flex-start; gap: 10px; }
 .step-card .where { flex: 1; min-width: 0; }
 .step-card .count { display: flex; align-items: baseline; gap: 6px; margin: 0; }

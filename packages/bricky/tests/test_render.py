@@ -379,6 +379,59 @@ def test_instructions_show_the_model_one_step_at_a_time(tmp_path: Path) -> None:
     assert after == {"card": 0, "title": True, "hash": "", "problems": []}
 
 
+def test_instructions_show_a_diagnostic_once_its_elements_are_built(
+    tmp_path: Path,
+) -> None:
+    builder = ModelBuilder("blocked")
+    builder.place("3001", at=(0, 0, 0), color="Blue", id="bottom")
+    builder.place("3001", at=(0, 0.5, 3), color="Blue", id="top")
+    model = builder.build()
+    report = check_model(model, settings=Settings())
+    steps = build_instructions(model, default_catalog(), elements_per_step=1)
+    scene = build_scene(
+        model, default_catalog(), report=report, cull=False, instructions=steps
+    )
+    assert [d.rule for d in scene.diagnostics] == ["blocked-stud", "floating-group"]
+    path = write_html(scene, tmp_path / "blocked.html", mode="instructions")
+
+    async def follow() -> list[dict[str, object]]:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(
+                executable_path=Settings().render_browser,
+                args=["--enable-unsafe-swiftshader"],
+            )
+            page = await browser.new_page(viewport={"width": 640, "height": 480})
+            await page.route(CDN + "**", serve_three)
+            await page.goto(path.as_uri())
+
+            async def look() -> dict[str, object]:
+                await page.wait_for_function(
+                    "() => window.bricky && !window.bricky.engine.moving"
+                )
+                image = base64.b64encode(await page.screenshot()).decode()
+                colors = await page.evaluate(COUNT_COLORS, image)
+                return {
+                    "shown": await page.evaluate(
+                        "() => [0, 1].map(window.bricky.engine.showsDiagnostic)"
+                    ),
+                    "pins": await page.locator(".pin:not([hidden])").count(),
+                    "blue": colors["blue"] > 2000,
+                }
+
+            seen = [await look()]
+            await page.keyboard.press("ArrowRight")
+            await page.wait_for_function("() => location.hash === '#step-2'")
+            seen.append(await look())
+            await browser.close()
+            return seen
+
+    first, second = asyncio.run(follow())
+    # Both diagnostics name the top brick, so the bottom one goes on alone, untinted.
+    assert first == {"shown": [False, False], "pins": 0, "blue": True}
+    # The top brick completes both: their tints, outlines and pins appear together.
+    assert second == {"shown": [True, True], "pins": 2, "blue": False}
+
+
 def test_every_view_frames_the_whole_model(tmp_path: Path) -> None:
     # A big baseplate: views must frame big models as well as small ones.
     builder = ModelBuilder("square")

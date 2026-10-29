@@ -15,31 +15,12 @@ export const format = {
   count: (value, noun, plural = `${noun}s`) => `${numbers.format(value)} ${value === 1 ? noun : plural}`,
 };
 
-// The space the floating controls cover at each side of the stage, so framing leaves it free.
-function insets(shell) {
-  const { regions, stage } = shell;
-  const gap = 12;
-  const height = (element) => (element.childElementCount ? element.offsetHeight + gap : 0);
-  const vertical = regions.topRight.offsetHeight > regions.topRight.offsetWidth * 1.5;
-  const narrow = stage.clientWidth < 720;
-  return {
-    top: Math.max(height(regions.topLeft), vertical ? 0 : height(regions.topRight)) + gap,
-    // On a narrow stage the selection card and the credit stack above the view bar.
-    bottom: Math.max(height(regions.bottom), narrow ? height(regions.bottomLeft) + 56 : height(regions.bottomRight)) + gap + shell.panel.sheetHeight(),
-    left: gap,
-    right: (vertical ? regions.topRight.offsetWidth + gap : 0) + gap,
-  };
-}
-
 export async function start(root, scene, { heading, downloads = [], components = [], mode = "explore" }) {
   const shell = createShell(root, { heading });
-  const engine = createEngine(shell.stage, scene, { insets: () => insets(shell) });
+  const engine = createEngine(shell.stage, scene, { insets: shell.insets });
   const viewer = { scene, heading, downloads, mode, engine, shell, h, format };
 
-  const credits = [...scene.credits];
-  shell.regions.bottomLeft.append(
-    h("p", { class: "credit" }, credits.length ? `${credits.join("; ")} · ` : "", "Made with ", h("a", { href: "https://maxencefaldor.github.io/bricky/", target: "_blank", rel: "noopener" }, "bricky")),
-  );
+  if (scene.credits.length) shell.regions.bottomLeft.append(h("p", { class: "credit" }, scene.credits.join("; ")));
 
   // Orbit and zoom from the keyboard, unless the focus is in a field, a list or a menu.
   const free = () => !document.activeElement?.closest("input, textarea, select, .panel, .menu, dialog");

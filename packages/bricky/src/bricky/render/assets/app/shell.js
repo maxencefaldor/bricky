@@ -21,6 +21,8 @@ export function h(tag, attributes = {}, ...children) {
 }
 
 const TOOLBAR_GROUPS = ["panels", "tools"];
+const ROW_GAP = 8; // pixels between controls stacked one above another
+const FRAME_GAP = 12; // pixels that framing leaves between the model and the controls
 
 export function createShell(root, { heading }) {
   const listeners = new Map();
@@ -350,6 +352,36 @@ export function createShell(root, { heading }) {
     return true;
   });
 
+  // A corner region at the bottom rises above the middle one wherever the two would overlap, such
+  // as the selection card beside a wide view bar.
+  let rise = 0;
+  const settle = () => {
+    const middle = regions.bottom.getBoundingClientRect();
+    rise = middle.height ? middle.height + ROW_GAP : 0;
+    stage.style.setProperty("--rise", `${rise}px`);
+    for (const region of [regions.bottomLeft, regions.bottomRight]) {
+      const corner = region.getBoundingClientRect();
+      const overlaps = rise > 0 && corner.width > 0 && corner.left < middle.right + ROW_GAP && corner.right > middle.left - ROW_GAP;
+      region.toggleAttribute("data-raised", overlaps);
+    }
+  };
+  const layout = new ResizeObserver(settle);
+  for (const element of [stage, regions.bottom, regions.bottomLeft, regions.bottomRight]) layout.observe(element);
+
+  // The space the floating controls cover at each side of the stage, so framing leaves it free. A
+  // corner region beside the bottom one covers only its corner, and a raised one covers the bottom.
+  const insets = () => {
+    const height = (element) => (element.childElementCount ? element.offsetHeight + FRAME_GAP : 0);
+    const vertical = regions.topRight.offsetHeight > regions.topRight.offsetWidth * 1.5;
+    const raised = [regions.bottomLeft, regions.bottomRight].filter((region) => region.hasAttribute("data-raised"));
+    return {
+      top: Math.max(height(regions.topLeft), vertical ? 0 : height(regions.topRight)) + FRAME_GAP,
+      bottom: Math.max(height(regions.bottom), ...raised.map((region) => height(region) + rise)) + FRAME_GAP + sheetHeight(),
+      left: FRAME_GAP,
+      right: (vertical ? regions.topRight.offsetWidth + FRAME_GAP : 0) + FRAME_GAP,
+    };
+  };
+
   // A component can claim a region for a while, such as a mode with its own controls: the
   // region then shows only the claimant, and the others come back when the claim ends.
   const claim = (name, element) => {
@@ -378,7 +410,7 @@ export function createShell(root, { heading }) {
     requestAnimationFrame(() => (live.textContent = text));
   };
 
-  return { root, stage, overlay, regions, h, icon, style, button, toolbar, panel, menu, dialog, shortcuts, claim, toast, announce, on };
+  return { root, stage, overlay, regions, h, icon, style, button, toolbar, panel, menu, dialog, shortcuts, claim, insets, toast, announce, on };
 }
 
 const SHELL_STYLE = `

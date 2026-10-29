@@ -83,8 +83,13 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
 
 /* Layout: the stage and its floating chrome, beside a docked panel. */
 .app { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-/* Controls follow the stage's width, not the window's: a docked panel narrows the stage. */
-.stage { position: relative; min-width: 0; overflow: hidden; background: var(--canvas); container: stage / inline-size; --sheet: 0px; }
+/* Controls follow the stage's width, not the window's: a docked panel narrows the stage. On a narrow
+   stage the toolbar stands in a column at the right, and cards keep to --beside-toolbar, the width it
+   leaves after its control, padding and border, and a gap. */
+.stage {
+  position: relative; min-width: 0; overflow: hidden; background: var(--canvas); container: stage / inline-size;
+  --sheet: 0px; --rise: 0px; --beside-toolbar: calc(100cqw - 2 * var(--gap) - var(--control) - 18px);
+}
 .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .stage canvas:focus { outline: none; }
 .stage canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 0; }
@@ -110,10 +115,13 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
   bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet)); right: max(var(--gap), env(safe-area-inset-right));
   flex-direction: column; align-items: flex-end;
 }
-/* On a narrow stage, the card and the credit stack above the view bar. */
+/* A corner region that would overlap the bottom one rises above it, by --rise. */
+.region.bottom-left[data-raised], .region.bottom-right[data-raised] {
+  bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet) + var(--rise));
+}
+/* On a narrow stage, the card spans the stage's width. */
 @container stage (max-width: 720px) {
-  .region.bottom-left { bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet) + 56px); max-width: calc(100% - 2 * var(--gap)); }
-  .region.bottom-right { bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet)); }
+  .region.bottom-left { max-width: calc(100% - 2 * var(--gap)); }
 }
 .overlay { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
 
@@ -215,16 +223,20 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
 .menu .button { width: 100%; justify-content: flex-start; }
 .menu .button .hint { margin-left: auto; color: var(--ink-2); font-size: 12px; }
 
-/* Dialogs: help, centered over everything. */
+/* Dialogs: help, centered in the screen's safe area. Sized by the dynamic viewport, the screen that
+   a phone's browser bars leave, a long dialog scrolls its body instead of losing its top. */
 dialog.dialog {
-  width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 0;
+  inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  width: min(560px, calc(100vw - 32px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); padding: 0; overflow: hidden;
   border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink);
   box-shadow: var(--shadow-strong);
 }
+dialog.dialog[open] { display: flex; flex-direction: column; }
 dialog.dialog::backdrop { background: rgb(1 4 9 / 0.35); }
 .dialog-header { display: flex; align-items: center; padding: 14px 16px 10px 20px; }
 .dialog-header h2 { flex: 1; margin: 0; font-size: 16px; font-weight: 600; }
-.dialog-body { padding: 0 20px 20px; overflow: auto; }
+.dialog-body { min-height: 0; padding: 0 20px 20px; overflow: auto; overscroll-behavior: contain; }
 
 /* Toasts confirm actions briefly. */
 .toast {
@@ -250,7 +262,6 @@ dialog.dialog::backdrop { background: rgb(1 4 9 / 0.35); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .credit { margin: 0; font-size: 11px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.credit a { color: inherit; }
 
 /* Phones: the panel becomes a sheet over the bottom of the stage. */
 @media (max-width: 720px) {

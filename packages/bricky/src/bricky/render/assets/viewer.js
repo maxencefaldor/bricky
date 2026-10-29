@@ -19,6 +19,8 @@ export const CLIP_SLACK = 0.01;
 export const FLAG = { HIGHLIGHT: 1, GHOST: 2, ERROR: 4, WARNING: 8, CHANGED: 16 };
 const AXES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
 export const INK = { error: "#cf222e", warning: "#b35900", highlight: "#0969da", changed: "#8250df", text: "#1f2328", quiet: "#59636e" };
+// How far a diagnosed element's color moves toward its diagnostic's tint.
+export const TINT = { error: { color: INK.error, share: 0.55 }, warning: { color: "#e8a400", share: 0.45 } };
 const PAPER = "#f6f7f9";
 const HEADER = 30;
 const MARGIN = { left: 60, right: 16, top: 34, bottom: 44 };
@@ -48,7 +50,10 @@ function vector(a) {
 // ---------------------------------------------------------------------------------------------
 // Building the three.js scene from a bricky scene
 
-export function buildModel(scene) {
+// With `live`, the viewer shows diagnostics itself. Colors carry no tint, and every element keeps
+// its own outline. Each diagnostic outline names its kind in `userData.kind`, and each region's box
+// its diagnostic in `userData.diagnostic`.
+export function buildModel(scene, { live = false } = {}) {
   const root = new THREE.Group();
   const planes = scene.clips.map(clipPlane);
   // Bodies take their colors from vertices, and studs from instances: two sets of materials.
@@ -57,7 +62,7 @@ export function buildModel(scene) {
   for (const material of Object.values(studs)) material.side = THREE.FrontSide;
 
   const colors = scene.colors.map((color) => new THREE.Color(color.rgb));
-  const tint = { error: new THREE.Color(INK.error), warning: new THREE.Color("#e8a400") };
+  const tint = { error: new THREE.Color(TINT.error.color), warning: new THREE.Color(TINT.warning.color) };
   const kindOf = (element) => {
     if (element[1] & FLAG.GHOST) return "ghost";
     const type = scene.colors[element[0]].type;
@@ -65,8 +70,9 @@ export function buildModel(scene) {
   };
   const colorOf = (element) => {
     const color = colors[element[0]].clone();
-    if (element[1] & FLAG.ERROR) color.lerp(tint.error, 0.55);
-    else if (element[1] & FLAG.WARNING) color.lerp(tint.warning, 0.45);
+    if (live) return color;
+    if (element[1] & FLAG.ERROR) color.lerp(tint.error, TINT.error.share);
+    else if (element[1] & FLAG.WARNING) color.lerp(tint.warning, TINT.warning.share);
     return color;
   };
 
@@ -98,7 +104,7 @@ export function buildModel(scene) {
     const element = scene.elements[mesh.element];
     faces[kindOf(element)].addMesh(mesh, colorOf(element), mesh.element);
   }
-  const meshes = { bodies: {}, insides: {}, studs: {}, edges: [] };
+  const meshes = { bodies: {}, insides: {}, studs: {}, edges: [], marks: [] };
   for (const [kind, buffer] of Object.entries(faces)) {
     if (!buffer.count) continue;
     const geometry = buffer.geometry();
@@ -186,18 +192,22 @@ export function buildModel(scene) {
     error: new THREE.LineBasicMaterial({ color: INK.error, transparent: true, opacity: 0.95, depthTest: false, clippingPlanes: planes }),
     warning: new THREE.LineBasicMaterial({ color: INK.warning, transparent: true, opacity: 0.95, depthTest: false, clippingPlanes: planes }),
   };
+  // A diagnosed element's outline replaces its own. Live, every element keeps its own outline as
+  // well, and the viewer shows one or the other.
+  const baked = live ? 0 : FLAG.ERROR | FLAG.WARNING;
   const lines = [
-    [outline((flags) => !(flags & (FLAG.GHOST | FLAG.ERROR | FLAG.WARNING | FLAG.HIGHLIGHT | FLAG.CHANGED))), edgeMaterials.plain, 1],
-    [outline((flags) => flags & FLAG.CHANGED && !(flags & (FLAG.GHOST | FLAG.ERROR | FLAG.WARNING | FLAG.HIGHLIGHT))), edgeMaterials.changed, 2],
-    [outline((flags) => flags & FLAG.GHOST), edgeMaterials.ghost, 3],
-    [outline((flags) => flags & FLAG.HIGHLIGHT && !(flags & (FLAG.ERROR | FLAG.WARNING))), edgeMaterials.highlight, 4],
-    [outline((flags) => flags & FLAG.WARNING && !(flags & FLAG.ERROR)), edgeMaterials.warning, 5],
-    [outline((flags) => flags & FLAG.ERROR), edgeMaterials.error, 6],
+    [outline((flags) => !(flags & (FLAG.GHOST | baked | FLAG.HIGHLIGHT | FLAG.CHANGED))), edgeMaterials.plain, 1, null],
+    [outline((flags) => flags & FLAG.CHANGED && !(flags & (FLAG.GHOST | baked | FLAG.HIGHLIGHT))), edgeMaterials.changed, 2, null],
+    [outline((flags) => flags & FLAG.GHOST), edgeMaterials.ghost, 3, null],
+    [outline((flags) => flags & FLAG.HIGHLIGHT && !(flags & baked)), edgeMaterials.highlight, 4, null],
+    [outline((flags) => flags & FLAG.WARNING && (live || !(flags & FLAG.ERROR))), edgeMaterials.warning, 5, "warning"],
+    [outline((flags) => flags & FLAG.ERROR), edgeMaterials.error, 6, "error"],
   ];
-  for (const [geometry, material, order] of lines) {
+  for (const [geometry, material, order, kind] of lines) {
     if (!geometry.attributes.position.count) continue;
     const segments = new THREE.LineSegments(geometry, material);
     segments.renderOrder = order;
+    segments.userData.kind = kind;
     root.add(segments);
     meshes.edges.push(segments);
   }
@@ -212,7 +222,9 @@ export function buildModel(scene) {
     const segments = new THREE.LineSegments(geometry, material);
     segments.computeLineDistances();
     segments.renderOrder = 7;
+    segments.userData.diagnostic = mark.diagnostic;
     root.add(segments);
+    meshes.marks.push(segments);
   }
 
   const bounds = new THREE.Box3(toThree(scene.bounds[0], scene.bounds[4], scene.bounds[2]), toThree(scene.bounds[3], scene.bounds[1], scene.bounds[5]));

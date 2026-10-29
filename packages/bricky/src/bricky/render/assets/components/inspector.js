@@ -32,9 +32,9 @@ const STYLE = `
 }
 .visibility-pill[hidden] { display: none; }
 @container stage (max-width: 720px) {
-  .visibility-pill { top: auto; bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet) + 56px); }
+  .visibility-pill { top: auto; bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet) + var(--rise)); }
   .stage:has(.info-card:not([hidden])) .visibility-pill { display: none; }
-  .info-card { width: calc(100cqw - 2 * var(--gap)); }
+  .info-card { width: var(--beside-toolbar); }
   /* Over a phone's sheet the card keeps to the part's name and its actions, as icons. */
   .sheet-open .info-card { padding: 8px 8px 6px 12px; }
   .sheet-open .info-card dl { display: none; }

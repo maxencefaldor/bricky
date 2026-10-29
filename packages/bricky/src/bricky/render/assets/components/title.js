@@ -8,7 +8,7 @@ const STYLE = `
 .title-card button.badge { border: 0; cursor: pointer; font: inherit; font-size: 12px; font-weight: 500; }
 .title-card button.badge:hover { filter: brightness(0.96); }
 @container stage (max-width: 720px) {
-  .title-card { padding: 8px 12px; max-width: calc(100cqw - 80px); }
+  .title-card { padding: 8px 12px; max-width: var(--beside-toolbar); }
   .title-card h1 { font-size: 14px; }
   .title-card .status { margin-top: 6px; }
 }`;
