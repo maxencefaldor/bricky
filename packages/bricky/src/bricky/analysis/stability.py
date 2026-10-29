@@ -4,14 +4,15 @@
 The analysis treats every element as a rigid body that weighs its volume times a
 density. Forces act only where elements touch, and where they touch the ground:
 
-- A face presses on a face it rests against. A face counts when it is the top or bottom
-  of its part, or holds the part's studs or anti-studs: the sides of LEGO® parts stand
+- A face presses on a face it rests against when the two face up and down, since weight
+  closes any gap. Faces that face sideways press only when each is the top or bottom of
+  its part or holds the part's studs or anti-studs: the sides of LEGO® parts stand
   0.1 mm in from the grid, so neighbors' sides never touch.
 - Faces that no stud joins also rub, with friction, inscribed in a pyramid.
 - A stud bears any sideways force, and resists pulling out of its anti-stud up to its
   clutch. A stud alone between two bodies also resists twisting, up to its clutch at its
   2.4 mm radius; studs that share a seat resist any twist as a couple.
-- The ground, the plane z = 0, presses up on every face that rests on it, with friction.
+- The ground, the plane z = 0, presses up wherever an element reaches it, with friction.
 
 A body stands still when some set of these forces balances its weight: the forces and
 torques on it sum to zero. Finding such forces is a linear program, the lower bound of
@@ -89,8 +90,6 @@ _BINDING: Final = 1e-7
 """Dual value, as a share of all, below which a stud's limit sets no load."""
 
 _ONE: Final = Vector(1, 1, 1)
-_GROUND: Final = (DOWN, 0)
-"""The plane of a face that rests on the ground: facing down, at z = 0."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,37 +209,37 @@ type _Entries = tuple[np.ndarray, np.ndarray, np.ndarray]
 
 @dataclass(frozen=True, slots=True)
 class _Faces:
-    """The faces of an element's solids, each counter-clockwise seen from outside."""
+    """The faces of an element's solids that can press on other elements' faces."""
 
-    bearing: dict[_Plane, list[_Corners]]
-    """The faces that can press on another element's faces, by plane."""
+    faces: dict[_Plane, list[tuple[_Corners, bool]]]
+    """Each face by plane, counter-clockwise seen from outside, and whether it bears:
+    whether it is the top or bottom of its part, or holds the part's studs or
+    anti-studs. Faces that neither bear nor face up or down never press."""
 
-    resting: list[_Corners]
-    """The faces that rest on the ground."""
+    lowest: tuple[tuple[int, int, int], ...]
+    """The corners at the element's lowest height, when that reaches the ground."""
 
     @classmethod
     def of(cls, element: PlacedElement) -> _Faces:
-        """Return the faces of an element.
-
-        A face bears when it is the top or bottom of its part, or holds the part's studs
-        or anti-studs.
-        """
+        """Return the faces of an element, and where it reaches the ground."""
         axis = element.pose.rotation.apply(UP)
         holders = {
             (connector.normal, connector.normal.dot(connector.position))
             for connector in element.connectors
         }
-        bearing: defaultdict[_Plane, list[_Corners]] = defaultdict(list)
-        resting: list[_Corners] = []
+        faces: defaultdict[_Plane, list[tuple[_Corners, bool]]] = defaultdict(list)
+        corners: set[tuple[int, int, int]] = set()
         for solid in element.solids:
             convex = solid if isinstance(solid, Convex) else solid.as_convex()
+            corners.update(vertex.as_tuple() for vertex in convex.vertices)
             for face, plane in zip(convex.faces, convex.planes, strict=True):
-                corners = tuple(convex.vertices[k].as_tuple() for k in face)
-                if plane == _GROUND:
-                    resting.append(corners)
-                if plane[0] in (axis, -axis) or plane in holders:
-                    bearing[plane].append(corners)
-        return cls(dict(bearing), resting)
+                bears = plane[0] in (axis, -axis) or plane in holders
+                if bears or plane[0] in (UP, DOWN):
+                    polygon = tuple(convex.vertices[k].as_tuple() for k in face)
+                    faces[plane].append((polygon, bears))
+        low = element.bounds.min.z
+        lowest = tuple(sorted(c for c in corners if c[2] == low)) if low <= 0 else ()
+        return cls(dict(faces), lowest)
 
 
 @dataclass(frozen=True, slots=True)
@@ -259,10 +258,10 @@ class _Contact:
 
 
 def _grounds(faces: Sequence[_Faces]) -> Iterator[_Contact]:
-    """Yield where elements rest on the ground."""
+    """Yield where elements reach the ground, at their lowest corners."""
     for i, element in enumerate(faces):
-        for corners in element.resting:
-            yield _Contact(None, i, UP, corners)
+        if element.lowest:
+            yield _Contact(None, i, UP, element.lowest)
 
 
 def _contacts(
@@ -270,18 +269,25 @@ def _contacts(
     faces: Sequence[_Faces],
     index: SpatialHash[int],
 ) -> Iterator[_Contact]:
-    """Yield where faces of two elements press together over some area."""
+    """Yield where faces of two elements press together over some area.
+
+    Faces press when they face up or down, since weight closes any gap between them,
+    or when both bear: the sides of parts stand 0.1 mm in from the grid, so neighbors'
+    sides never touch.
+    """
     for i, element in enumerate(elements):
         grown = Box(element.bounds.min - _ONE, element.bounds.max + _ONE)
         for j in sorted(index.query(grown)):
             if j <= i:
                 continue
-            for (normal, offset), mine in faces[i].bearing.items():
-                for first in mine:
-                    for second in faces[j].bearing.get((-normal, -offset), ()):
-                        points = _overlap(first, second, normal)
-                        if points:
-                            yield _Contact(i, j, normal, points)
+            for (normal, offset), mine in faces[i].faces.items():
+                level = normal in (UP, DOWN)
+                for first, bears in mine:
+                    for second, too in faces[j].faces.get((-normal, -offset), ()):
+                        if level or (bears and too):
+                            points = _overlap(first, second, normal)
+                            if points:
+                                yield _Contact(i, j, normal, points)
 
 
 def _overlap(

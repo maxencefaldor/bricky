@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from math import ceil
 from typing import ClassVar
 
 from bricky.analysis import Context
@@ -13,11 +14,12 @@ from bricky.geometry import Box
 
 _MODEL = (
     "Elements are rigid and weigh their volume times the density setting. Forces act "
-    "only where elements touch. Faces press on faces they rest against, where each "
-    "face is the top or bottom of its part or holds its studs or anti-studs: the "
-    "sides of parts stand 0.1 mm in from the grid. Faces with no stud between them "
-    "also rub, with the friction setting. Studs bear any sideways force. The ground, "
-    "at z = 0, presses up on every face that rests on it, with friction."
+    "only where elements touch. Faces that face up and down press on each other, "
+    "since weight closes any gap. Faces that face sideways press only where each is "
+    "the top or bottom of its part or holds its studs or anti-studs: the sides of "
+    "parts stand 0.1 mm in from the grid. Faces that no stud joins also rub, with the "
+    "friction setting. Studs bear any sideways force. The ground, at z = 0, presses "
+    "up wherever an element reaches it, with friction."
 )
 
 
@@ -45,16 +47,18 @@ class StabilityPass:
             title="Overloaded studs",
             rule=(
                 f"{_MODEL} A stud's clutch, 2.94 N by default, is the force that pulls "
-                "it out of its anti-stud. A stud alone between two elements also "
-                "resists twisting with its clutch, at its 2.4 mm radius. The pass "
-                "finds forces that hold the model still while the most loaded stud "
-                "uses the least share of its clutch, with the groups of E401 held up. "
-                "The studs that set that share form a site. The search repeats with "
-                "the studs of each site found holding without limit, so each site "
-                "needs its share however much the sites before it hold. The pass "
-                "reports at most 16 sites, most loaded first: each whose studs need "
-                "more than their clutch, with that share, the elements the studs join "
-                "and the box around the studs."
+                "it out of its anti-stud. A stud alone where two elements meet face "
+                "to face also resists twisting, at its 2.4 mm radius, and its pull "
+                "and twist share its clutch; two or more studs there resist any twist "
+                "together. The pass finds forces that hold the model still while the "
+                "most loaded stud uses the least share of its clutch, with the groups "
+                "of E401 held up. The studs that set that share form sites, one for "
+                "each group of elements that would move together to pull them out. "
+                "The search repeats with the studs of each site found holding without "
+                "limit, so each site needs its share however much the sites before it "
+                "hold. The pass reports at most 16 sites, most loaded first: each "
+                "whose studs need more than their clutch, with that share rounded up, "
+                "the elements the studs join and the box around the studs."
             ),
         ),
         Code(
@@ -117,7 +121,8 @@ class StabilityPass:
                 pass_name=self.name,
                 message=(
                     f"{studs} joining {len(site.elements)} elements {need} "
-                    f"{site.load:.0%} of {their} clutch to hold the model together"
+                    f"{ceil(site.load * 100)}% of {their} clutch to hold the model "
+                    "together"
                 ),
                 elements=tuple(elements[i].uid for i in site.elements),
                 region=Region.of(Box.bounding(joint.bounds for joint in site.joints)),

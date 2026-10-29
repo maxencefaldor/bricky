@@ -15,7 +15,7 @@ uv run bricky build models/crane.py --profile physical
 ```
 
 ```text
-error[E402]: 1 stud joining 2 elements needs 106% of its clutch to hold the model together
+error[E402]: 1 stud joining 2 elements needs 107% of its clutch to hold the model together
   --> x 3.2..3.8  y 7.2..7.8  z 12.5..13
    = mast3: Brick 2 x 2 (3003), Yellow, models/crane.py:8 in build()
    = jib0: Brick 2 x 10 (3006), White, models/crane.py:10 in build()
@@ -25,12 +25,14 @@ error[E402]: 1 stud joining 2 elements needs 106% of its clutch to hold the mode
 
 Each element is a rigid body that weighs its volume times a density, and forces act only where elements touch.
 
-- A face presses on a face it rests against, where each face is the top or bottom of its part or holds its studs or anti-studs.
+- Faces that face up and down press on each other, since weight closes any gap between them.
+- Faces that face sideways press only where each is the top or bottom of its part or holds its studs or anti-studs.
   The sides of LEGO® parts stand 0.1 mm in from the grid, so the sides of neighbors never touch.
 - Faces that no stud joins also rub, with friction.
 - A stud bears any sideways force and resists pulling out of its anti-stud with its clutch.
-  A stud alone between two elements also resists twisting with its clutch, at its 2.4 mm radius.
-- The ground presses up on every face that rests on it, with friction.
+- A stud alone where two elements meet face to face also resists twisting, at its 2.4 mm radius, and its pull and twist share its clutch.
+  Two or more studs there resist any twist together.
+- The ground presses up wherever an element reaches it, with friction.
 
 A model stands when some set of these forces balances every element: the forces and torques on each sum to zero.
 Finding such forces is a linear program, the lower bound of limit analysis that studies of masonry and of LEGO® structures use ([Whiting et al., 2009](https://doi.org/10.1145/1618452.1618458); [Liu et al., 2024](https://arxiv.org/abs/2402.10711)).
@@ -69,10 +71,11 @@ The code E401 names each group that moves, such as a post and the arm on it that
 
 A stud holds its anti-stud with a force called its clutch, and the check finds how much of that clutch each stud must use.
 Many sets of forces hold a model still, so the check takes the one where the most loaded stud uses the least share of its clutch.
-The studs that set that share form a site, and the search repeats with those studs holding without limit.
+The studs that set that share form a site, one for each group of elements that would move together to pull them out.
+The search then repeats with those studs holding without limit.
 Each site therefore needs its share of clutch however much the sites before it hold.
 The code E402 names a site that needs more than its whole clutch, and W403 one that needs more than half, the default safety factor of 2.
-A heavy jib on a single stud of a crane's mast needs 106% of that stud's clutch:
+A heavy jib on a single stud of a crane's mast needs 107% of that stud's clutch:
 
 ![A crane whose jib stands on one stud of the mast, the two elements tinted red, labeled E402](../images/crane.png)
 

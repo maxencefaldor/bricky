@@ -200,40 +200,106 @@ rectangles = st.tuples(
 )
 
 
-@settings(max_examples=200, deadline=None)
-@given(rectangles, rectangles)
+@settings(max_examples=300, deadline=None)
+@given(rectangles, rectangles, st.integers(0, 2), st.booleans())
 def test_faces_that_are_not_rectangles_overlap_as_rectangles_do(
-    first: tuple[int, int, int, int], second: tuple[int, int, int, int]
+    first: tuple[int, int, int, int],
+    second: tuple[int, int, int, int],
+    axis: int,
+    split_first: bool,  # noqa: FBT001 - a value Hypothesis draws
 ) -> None:
-    # A midpoint on one edge makes the first face a pentagon, which the exact polygon
-    # clip handles instead of the rectangle shortcut; the area they find is the same.
-    def corners(x: int, y: int, width: int, depth: int) -> list[tuple[int, int, int]]:
-        x, y, width, depth = 2 * x, 2 * y, 2 * width, 2 * depth
-        return [
-            (x, y, 0),
-            (x + width, y, 0),
-            (x + width, y + depth, 0),
-            (x, y + depth, 0),
-        ]
+    # A midpoint on one edge makes a face a pentagon, which the exact polygon clip
+    # handles instead of the rectangle shortcut; the area they find is the same, in
+    # each plane and whichever face has fewer corners.
+    a, b = (axis + 1) % 3, (axis + 2) % 3
 
-    up = Vector(0, 0, 1)
-    face = corners(*first)
-    other = tuple(reversed(corners(*second)))
-    pentagon = (face[0], ((face[0][0] + face[1][0]) // 2, face[0][1], 0), *face[1:])
-    shortcut = _overlap(tuple(face), other, up)
-    clipped = _overlap(pentagon, other, up)
+    def point(u: int, v: int) -> tuple[int, int, int]:
+        coordinates = [0, 0, 0]
+        coordinates[a], coordinates[b] = u, v
+        return coordinates[0], coordinates[1], coordinates[2]
+
+    def corners(u: int, v: int, width: int, depth: int) -> list[tuple[int, int, int]]:
+        u, v, width, depth = 2 * u, 2 * v, 2 * width, 2 * depth
+        square = [(u, v), (u + width, v), (u + width, v + depth), (u, v + depth)]
+        return [point(*corner) for corner in square]
+
+    def split(face: list[tuple[int, int, int]]) -> tuple[tuple[int, int, int], ...]:
+        middle = tuple((p + q) // 2 for p, q in zip(face[0], face[1], strict=True))
+        return (face[0], (middle[0], middle[1], middle[2]), *face[1:])
+
+    normal = Vector(*(1 if k == axis else 0 for k in range(3)))
+    face, other = corners(*first), list(reversed(corners(*second)))
+    shortcut = _overlap(tuple(face), tuple(other), normal)
+    if split_first:
+        clipped = _overlap(split(face), tuple(other), normal)
+    else:
+        clipped = _overlap(tuple(face), split(other), normal)
     assert bool(shortcut) == bool(clipped)
     if shortcut:
-        xs, ys = {p[0] for p in shortcut}, {p[1] for p in shortcut}
-        area = (max(xs) - min(xs)) * (max(ys) - min(ys))
+        us, vs = {p[a] for p in shortcut}, {p[b] for p in shortcut}
+        area = (max(us) - min(us)) * (max(vs) - min(vs))
         twice = sum(
-            a[0] * b[1] - b[0] * a[1]
-            for a, b in zip(clipped, [*clipped[1:], clipped[0]], strict=True)
+            p[a] * q[b] - q[a] * p[b]
+            for p, q in zip(clipped, [*clipped[1:], clipped[0]], strict=True)
         )
         assert twice == 2 * area
-        assert {p[0] for p in clipped} >= xs
-        assert min(p[0] for p in clipped) == min(xs)
-        assert max(p[1] for p in clipped) == max(ys)
+        assert (min(p[a] for p in clipped), max(p[a] for p in clipped)) == (
+            min(us),
+            max(us),
+        )
+        assert (min(p[b] for p in clipped), max(p[b] for p in clipped)) == (
+            min(vs),
+            max(vs),
+        )
+
+
+def test_an_element_that_reaches_the_ground_along_an_edge_can_tip() -> None:
+    # A round brick on its side touches the ground along one edge of its facets.
+    builder = ModelBuilder("edge")
+    builder.place("3941", at=(0, 0, 0), color="Green", rotation="+x+z", id="round")
+    builder.place("3460", at=(0, -0.4, 2.5), color="Red", rotation="-z+x", id="arm")
+    assert falls(builder) == [["round", "arm"]]
+
+
+def lying(x: float) -> ModelBuilder:
+    """A 1 x 4 brick on its side, resting on a 2 x 2 tile at ``x`` studs."""
+    builder = ModelBuilder("lying")
+    builder.place("3068", at=(0, 0, 0), color="White", id="tile")
+    builder.place("3010", at=(x, 0, 1), color="Red", rotation="-z+x", id="beam")
+    return builder
+
+
+def test_an_element_on_its_side_rests_on_what_lies_below_it() -> None:
+    # Weight closes the gap under a side that faces down, though sides stand in.
+    assert falls(lying(-1)) == []
+    assert falls(lying(1)) == [["beam"]]
+
+
+def test_studs_that_share_a_seat_resist_twist_together() -> None:
+    # The arm of the twist test, on two side studs instead of one: the studs resist
+    # the twist as a couple, so only the arm's tilt out of the wall loads them.
+    builder = ModelBuilder("couple")
+    builder.place("3031", at=(0, 0, 0), color="Green", id="base")
+    builder.place("11211", at=(1, 2, 1), color="Red", id="brick")
+    builder.place("3460", at=(1, 1.6, 1.5), color="Blue", rotation="-z+x", id="arm")
+    stability, uids = analyze(builder, threshold=1e-5)
+    loads = {
+        tuple(uids[i] for i in site.elements): site.load for site in stability.sites
+    }
+    assert loads["brick", "arm"] < 0.001
+
+
+def test_studs_of_groups_that_fall_need_no_clutch() -> None:
+    builder = cantilever(1)
+    builder.place("3005", at=(10, 0, 0), color="Red", id="leg")
+    builder.place("3460", at=(10, 0, 3), color="Blue", rotation="R90", id="reach")
+    material = Material(clutch=0.0075, friction=0.2, density=0.54)
+    stability, uids = analyze(builder, material, threshold=0.5)
+    assert [[uids[i] for i in group] for group in stability.falls] == [["leg", "reach"]]
+    assert [[uids[i] for i in site.elements] for site in stability.sites] == [
+        ["post0", "arm0.0"],
+        ["ground", "post0"],
+    ]
 
 
 def codes(builder: ModelBuilder, clutch: float = 2.94) -> list[tuple[str, str]]:
@@ -258,7 +324,7 @@ def test_the_stability_pass_reports_overloaded_and_strained_studs() -> None:
     message = "4 studs joining 2 elements need {}% of their clutch to hold the model"
     assert codes(cantilever(1), clutch=0.0075) == [
         ("E402", message.format(116) + " together"),
-        ("W403", message.format(72) + " together"),
+        ("W403", message.format(73) + " together"),
     ]
 
 
