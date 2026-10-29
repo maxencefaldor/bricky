@@ -6,6 +6,7 @@ render only those. Each figure is a small model built below, or an example scrip
 rendered into ``docs/images``. Figures use the sample catalog, so anyone can render them
 again; the figures of converted LDraw parts need an imported catalog and are skipped
 without one. Bare figures, for cards and the home page, carry no text at all.
+Screenshots show an example in the standalone viewer, as a reader sees it in a browser.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from functools import partial
 from importlib.resources import files
 from math import hypot
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Final
 
 from playwright.async_api import Page, Route, async_playwright
@@ -31,7 +33,16 @@ from bricky.analysis import build_world, diff_worlds
 from bricky.catalog import IMPORTED_CATALOG, SAMPLE_CATALOG, Catalog, load_catalog
 from bricky.model import Model
 from bricky.provenance import Provenance
-from bricky.render import Clip, Renderer, Scene, View, build_scene
+from bricky.render import (
+    THREE_VERSION,
+    Clip,
+    Renderer,
+    Scene,
+    View,
+    build_scene,
+    downloads,
+    write_html,
+)
 from bricky.service import run_script
 
 ROOT: Final = Path(__file__).resolve().parent.parent
@@ -354,6 +365,32 @@ def underground(catalog: Catalog) -> ModelBuilder:
 # Voxels
 
 
+# --------------------------------------------------------------------------------------
+# Exports
+
+
+INVENTORY: Final = (
+    ("3001", "Red"),
+    ("3003", "Yellow"),
+    ("3004", "Blue"),
+    ("3039", "Dark Bluish Gray"),
+    ("3022", "Green"),
+    ("3068", "White"),
+    ("3062", "Orange"),
+    ("3020", "Tan"),
+    ("4032", "Medium Azure"),
+)
+
+
+def inventory(catalog: Catalog) -> ModelBuilder:
+    """One part of each lot on a baseplate, in rows: what an export lists."""
+    builder = ModelBuilder("inventory", catalog=catalog)
+    builder.place("3867", at=(0, 0, 0), color="Light Bluish Gray")
+    for i, (part, color) in enumerate(INVENTORY):
+        builder.place(part, at=(1 + (i % 3) * 5, 1 + (i // 3) * 5, 0.5), color=color)
+    return builder
+
+
 def voxelized(catalog: Catalog) -> ModelBuilder:
     """A slope and an arch beside the voxels they fill, rebuilt from 1 x 1 plates.
 
@@ -450,6 +487,7 @@ FIGURES: Final = (
     card("card-images", EXAMPLES / "cottage.py", highlight=("@roof",)),
     card("card-voxels", voxelized, buildable=False),
     card("card-catalog", converted, imported=True),
+    card("card-exports", inventory),
     *(
         Figure(
             f"gallery-{name}", EXAMPLES / script, view=view, size=(1200, 900), bare=True
@@ -771,8 +809,98 @@ async def photograph(
     return base64.b64decode(url.removeprefix(PNG_URL))
 
 
+# --------------------------------------------------------------------------------------
+# Screenshots: the standalone viewer, as a reader sees it
+
+
+@dataclass(frozen=True, slots=True)
+class Screenshot:
+    """An example in the standalone viewer, after some clicks."""
+
+    name: str
+    script: Path
+    clicks: tuple[str, ...] = ()
+    """Selectors of what to click, in order, once the viewer is ready."""
+
+    size: tuple[int, int] = (1600, 1000)
+
+
+SCREENSHOTS: Final = (
+    Screenshot(
+        "viewer",
+        EXAMPLES / "lighthouse_island.py",
+        clicks=("[aria-label='Parts'][data-tip]", ".parts li:nth-child(10) button"),
+    ),
+)
+
+CDN: Final = f"https://cdn.jsdelivr.net/npm/three@{THREE_VERSION}/"
+
+
+async def serve_three(route: Route) -> None:
+    """Answer the viewer's requests for three.js from bricky's vendored copy."""
+    name = route.request.url.removeprefix(CDN).removeprefix("build/")
+    await route.fulfill(
+        body=RENDER_ASSETS.joinpath("three", *name.split("/")).read_bytes(),
+        content_type="text/javascript",
+    )
+
+
+async def screenshot(shot: Screenshot, settings: Settings, folder: Path) -> Path:
+    """Write an example's viewer, open it, click through, and save what shows.
+
+    Raises:
+        RuntimeError: If the viewer reports an error or fails to start.
+    """
+    run = await run_script(shot.script, settings)
+    catalog = default_catalog()
+    report = check_model(
+        run.model, provenance=run.provenance, catalog=catalog, settings=settings
+    )
+    scene = build_scene(
+        run.model, catalog, provenance=run.provenance, report=report, cull=False
+    )
+    viewer = write_html(
+        scene, folder / f"{shot.name}.html", downloads(run.model, catalog)
+    )
+    problems: list[str] = []
+    width, height = shot.size
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(
+            executable_path=settings.render_browser,
+            args=["--enable-unsafe-swiftshader"],
+        )
+        page = await browser.new_page(viewport={"width": width, "height": height})
+        page.on("pageerror", lambda error: problems.append(str(error)))
+        await page.route(CDN + "**", serve_three)
+        await page.goto(viewer.as_uri())
+        await page.wait_for_function(
+            "() => document.getElementById('app').dataset.state !== 'loading'"
+        )
+        for selector in shot.clicks:
+            await page.click(selector)
+        await settle(page)
+        image = await page.screenshot()
+        await browser.close()
+    if problems:
+        message = f"the viewer of {shot.name} failed: {'; '.join(problems)}"
+        raise RuntimeError(message)
+    path = IMAGES / f"{shot.name}.png"
+    path.write_bytes(image)
+    return path
+
+
+async def settle(page: Page) -> None:
+    """Wait until the viewer has drawn the same number of frames twice in a row."""
+    frames, still = -1, 0
+    while still < 2:
+        await page.wait_for_timeout(1000)
+        now = await page.evaluate("() => window.bricky.engine.frames")
+        still = still + 1 if now == frames else 0
+        frames = now
+
+
 async def main() -> None:
-    """Render every figure, then copy the benchmark inputs."""
+    """Render every figure and screenshot, then copy the benchmark inputs."""
     # Example scripts use the sample catalog too.
     os.environ["BRICKY_CATALOG"] = str(SAMPLE_CATALOG)
     IMAGES.mkdir(parents=True, exist_ok=True)
@@ -785,6 +913,12 @@ async def main() -> None:
             path = await render(figure, renderer, page, settings)
             if path is not None:
                 print(f"rendered {path.relative_to(ROOT)}")
+    with TemporaryDirectory() as folder:
+        for shot in SCREENSHOTS:
+            if wanted and shot.name not in wanted:
+                continue
+            path = await screenshot(shot, settings, Path(folder))
+            print(f"captured {path.relative_to(ROOT)}")
     for name, source in COPIES.items():
         shutil.copyfile(source, IMAGES / name)
         print(f"copied {source.relative_to(ROOT)}")

@@ -50,7 +50,18 @@ Render images of a model file.
 | `--width` | `1600` | Image width in pixels. |
 | `--height` | `1200` | Image height in pixels. |
 | `--output` |  | Image file to write; with several views, each file name gets the view's name added. Defaults to &lt;model&gt;.&lt;view&gt;.png beside the model, so renders keep the sheet a build rendered. |
-| `--html`, `--no-html` | `False` | Also write a standalone HTML viewer people can orbit and clip, highlighted like the images. |
+| `--html`, `--no-html` | `False` | Also write a standalone HTML viewer people can orbit and inspect, highlighted like the images, with the model's exports to download. |
+
+## `bricky export`
+
+Export a model file for another tool.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
+| `MODEL` | required | Path to a .bricky.json model file. |
+| `--format` | `wanted-list` | File format: wanted-list (a BrickLink Wanted List, to buy the parts on BrickLink). |
+| `--output` |  | File to write; defaults to the model's name and the format's suffix, such as &lt;model&gt;.wanted.xml, beside the model. |
 
 ## `bricky parts`
 

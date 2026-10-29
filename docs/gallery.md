@@ -1,6 +1,6 @@
 # Gallery
 
-The models below each build with one command from [`examples/`](https://github.com/maxencefaldor/bricky/tree/main/examples), and each opens in a 3D viewer to orbit, zoom and clip.
+The models below each build with one command from [`examples/`](https://github.com/maxencefaldor/bricky/tree/main/examples), and each opens in a 3D viewer to orbit, inspect part by part, and clip open.
 
 ## Scenes
 

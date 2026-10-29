@@ -17,6 +17,7 @@ from collections.abc import Callable, Iterator, Sequence
 from enum import IntFlag, StrEnum
 from itertools import pairwise
 from math import sqrt
+from pathlib import PurePath
 from typing import Final, Literal, override
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -167,6 +168,35 @@ class Mark(BaseModel):
     kind: Literal["error", "warning"]
 
 
+class ScenePart(BaseModel):
+    """A part the scene uses."""
+
+    id: str = Field(description="BrickLink item number.")
+    name: str = Field(description="BrickLink item name.")
+
+
+class SceneDiagnostic(BaseModel):
+    """An error or warning of the report, with the elements it names."""
+
+    code: str
+    kind: Literal["error", "warning"]
+    message: str
+    elements: list[int] = Field(description="Indices into Scene.elements.")
+
+
+class Summary(BaseModel):
+    """The numbers the title states, for a viewer to lay out its own way."""
+
+    elements: int
+    studs: tuple[float, float] = Field(description="Footprint along x and y, in studs.")
+    plates: float = Field(description="Height, in plates.")
+    errors: int | None = Field(description="Errors found; null when unchecked.")
+    warnings: int | None = Field(description="Warnings found; null when unchecked.")
+    omitted: int = Field(
+        default=0, description="Diagnostics the report counted but did not list."
+    )
+
+
 class Mesh(BaseModel):
     """An element rendered by its faces, for an element with solids other than boxes."""
 
@@ -191,11 +221,24 @@ class Scene(BaseModel):
     title: str = Field(
         description="One line describing the model, shown above the views."
     )
+    summary: Summary
     colors: list[SceneColor]
-    elements: list[tuple[int, int]] = Field(
-        description="Per element: its color's index in colors, and its flags."
+    parts: list[ScenePart] = Field(default_factory=list)
+    elements: list[tuple[int, int, int, int]] = Field(
+        description=(
+            "Per element: its color's index in colors, its flags, its part's index in "
+            "parts, and the index in lines of the script line that placed it, or -1."
+        )
     )
     uids: list[str] = Field(description="Per element: its uid.")
+    lines: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Script lines that placed elements, such as 'cottage.py:151 in garden()', "
+            "with each file's name only."
+        ),
+    )
+    diagnostics: list[SceneDiagnostic] = Field(default_factory=list)
     boxes: list[tuple[int, int, int, int, int, int, int, int]] = Field(
         description=(
             "Per box: x0, y0, z0, x1, y1, z1, element index, and a mask of the faces "
@@ -266,6 +309,8 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
         message = "nothing to render: the model has no element the catalog can place"
         raise BrickyError(message)
     colors, color_index = _colors(catalog, elements)
+    parts, part_index = _parts(elements)
+    lines, line_index = _lines(model, elements, provenance)
     flags = [Flag(0)] * len(elements)
     labels: list[Label] = []
     marks: list[Mark] = []
@@ -295,14 +340,32 @@ def build_scene(  # noqa: PLR0913 - keyword-only options, one per concern
     framed = Box.bounding([body, *(Box(tip, tip) for tip in tips)])
     bounds = _clipped(framed, clips)
     ldraw = any(element.part.family is Family.BOXES for element in elements)
+    size = _clipped(body, clips).size
     return Scene(
         name=model.name,
         title=_title(model, _clipped(body, clips), len(elements), report),
+        summary=Summary(
+            elements=len(elements),
+            studs=(to_studs(size.x), to_studs(size.y)),
+            plates=to_plates(size.z),
+            errors=None if report is None else report.errors,
+            warnings=None if report is None else report.warnings,
+            omitted=0 if report is None else report.omitted,
+        ),
         colors=colors,
+        parts=parts,
         elements=[
-            (color_index[e.color], int(flags[i])) for i, e in enumerate(elements)
+            (
+                color_index[e.color],
+                int(flags[i]),
+                part_index[e.part.id],
+                line_index[i],
+            )
+            for i, e in enumerate(elements)
         ],
         uids=[element.uid for element in elements],
+        lines=lines,
+        diagnostics=[] if report is None else _diagnostics(report, elements),
         credits=[LDRAW_CREDIT] if ldraw else [],
         boxes=boxes,
         meshes=meshes,
@@ -333,6 +396,62 @@ def _colors(
             )
         )
     return colors, {color_id: i for i, color_id in enumerate(color_ids)}
+
+
+def _parts(
+    elements: Sequence[PlacedElement],
+) -> tuple[list[ScenePart], dict[str, int]]:
+    """The parts the elements use, each once by id, and each id's index in the list."""
+    names = {element.part.id: element.part.name for element in elements}
+    ids = sorted(names)
+    return (
+        [ScenePart(id=part_id, name=names[part_id]) for part_id in ids],
+        {part_id: i for i, part_id in enumerate(ids)},
+    )
+
+
+def _lines(
+    model: Model, elements: Sequence[PlacedElement], provenance: Provenance | None
+) -> tuple[list[str], list[int]]:
+    """The script lines that placed the elements, and each element's index in them.
+
+    A line names its file by the file's name alone, so a viewer shared with others
+    shows no folders of the machine that built it. An element an instance placed also
+    names the instance and its component.
+    """
+    if provenance is None:
+        return [], [-1] * len(elements)
+    lines: dict[str, int] = {}
+    indices: list[int] = []
+    for element in elements:
+        trace = provenance.trace(model, element.uid)
+        if trace.source is None:
+            indices.append(-1)
+            continue
+        site = trace.source.site
+        text = str(site.model_copy(update={"file": PurePath(site.file).name}))
+        if trace.via:
+            step = trace.via[-1]
+            text += f", instance {step.id} of component {step.component}"
+        indices.append(lines.setdefault(text, len(lines)))
+    return list(lines), indices
+
+
+def _diagnostics(
+    report: Report, elements: Sequence[PlacedElement]
+) -> list[SceneDiagnostic]:
+    """The report's errors and warnings, with the indices of the elements they name."""
+    index = {element.uid: i for i, element in enumerate(elements)}
+    return [
+        SceneDiagnostic(
+            code=diagnostic.code,
+            kind=kind,
+            message=diagnostic.message,
+            elements=[index[uid] for uid in diagnostic.elements if uid in index],
+        )
+        for diagnostic in report.diagnostics
+        if (kind := _mark_kind(diagnostic.severity)) is not None
+    ]
 
 
 def _mark_diagnostics(

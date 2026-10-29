@@ -27,9 +27,10 @@ Each module imports only from the modules listed before it:
 1. `units`, `geometry`: exact integer units (0.4 mm), the 24 grid rotations, boxes and convex solids with integer corners, and exact overlap tests between them.
 1. `catalog`: parts and colors keyed by BrickLink ids, imported from BrickLink's catalog downloads; each part's shape is read from its official name, or converted from LDraw, and its geometry generated per family, with curves built as exact facets.
 1. `model`, `provenance`, `fill`, `builder`, `files`: the canonical model format, the script lines that placed each element, the bricks and plates that fill voxels, how to write models, and their files and source maps.
+1. `exports`: a model's lots, written in formats other tools read, such as BrickLink's Wanted List; one module per format.
 1. `analysis`: derived data (world geometry, spatial index, connections, voxels), cached in `Context`, and the differences between two builds.
 1. `passes`, `diagnostics`, `check`: plugin passes and the reports they produce.
-1. `render`: scenes resolved from a model, rendered with three.js in headless Chromium.
+1. `render`: scenes resolved from a model, rendered with three.js in headless Chromium, and the standalone viewer.
 1. `runner`, `service`: build scripts in child processes, and every command defined once.
 1. `cli`, and `bricky_mcp` in its own package: front ends that only adapt `service`.
 
@@ -65,10 +66,15 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
 - **Build scripts run in their own process** (`bricky.runner`), never in the command line or the MCP server: their output is captured, a timeout stops them, and a canceled command kills them.
 - **Images are first-class feedback:** every build renders its model by default.
   Renderer assets live in `bricky/render/assets`; three.js is vendored unmodified, so rendering works offline.
+  The agent's images and the viewer share `viewer.js`, so a change to the viewer leaves the images pixel for pixel the same.
+- **The viewer is a core plus components:** the core, in `assets/app`, renders and lays out; each component, in `assets/components`, adds one feature through the shell and never reaches into another.
+  `COMPONENTS` in `render/html.py` lists them, so removing one is removing its name there and its file.
 - **Sources:** BrickLink, the LEGO Group's marketplace, is the source of what parts and colors exist.
   Shapes come from bricky's own families, read from official names, and otherwise from the LDraw.org Parts Library (CC BY, credited wherever its shapes go), the one decision to use a community library.
   Do not add other brands or community libraries.
-  General-purpose tools such as three.js and numpy are fine.
+  General-purpose tools such as three.js and numpy are fine, and the viewer's icons come from Lucide, credited in `icons.js`.
+- **Exports are exact:** an export writes BrickLink's own ids, which bricky's parts and colors carry.
+  A format that needs other numbers, such as LEGO element numbers or LDraw colors, stays out until a source maps them exactly.
 - **Catalog data stays local:** imports write to bricky's data folder, never into the repository; tests use the sample catalog in `bricky/catalog/data`.
 - **Trademark:** never put "LEGO" in a package, module or repository name.
   In prose, use "LEGO®" as an adjective.
@@ -88,6 +94,7 @@ A word missing from this table is plain English, never a second name for a conce
 | catalog, sample | Every part and color bricky knows, and the 112 parts and 40 colors it ships with |
 | shape, family | A part's catalog data, and the generator that builds its geometry |
 | element | One part in one color, placed in a model, with an `id` |
+| lot | One part in one color, with how many of it a model uses |
 | uid | An element's id behind the ids of the instances that hold it, such as `bay2/e3` |
 | component, instance | A group of elements stored once, and one placed copy of it |
 | model | The elements, components and instances a build script places |
@@ -108,7 +115,8 @@ A word missing from this table is plain English, never a second name for a conce
 | grounded | Said of a group of connected elements when one of them reaches z = 0 |
 | render | Make images or a viewer of a model, with three.js in headless Chromium |
 | image, view, sheet | A PNG of a model, one camera's look at it, and the four-view image every build writes |
-| viewer | A standalone HTML page that renders a model in 3D, to orbit in a browser |
+| viewer | A standalone HTML page that renders a model in 3D, to orbit and inspect in a browser |
+| export | A file another tool reads, listing a model's lots, such as a BrickLink Wanted List |
 | scene, mesh | What bricky renders from a model, and an element rendered by its faces |
 | mark | A tint, label, outline or box that an image adds to show a diagnostic or a change |
 | clip, highlight | Keep one side of a plane; render some elements in full and the rest faintly |

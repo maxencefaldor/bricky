@@ -1,0 +1,262 @@
+/* The viewer's design tokens, layout and shared controls. Each component adds its own styles. */
+
+:root {
+  color-scheme: light dark;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --canvas: #f3f4f6;
+  --surface: #ffffff;
+  --surface-glass: rgb(255 255 255 / 0.86);
+  --surface-sunken: #f6f8fa;
+  --hover: rgb(31 35 40 / 0.06);
+  --pressed: rgb(31 35 40 / 0.1);
+  --ink: #1f2328;
+  --ink-2: #59636e;
+  --ink-3: #818b98;
+  --line: rgb(31 35 40 / 0.12);
+  --line-strong: rgb(31 35 40 / 0.2);
+  --accent: #0969da;
+  --accent-ink: #0550ae;
+  --accent-soft: rgb(9 105 218 / 0.1);
+  --on-accent: #ffffff;
+  --danger: #cf222e;
+  --danger-soft: rgb(207 34 46 / 0.1);
+  --warning: #9a6700;
+  --warning-soft: rgb(212 167 44 / 0.16);
+  --success: #1a7f37;
+  --success-soft: rgb(31 136 61 / 0.1);
+  --shadow: 0 1px 2px rgb(31 35 40 / 0.06), 0 6px 20px rgb(31 35 40 / 0.08);
+  --shadow-strong: 0 2px 6px rgb(31 35 40 / 0.08), 0 16px 40px rgb(31 35 40 / 0.14);
+  --radius: 12px;
+  --radius-control: 8px;
+  --control: 32px;
+  --gap: 12px;
+  --panel: 340px;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #15181c;
+    --surface: #1f2328;
+    --surface-glass: rgb(31 35 40 / 0.86);
+    --surface-sunken: #262b31;
+    --hover: rgb(240 246 252 / 0.07);
+    --pressed: rgb(240 246 252 / 0.12);
+    --ink: #e6edf3;
+    --ink-2: #9198a1;
+    --ink-3: #6e7681;
+    --line: rgb(240 246 252 / 0.12);
+    --line-strong: rgb(240 246 252 / 0.22);
+    --accent: #4493f8;
+    --accent-ink: #79b8ff;
+    --accent-soft: rgb(68 147 248 / 0.16);
+    --on-accent: #0d1117;
+    --danger: #f85149;
+    --danger-soft: rgb(248 81 73 / 0.16);
+    --warning: #d29922;
+    --warning-soft: rgb(210 153 34 / 0.18);
+    --success: #3fb950;
+    --success-soft: rgb(63 185 80 / 0.16);
+    --shadow: 0 1px 2px rgb(1 4 9 / 0.4), 0 6px 20px rgb(1 4 9 / 0.4);
+    --shadow-strong: 0 2px 6px rgb(1 4 9 / 0.5), 0 16px 40px rgb(1 4 9 / 0.55);
+  }
+}
+
+@media (pointer: coarse) {
+  :root { --control: 40px; }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--canvas); color: var(--ink);
+  font: 13px/1.45 var(--font); -webkit-font-smoothing: antialiased;
+  overflow: hidden; overscroll-behavior: none;
+}
+button, input { font: inherit; color: inherit; }
+svg.icon { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Layout: the stage and its floating chrome, beside a docked panel. */
+.app { position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.stage { position: relative; min-width: 0; overflow: hidden; background: var(--canvas); }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+.region { position: absolute; display: flex; gap: 8px; pointer-events: none; z-index: 2; }
+.region > * { pointer-events: auto; }
+.region.top-left {
+  top: max(var(--gap), env(safe-area-inset-top)); left: max(var(--gap), env(safe-area-inset-left));
+  flex-direction: column; align-items: flex-start; max-width: calc(100% - 2 * var(--gap));
+}
+.region.top-right {
+  top: max(var(--gap), env(safe-area-inset-top)); right: max(var(--gap), env(safe-area-inset-right));
+  align-items: flex-start;
+}
+.region.bottom {
+  bottom: max(var(--gap), env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
+}
+.region.bottom-left {
+  bottom: max(var(--gap), env(safe-area-inset-bottom)); left: max(var(--gap), env(safe-area-inset-left));
+  flex-direction: column; align-items: flex-start; max-width: min(360px, calc(100% - 2 * var(--gap)));
+}
+.region.bottom-right {
+  bottom: max(var(--gap), env(safe-area-inset-bottom)); right: max(var(--gap), env(safe-area-inset-right));
+  flex-direction: column; align-items: flex-end;
+}
+.overlay { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+
+/* Surfaces float over the model, as frosted glass where the browser blurs. */
+.surface {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+@supports (backdrop-filter: blur(1px)) {
+  .surface { background: var(--surface-glass); backdrop-filter: blur(16px) saturate(1.6); }
+}
+
+/* Buttons: icon buttons in toolbars, and text buttons in cards and panels. */
+.button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: var(--control); min-width: var(--control); padding: 0 10px; border: 0;
+  border-radius: var(--radius-control); background: transparent; color: var(--ink);
+  cursor: pointer; white-space: nowrap; user-select: none;
+  transition: background-color 120ms var(--ease), color 120ms var(--ease);
+}
+.button.icon-only { padding: 0; width: var(--control); }
+.button:hover { background: var(--hover); }
+.button:active { background: var(--pressed); }
+.button[aria-pressed="true"], .button[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-ink); }
+.button.outlined { border: 1px solid var(--line-strong); background: var(--surface); }
+.button.outlined:hover { background: var(--surface-sunken); }
+.button.primary { background: var(--accent); color: var(--on-accent); }
+.button.primary:hover { background: color-mix(in srgb, var(--accent) 88%, black); }
+.button.small { height: 28px; padding: 0 8px; font-size: 12px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-control); }
+
+.toolbar { display: flex; align-items: center; gap: 2px; padding: 4px; }
+.toolbar .divider { width: 1px; height: 20px; margin: 0 4px; background: var(--line); }
+
+/* Tooltips: the label and shortcut of a control, shown on hover and keyboard focus. */
+.tooltip {
+  position: fixed; z-index: 30; padding: 5px 8px; border-radius: 6px; pointer-events: none;
+  background: #1f2328; color: #ffffff; font-size: 12px; white-space: nowrap;
+  box-shadow: 0 4px 12px rgb(1 4 9 / 0.2); opacity: 0; transition: opacity 100ms var(--ease);
+}
+.tooltip.shown { opacity: 1; }
+.tooltip kbd {
+  margin-left: 8px; padding: 0 5px; border-radius: 4px; background: rgb(255 255 255 / 0.18);
+  font: 11px/16px var(--font);
+}
+@media (prefers-color-scheme: dark) {
+  .tooltip { background: #e6edf3; color: #1f2328; }
+  .tooltip kbd { background: rgb(31 35 40 / 0.12); }
+}
+
+/* The docked panel: tabs at the top, one view below. */
+.panel {
+  width: var(--panel); display: flex; flex-direction: column; min-height: 0;
+  background: var(--surface); border-left: 1px solid var(--line); z-index: 3;
+}
+.panel[hidden] { display: none; }
+.panel-header { display: flex; align-items: center; gap: 4px; padding: 8px; border-bottom: 1px solid var(--line); }
+.panel-tabs { display: flex; gap: 2px; flex: 1; min-width: 0; }
+.panel-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.panel-view { padding: 12px 16px 16px; }
+.panel-view[hidden] { display: none; }
+.panel-handle { display: none; }
+
+/* Shared pieces of panel views. */
+.section-title {
+  margin: 4px 0 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--ink-2);
+}
+.quiet { color: var(--ink-2); }
+.numeric { font-variant-numeric: tabular-nums; }
+.badge {
+  display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px;
+  border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap;
+}
+.badge.ok { background: var(--success-soft); color: var(--success); }
+.badge.error { background: var(--danger-soft); color: var(--danger); }
+.badge.warning { background: var(--warning-soft); color: var(--warning); }
+.badge svg.icon { width: 14px; height: 14px; }
+.swatch {
+  width: 14px; height: 14px; flex: none; border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.18);
+}
+.empty { padding: 24px 8px; text-align: center; color: var(--ink-2); }
+.empty svg.icon { width: 24px; height: 24px; margin-bottom: 6px; color: var(--success); }
+.field {
+  display: flex; align-items: center; gap: 8px; height: var(--control); padding: 0 10px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface);
+}
+.field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.field input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; }
+.field svg.icon { color: var(--ink-3); }
+
+/* Menus open from buttons, over the stage. */
+.menu {
+  position: fixed; z-index: 25; min-width: 200px; padding: 4px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-strong);
+}
+.menu[hidden] { display: none; }
+.menu .button { width: 100%; justify-content: flex-start; }
+.menu .button .hint { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+
+/* Dialogs: help, centered over everything. */
+dialog.dialog {
+  width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 64px); padding: 0;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink);
+  box-shadow: var(--shadow-strong);
+}
+dialog.dialog::backdrop { background: rgb(1 4 9 / 0.35); }
+.dialog-header { display: flex; align-items: center; padding: 14px 16px 10px 20px; }
+.dialog-header h2 { flex: 1; margin: 0; font-size: 16px; font-weight: 600; }
+.dialog-body { padding: 0 20px 20px; overflow: auto; }
+
+/* Toasts confirm actions briefly. */
+.toast {
+  position: absolute; left: 50%; bottom: 76px; z-index: 20; transform: translate(-50%, 8px);
+  padding: 8px 12px; border-radius: 10px; background: #1f2328; color: #ffffff; font-size: 13px;
+  box-shadow: var(--shadow-strong); opacity: 0; pointer-events: none;
+  transition: opacity 160ms var(--ease), transform 160ms var(--ease);
+}
+.toast.shown { opacity: 1; transform: translate(-50%, 0); }
+
+/* Loading, and the message when the viewer cannot start. */
+.splash {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px;
+  color: var(--ink-2); z-index: 10; background: var(--canvas); transition: opacity 300ms var(--ease);
+}
+.splash p { max-width: 420px; margin: 0; padding: 0 24px; text-align: center; }
+.app[data-state="ready"] .splash { opacity: 0; pointer-events: none; }
+.spinner {
+  width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--line);
+  border-top-color: var(--accent); animation: spin 0.9s linear infinite;
+}
+.app[data-state="failed"] .spinner { display: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.credit { font-size: 11px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.credit a { color: inherit; }
+
+/* Phones: the panel becomes a sheet over the bottom of the stage. */
+@media (max-width: 720px) {
+  :root { --gap: 10px; }
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .panel {
+    position: absolute; left: 0; right: 0; bottom: 0; width: auto; max-height: 62vh;
+    border-left: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0;
+    box-shadow: var(--shadow-strong); padding-bottom: env(safe-area-inset-bottom);
+  }
+  .panel-handle {
+    display: block; width: 36px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line-strong);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}

@@ -5,7 +5,7 @@ A render is the richest feedback a build gets. The report states whether a model
 valid; the images show whether it looks as intended. :func:`build_scene` resolves a
 model into a scene of plain data, :class:`Renderer` renders its views with three.js in
 headless Chromium, and :func:`write_html` writes a standalone viewer that people can
-orbit.
+orbit and inspect.
 
 Every orthographic view carries rulers in studs and plates, so a position read off the
 image is a position to write in the build script.
@@ -14,7 +14,13 @@ image is a position to write in the build script.
 from __future__ import annotations
 
 from bricky.render.browser import Renderer
-from bricky.render.html import THREE_VERSION, write_html
+from bricky.render.html import (
+    COMPONENTS,
+    THREE_VERSION,
+    Download,
+    downloads,
+    write_html,
+)
 from bricky.render.scene import (
     Clip,
     Flag,
@@ -23,13 +29,18 @@ from bricky.render.scene import (
     Mesh,
     Scene,
     SceneColor,
+    SceneDiagnostic,
+    ScenePart,
+    Summary,
     View,
     build_scene,
 )
 
 __all__ = [
+    "COMPONENTS",
     "THREE_VERSION",
     "Clip",
+    "Download",
     "Flag",
     "Label",
     "Mark",
@@ -37,7 +48,11 @@ __all__ = [
     "Renderer",
     "Scene",
     "SceneColor",
+    "SceneDiagnostic",
+    "ScenePart",
+    "Summary",
     "View",
     "build_scene",
+    "downloads",
     "write_html",
 ]

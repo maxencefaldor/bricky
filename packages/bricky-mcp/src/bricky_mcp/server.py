@@ -214,6 +214,13 @@ def create_server(session: service.Session | None = None) -> MCPServer:
     )
     register("check_model", service.CheckRequest, service.check, Report, READ_ONLY)
     register(
+        "export_model",
+        service.ExportRequest,
+        service.export,
+        service.ExportResult,
+        WRITES_FILES,
+    )
+    register(
         "search_parts",
         service.PartsRequest,
         service.parts,

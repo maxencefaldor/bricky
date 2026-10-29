@@ -3,15 +3,29 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import struct
+from importlib.resources import files
 from pathlib import Path
+from typing import cast
 
 import pytest
+from playwright.async_api import Route, async_playwright
 
 from bricky import BrickyError, ModelBuilder, Settings, check_model, default_catalog
 from bricky.geometry import Box, Vector
-from bricky.render import Clip, Flag, Renderer, View, build_scene, write_html
+from bricky.render import (
+    COMPONENTS,
+    THREE_VERSION,
+    Clip,
+    Flag,
+    Renderer,
+    View,
+    build_scene,
+    downloads,
+    write_html,
+)
 from bricky.render.scene import ALL_FACES, visible_faces
 from bricky.units import PLATE, STUD, STUD_HEIGHT
 
@@ -124,20 +138,145 @@ def test_clips_frame_the_part_left_to_see() -> None:
         build_scene(stack().build(), default_catalog(), clips=[Clip.parse("z>40")])
 
 
-def test_the_standalone_viewer_embeds_the_scene(tmp_path: Path) -> None:
-    scene = build_scene(stack().build(), default_catalog(), cull=False)
-    path = write_html(scene, tmp_path / "stack.html")
+def test_the_standalone_viewer_embeds_the_scene_and_its_modules(
+    tmp_path: Path,
+) -> None:
+    model = stack().build()
+    scene = build_scene(model, default_catalog(), cull=False)
+    path = write_html(
+        scene, tmp_path / "stack.html", downloads(model, default_catalog())
+    )
     page = path.read_text()
-    assert (
-        '"three": "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"'
-        in page
+    imports = json.loads(embedded(page, "importmap"))["imports"]
+    assert imports["three"] == (
+        "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"
     )
-    start = page.index('<script type="application/json" id="scene">') + len(
-        '<script type="application/json" id="scene">'
+    # Every module of the viewer travels inside the page.
+    core = base64.b64decode(imports["bricky/app/app.js"].split(",", 1)[1]).decode()
+    assert "export async function start" in core
+    assert {f"bricky/components/{name}.js" for name in COMPONENTS} <= set(imports)
+    assert json.loads(embedded(page, "application/json", "scene"))["uids"] == [
+        "bottom",
+        "top",
+    ]
+    options = json.loads(embedded(page, "application/json", "viewer"))
+    assert options["heading"] == "Stack"
+    assert options["components"] == list(COMPONENTS)
+    [wanted] = options["downloads"]
+    assert wanted["file"] == "stack.wanted.xml"
+    assert "<ITEMID>3001</ITEMID>" in wanted["text"]
+    assert "<title>Stack · bricky</title>" in page
+
+
+def embedded(page: str, kind: str, element_id: str | None = None) -> str:
+    """The text of the page's script of a type, and of an id when one is given."""
+    tag = (
+        f'<script type="{kind}"'
+        + (f' id="{element_id}"' if element_id is not None else "")
+        + ">"
     )
-    embedded = json.loads(page[start : page.index("</script>", start)])
-    assert embedded["uids"] == ["bottom", "top"]
-    assert "export async function mount" in page
+    start = page.index(tag) + len(tag)
+    return page[start : page.index("</script>", start)]
+
+
+def test_scenes_carry_what_the_viewer_shows() -> None:
+    builder = ModelBuilder("named")
+    builder.place("3001", at=(0, 0, 0), color="Red", id="base")
+    builder.place("3001", at=(0, 0, 3), color="Red", id="top")
+    builder.place("3022", at=(9, 9, 9), color="Blue", id="floating")
+    model = builder.build()
+    report = check_model(model)
+    scene = build_scene(model, default_catalog(), report=report)
+    assert [part.id for part in scene.parts] == ["3001", "3022"]
+    assert scene.summary.elements == 3
+    assert scene.summary.errors == report.errors > 0
+    [floats] = [d for d in scene.diagnostics if d.code == "E301"]
+    assert floats.kind == "error"
+    assert [scene.uids[i] for i in floats.elements] == ["floating"]
+    color, _, part, line = scene.elements[scene.uids.index("floating")]
+    assert scene.colors[color].name == "Blue"
+    assert scene.parts[part].name == "Plate 2 x 2"
+    assert line == -1  # no source map, no script line
+    assert scene.lines == []
+
+
+def test_the_viewer_shows_the_model_and_names_what_is_clicked(tmp_path: Path) -> None:
+    model = stack().build()
+    scene = build_scene(model, default_catalog(), cull=False)
+    path = write_html(
+        scene, tmp_path / "stack.html", downloads(model, default_catalog())
+    )
+    three = files("bricky.render").joinpath("assets", "three")
+    cdn = f"https://cdn.jsdelivr.net/npm/three@{THREE_VERSION}/"
+
+    async def serve(route: Route) -> None:
+        name = route.request.url.removeprefix(cdn).removeprefix("build/")
+        await route.fulfill(
+            body=three.joinpath(*name.split("/")).read_bytes(),
+            content_type="text/javascript",
+        )
+
+    async def inspect() -> tuple[dict[str, object], dict[str, int]]:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(
+                executable_path=Settings().render_browser,
+                args=["--enable-unsafe-swiftshader"],
+            )
+            page = await browser.new_page(viewport={"width": 640, "height": 480})
+            problems: list[str] = []
+            page.on("pageerror", lambda error: problems.append(str(error)))
+            await page.route(cdn + "**", serve)
+            await page.goto(path.as_uri())
+            await page.wait_for_function(
+                "() => document.getElementById('app').dataset.state !== 'loading'"
+            )
+            image = base64.b64encode(await page.screenshot()).decode()
+            colors = cast("dict[str, int]", await page.evaluate(COUNT_COLORS, image))
+            await page.mouse.click(320, 240)
+            await page.wait_for_selector(".info-card:not([hidden])")
+            await page.keyboard.press("p")
+            found: dict[str, object] = {
+                "state": await page.get_attribute("#app", "data-state"),
+                "heading": await page.text_content(".title-card h1"),
+                "selected": await page.text_content(".info-card .name strong"),
+                "lots": await page.locator(".parts li").count(),
+                "offer": await page.text_content(".parts .download strong"),
+                "problems": problems,
+            }
+            await browser.close()
+            return found, colors
+
+    found, colors = asyncio.run(inspect())
+    # The model, a red brick under a blue one, fills the middle of the stage.
+    assert colors["red"] > 2000
+    assert colors["blue"] > 2000
+    assert found == {
+        "state": "ready",
+        "heading": "Stack",
+        "selected": "Brick 2 x 4",
+        "lots": 2,
+        "offer": "BrickLink Wanted List",
+        "problems": [],
+    }
+
+
+COUNT_COLORS = """async (png) => {
+  const image = new Image();
+  image.src = "data:image/png;base64," + png;
+  await image.decode();
+  const canvas = new OffscreenCanvas(200, 200);
+  const context = canvas.getContext("2d");
+  context.drawImage(image, 220, 140, 200, 200, 0, 0, 200, 200);
+  const pixels = context.getImageData(0, 0, 200, 200).data;
+  let red = 0, blue = 0;
+  for (let i = 0; i < pixels.length; i += 4) {
+    const [r, g, b] = [pixels[i], pixels[i + 1], pixels[i + 2]];
+    if (r > g + 60 && r > b + 60) red += 1;
+    if (b > r + 60 && b > g + 30) blue += 1;
+  }
+  return { red, blue };
+}"""
+"""Count the strongly red and blue pixels in the middle of a 640 x 480 screenshot."""
 
 
 def test_the_renderer_renders_every_view_at_the_requested_size() -> None:

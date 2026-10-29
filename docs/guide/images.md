@@ -88,6 +88,24 @@ Marks show on every image what the report states in text:
 
 ## The 3D viewer
 
-The option `--html` of `bricky render` also writes `name.html`, a standalone viewer to orbit, zoom and clip by height in a browser.
-The page embeds the scene and loads three.js from jsDelivr, so it needs no server but does need a network connection.
+The option `--html` of `bricky render` also writes `name.html`, a standalone viewer to inspect the model in a browser.
+The page embeds the scene and the viewer, and loads three.js from jsDelivr, so it needs no server but does need a network connection.
 The [gallery](../gallery.md) opens each of its models in such a viewer.
+
+```sh
+uv run bricky render examples/cottage.bricky.json --html
+```
+
+![The lighthouse island in the viewer, its Parts panel open](../images/viewer.png)
+
+| Control | Does |
+| --- | --- |
+| Drag, right-drag, scroll | Orbit, pan, and zoom toward the pointer |
+| Click, double-click | Select a part and say what it is and which script line placed it; bring it close |
+| View bar | The four 3D corners and the five flat views, in perspective or orthographic |
+| Parts panel | Every lot, to select all its elements, and the [Wanted List](exports.md) to download |
+| Checks panel | Each error and warning, numbered like the pins on the model, to find its elements |
+| Clip panel | A range along x, y and z to keep, and a build-up from the bottom, layer by layer |
+| Isolate, hide | Render the rest faintly, or leave the selection out; Escape brings everything back |
+
+The key `?` lists every keyboard shortcut.

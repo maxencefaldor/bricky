@@ -60,6 +60,7 @@ def test_tools_mirror_the_service_requests() -> None:
         "build_model",
         "render_model",
         "check_model",
+        "export_model",
         "search_parts",
         "show_part",
         "search_colors",
@@ -82,6 +83,10 @@ def test_tools_mirror_the_service_requests() -> None:
     assert build.read_only_hint is False
     assert build.destructive_hint is True  # a build runs arbitrary Python
     assert "highlight" in tools["render_model"].input_schema["properties"]
+    export = tools["export_model"].annotations
+    assert export is not None
+    assert export.read_only_hint is False
+    assert export.destructive_hint is False
 
 
 def test_check_model_answers_with_text_and_a_structured_report(tmp_path: Path) -> None:

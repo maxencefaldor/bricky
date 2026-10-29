@@ -34,6 +34,12 @@ The guide covers one concept per page, in the order a build meets them.
 
     The sheet every build renders, single views, highlights, clips and the 3D viewer.
 
+-   ![One part of each lot on a baseplate](../images/card-exports.png)
+
+    **[Exports](exports.md)**
+
+    The parts a model needs, as a BrickLink Wanted List to buy them.
+
 -   ![A slope and an arch beside the voxels they fill](../images/card-voxels.png)
 
     **[Voxels](voxels.md)**

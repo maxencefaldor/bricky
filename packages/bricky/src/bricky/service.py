@@ -46,6 +46,7 @@ from bricky.catalog.ldraw import Library
 from bricky.check import check_model
 from bricky.diagnostics import Code, Report, format_report
 from bricky.errors import BrickyError
+from bricky.exports import FORMATS, Format, model_lots
 from bricky.files import (
     SUFFIX,
     load_model,
@@ -59,7 +60,7 @@ from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Solid
 from bricky.model import Element, Model
 from bricky.passes import installed_codes, installed_passes
 from bricky.provenance import Provenance
-from bricky.render import Clip, Renderer, View, build_scene, write_html
+from bricky.render import Clip, Renderer, View, build_scene, downloads, write_html
 from bricky.runner import RunResult
 from bricky.settings import Settings
 from bricky.units import PLATE, STUD, to_plates, to_studs
@@ -680,8 +681,8 @@ class RenderRequest(BaseModel):
     html: bool = Field(
         default=False,
         description=(
-            "Also write a standalone HTML viewer people can orbit and clip, "
-            "highlighted like the images."
+            "Also write a standalone HTML viewer people can orbit and inspect, "
+            "highlighted like the images, with the model's exports to download."
         ),
     )
 
@@ -771,7 +772,8 @@ async def render(request: RenderRequest, session: Session) -> RenderResult:
             clips=clips,
             cull=False,
         )
-        html = await asyncio.to_thread(write_html, scene, viewer)
+        files = await asyncio.to_thread(downloads, model, session.catalog)
+        html = await asyncio.to_thread(write_html, scene, viewer, files)
     seconds.render = time.perf_counter() - started
     return RenderResult(images=images, html=html, report=report, seconds=seconds)
 
@@ -815,6 +817,73 @@ def _view_paths(base: Path, views: Sequence[View]) -> list[Path]:
     if len(views) == 1:
         return [base]
     return [base.with_name(f"{base.stem}.{view.value}{base.suffix}") for view in views]
+
+
+# --------------------------------------------------------------------------------------
+# export
+
+
+class ExportRequest(BaseModel):
+    """Export a model file for another tool, such as a BrickLink Wanted List."""
+
+    model: CliPositionalArg[Path] = Field(
+        description="Path to a .bricky.json model file."
+    )
+    format: Format = Field(
+        default=Format.WANTED_LIST,
+        description=(
+            "File format: wanted-list (a BrickLink Wanted List, to buy the parts on "
+            "BrickLink)."
+        ),
+    )
+    output: Path | None = Field(
+        default=None,
+        description=(
+            "File to write; defaults to the model's name and the format's suffix, "
+            "such as <model>.wanted.xml, beside the model."
+        ),
+    )
+
+
+class ExportResult(BaseModel):
+    """An exported file, with what it lists."""
+
+    path: Path = Field(description="The file written.")
+    format: Format
+    lots: int = Field(description="Parts in one color each: one line of the list each.")
+    elements: int = Field(description="Elements the lots add up to.")
+    usage: str = Field(description="How to use the file in its tool.")
+
+    def describe(self) -> str:
+        """Return the result as text for people and agents."""
+        title = FORMATS[self.format].title
+        return (
+            f"wrote {self.path}: {self.lots:,} lots, {self.elements:,} elements, "
+            f"as a {title}\n{self.usage}"
+        )
+
+
+async def export(request: ExportRequest, session: Session) -> ExportResult:
+    """Export a model file for another tool.
+
+    Raises:
+        BrickyError: If the file is missing or invalid, the catalog lacks a part or
+            color the model uses, or the file cannot be written.
+    """
+    model, _ = await asyncio.to_thread(_load, request.model)
+    exporter = FORMATS[request.format]
+    lots = model_lots(model, session.catalog)
+    path = request.output or request.model.with_name(
+        model_stem(request.model) + exporter.suffix
+    )
+    await asyncio.to_thread(write_file, path, exporter.write(lots))
+    return ExportResult(
+        path=path,
+        format=request.format,
+        lots=len(lots),
+        elements=sum(lot.quantity for lot in lots),
+        usage=exporter.usage,
+    )
 
 
 # --------------------------------------------------------------------------------------

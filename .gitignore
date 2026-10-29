@@ -5,15 +5,17 @@ __pycache__/
 .ruff_cache/
 dist/
 
-# What building and rendering the examples writes
+# What building, rendering and exporting the examples writes
 examples/*.bricky.json
 examples/*.bricky.map.json
 examples/*.png
 examples/*.html
+examples/*.wanted.xml
 models/*.bricky.json
 models/*.bricky.map.json
 models/*.png
 models/*.html
+models/*.wanted.xml
 
 # What benchmark runs write
 benchmark/runs/

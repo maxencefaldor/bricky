@@ -182,7 +182,7 @@ def test_images_of_parts_shaped_from_ldraw_credit_the_library(tmp_path: Path) ->
     scene = build_scene(builder.build(), catalog)
     assert scene.credits == [LDRAW_CREDIT]
     page = write_html(scene, tmp_path / "converted.html").read_text()
-    assert f'<p class="credit">{LDRAW_CREDIT}</p>' in page
+    assert f'"credits":["{LDRAW_CREDIT}"]' in page
     sample = ModelBuilder("sample")
     sample.place("3004", at=(0, 0, 0), color="Red")
     assert build_scene(sample.build(), default_catalog()).credits == []

@@ -79,7 +79,8 @@ def build() -> ModelBuilder:
     - `--views perspective-north-west` (or `-south-west`, `-north-east`) to see the sides the south-east perspective hides.
     - `--highlight "sign*"` or `--highlight @roof` (a function of your script) to see what those parts are; everything else is rendered faintly.
     - `--clip "z<130"` (plates) or `--clip "x<10"` (studs) to clip the model open and look inside.
-    - `--html` to write a viewer you can orbit in a browser.
+    - `--html` to write a viewer people can orbit and inspect in a browser.
+- When the model is done, `uv run bricky export models/<name>.bricky.json` writes its parts as a BrickLink Wanted List, `models/<name>.wanted.xml`, to buy them on BrickLink.
 
 ## Building well
 

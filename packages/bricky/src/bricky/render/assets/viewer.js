@@ -1,30 +1,30 @@
-// The bricky viewer renders a scene with three.js.
+// The bricky renderer turns a scene into three.js objects and renders its views.
 //
 // One module serves two readers. Headless Chromium calls `load` and `draw` to make the images an
 // agent reads after every build: orthographic views with rulers, a perspective view, and the marks
-// and labels of diagnostics. The standalone HTML viewer calls `mount` to let people orbit the same
-// scene.
+// and labels of diagnostics. The standalone viewer, in `app/`, builds the same objects with
+// `buildModel` to let people orbit and inspect the scene.
 //
 // Scenes come from bricky.render.scene in base units of 0.4 mm. Model axes are x east, y north and
 // z up. three.js axes are x right, y up and z toward the viewer, so model y maps to three.js -z.
 
 import * as THREE from "three";
 
-const BASE_UNIT = 0.4; // millimeters
-const STUD = 20;
-const PLATE = 8;
+export const BASE_UNIT = 0.4; // millimeters
+export const STUD = 20;
+export const PLATE = 8;
 // How far a clip plane sits beyond its height, in millimeters. A plane exactly at a face's height
 // keeps that face in some pixels and clips it in others; a hair beyond keeps the face whole.
-const CLIP_SLACK = 0.01;
-const FLAG = { HIGHLIGHT: 1, GHOST: 2, ERROR: 4, WARNING: 8, CHANGED: 16 };
+export const CLIP_SLACK = 0.01;
+export const FLAG = { HIGHLIGHT: 1, GHOST: 2, ERROR: 4, WARNING: 8, CHANGED: 16 };
 const AXES = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
-const INK = { error: "#cf222e", warning: "#b35900", highlight: "#0969da", changed: "#8250df", text: "#1f2328", quiet: "#59636e" };
+export const INK = { error: "#cf222e", warning: "#b35900", highlight: "#0969da", changed: "#8250df", text: "#1f2328", quiet: "#59636e" };
 const PAPER = "#f6f7f9";
 const HEADER = 30;
 const MARGIN = { left: 60, right: 16, top: 34, bottom: 44 };
 const FONT = "12px system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-const VIEWS = {
+export const VIEWS = {
   perspective: { title: "PERSPECTIVE", note: "from the south-east", azimuth: 35 },
   "perspective-south-west": { title: "PERSPECTIVE", note: "from the south-west", azimuth: -35 },
   "perspective-north-west": { title: "PERSPECTIVE", note: "from the north-west", azimuth: 215 },
@@ -37,7 +37,7 @@ const VIEWS = {
 };
 const SHEET = ["perspective", "front", "right", "top"];
 
-function toThree(x, y, z) {
+export function toThree(x, y, z) {
   return new THREE.Vector3(x * BASE_UNIT, z * BASE_UNIT, -y * BASE_UNIT);
 }
 
@@ -81,16 +81,19 @@ export function buildModel(scene) {
   }
 
   // Bodies: the faces of every box and mesh, merged into one three.js mesh per material kind. The
-  // scene has already left out the faces pressed against opaque neighbors.
+  // scene has already left out the faces pressed against opaque neighbors. Every vertex, stud and
+  // edge carries its element's index, in an attribute named "element", for the viewer to pick and
+  // restyle elements one by one.
   const faces = { solid: new FaceBuffer(), pearl: new FaceBuffer(), clear: new FaceBuffer(), ghost: new FaceBuffer() };
   for (const box of scene.boxes) {
     const element = scene.elements[box[6]];
-    faces[kindOf(element)].addBox(box, colorOf(element));
+    faces[kindOf(element)].addBox(box, colorOf(element), box[6]);
   }
   for (const mesh of scene.meshes) {
     const element = scene.elements[mesh.element];
-    faces[kindOf(element)].addMesh(mesh, colorOf(element));
+    faces[kindOf(element)].addMesh(mesh, colorOf(element), mesh.element);
   }
+  const meshes = { bodies: {}, insides: {}, studs: {}, edges: [] };
   for (const [kind, buffer] of Object.entries(faces)) {
     if (!buffer.count) continue;
     const geometry = buffer.geometry();
@@ -99,10 +102,12 @@ export function buildModel(scene) {
     mesh.receiveShadow = kind !== "ghost";
     mesh.renderOrder = kind === "clear" || kind === "ghost" ? 2 : 0;
     root.add(mesh);
+    meshes.bodies[kind] = mesh;
     if (kind === "solid" || kind === "pearl") {
       const inside = new THREE.Mesh(geometry, bodies[`${kind}Inside`]);
       inside.receiveShadow = true;
       root.add(inside);
+      meshes.insides[kind] = inside;
     }
   }
 
@@ -118,17 +123,22 @@ export function buildModel(scene) {
   const one = new THREE.Vector3(1, 1, 1);
   for (const [kind, list] of Object.entries(byKind)) {
     if (!list.length) continue;
-    const mesh = new THREE.InstancedMesh(cylinder, studs[kind], list.length);
+    const geometry = cylinder.clone();
+    const owners = new Float32Array(list.length);
+    const mesh = new THREE.InstancedMesh(geometry, studs[kind], list.length);
     list.forEach((stud, i) => {
       const [x, y, z] = AXES[stud[3]];
       rotation.setFromUnitVectors(upright, new THREE.Vector3(x, z, -y));
       mesh.setMatrixAt(i, matrix.compose(toThree(stud[0], stud[1], stud[2]), rotation, one));
       if (kind !== "ghost") mesh.setColorAt(i, colorOf(scene.elements[stud[4]]));
+      owners[i] = stud[4];
     });
+    geometry.setAttribute("element", new THREE.InstancedBufferAttribute(owners, 1));
     mesh.castShadow = kind === "solid" || kind === "pearl";
     mesh.receiveShadow = kind !== "ghost";
     mesh.renderOrder = kind === "clear" || kind === "ghost" ? 2 : 0;
     studMeshes.push(remember(mesh));
+    meshes.studs[kind] = mesh;
     root.add(mesh);
   }
 
@@ -136,11 +146,31 @@ export function buildModel(scene) {
   // get colored outlines, and the outlines of diagnosed elements render over everything.
   const outline = (filter) => {
     const points = [];
-    for (const box of scene.boxes) if (filter(scene.elements[box[6]][1])) pushEdges(points, box);
-    for (const mesh of scene.meshes) if (filter(scene.elements[mesh.element][1])) pushMeshEdges(points, mesh);
-    for (const stud of scene.studs) if (filter(scene.elements[stud[4]][1])) pushRim(points, stud);
+    const owners = [];
+    const own = (element, from) => {
+      for (let k = from / 3; k < points.length / 3; k++) owners.push(element);
+    };
+    for (const box of scene.boxes) {
+      if (!filter(scene.elements[box[6]][1])) continue;
+      const from = points.length;
+      pushEdges(points, box);
+      own(box[6], from);
+    }
+    for (const mesh of scene.meshes) {
+      if (!filter(scene.elements[mesh.element][1])) continue;
+      const from = points.length;
+      pushMeshEdges(points, mesh);
+      own(mesh.element, from);
+    }
+    for (const stud of scene.studs) {
+      if (!filter(scene.elements[stud[4]][1])) continue;
+      const from = points.length;
+      pushRim(points, stud);
+      own(stud[4], from);
+    }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(points, 3));
+    geometry.setAttribute("element", new THREE.Float32BufferAttribute(owners, 1));
     return geometry;
   };
   const edgeMaterials = {
@@ -164,6 +194,7 @@ export function buildModel(scene) {
     const segments = new THREE.LineSegments(geometry, material);
     segments.renderOrder = order;
     root.add(segments);
+    meshes.edges.push(segments);
   }
 
   // Diagnostic regions: dashed boxes rendered over everything.
@@ -180,26 +211,27 @@ export function buildModel(scene) {
   }
 
   const bounds = new THREE.Box3(toThree(scene.bounds[0], scene.bounds[4], scene.bounds[2]), toThree(scene.bounds[3], scene.bounds[1], scene.bounds[5]));
-  return { root, bounds, elementBounds, edgeMaterials, planes, studMeshes };
+  return { root, bounds, elementBounds, edgeMaterials, planes, studMeshes, materials: { bodies, studs }, meshes };
 }
 
-// Snapshot an instanced mesh's matrices and colors, so views can reorder its instances.
+// Snapshot an instanced mesh's matrices, colors and elements, so views can reorder its instances.
 function remember(mesh) {
   const count = mesh.count;
   const matrices = mesh.instanceMatrix.array.slice();
   const colors = mesh.instanceColor ? mesh.instanceColor.array.slice() : null;
+  const owners = mesh.geometry.attributes.element.array.slice();
   const depth = new Float32Array(count);
   const order = new Uint32Array(count);
-  return { mesh, count, matrices, colors, depth, order };
+  return { mesh, count, matrices, colors, owners, depth, order };
 }
 
 // Order opaque instances nearest first, so the depth test skips the fragments they hide.
-function orderInstances(meshes, camera) {
+export function orderInstances(meshes, camera) {
   const forward = new THREE.Vector3();
   camera.getWorldDirection(forward);
   const origin = camera.position;
   for (const item of meshes) {
-    const { mesh, count, matrices, colors, depth, order } = item;
+    const { mesh, count, matrices, colors, owners, depth, order } = item;
     if (mesh.material.transparent) continue;
     for (let i = 0; i < count; i++) {
       const offset = i * 16;
@@ -209,13 +241,16 @@ function orderInstances(meshes, camera) {
     order.sort((a, b) => depth[a] - depth[b]);
     const targetMatrices = mesh.instanceMatrix.array;
     const targetColors = mesh.instanceColor ? mesh.instanceColor.array : null;
+    const elements = mesh.geometry.attributes.element;
     for (let k = 0; k < count; k++) {
       const i = order[k];
       targetMatrices.set(matrices.subarray(i * 16, i * 16 + 16), k * 16);
       if (targetColors && colors) targetColors.set(colors.subarray(i * 3, i * 3 + 3), k * 3);
+      elements.array[k] = owners[i];
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    elements.needsUpdate = true;
   }
 }
 
@@ -294,11 +329,12 @@ class FaceBuffer {
     this.positions = [];
     this.normals = [];
     this.colors = [];
+    this.owners = [];
     this.indices = [];
     this.count = 0;
   }
 
-  addBox(box, color) {
+  addBox(box, color, element) {
     const low = [box[0] * BASE_UNIT, box[2] * BASE_UNIT, -box[4] * BASE_UNIT];
     const high = [box[3] * BASE_UNIT, box[5] * BASE_UNIT, -box[1] * BASE_UNIT];
     for (const face of FACES) {
@@ -312,6 +348,7 @@ class FaceBuffer {
         this.positions.push(point[0], point[1], point[2]);
         this.normals.push(...face.normal);
         this.colors.push(color.r, color.g, color.b);
+        this.owners.push(element);
       }
       this.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
       this.count += 1;
@@ -319,7 +356,7 @@ class FaceBuffer {
   }
 
   // A mesh element: its faces, each fanned into triangles with a flat normal.
-  addMesh(mesh, color) {
+  addMesh(mesh, color, element) {
     const vertices = mesh.vertices;
     for (const face of mesh.faces) {
       const points = face.map((i) => [vertices[3 * i] * BASE_UNIT, vertices[3 * i + 2] * BASE_UNIT, -vertices[3 * i + 1] * BASE_UNIT]);
@@ -336,6 +373,7 @@ class FaceBuffer {
         this.positions.push(p[0], p[1], p[2]);
         this.normals.push(x / length, y / length, z / length);
         this.colors.push(color.r, color.g, color.b);
+        this.owners.push(element);
       }
       for (let k = 1; k + 1 < points.length; k++) this.indices.push(base, base + k, base + k + 1);
       this.count += 1;
@@ -347,6 +385,7 @@ class FaceBuffer {
     geometry.setAttribute("position", new THREE.Float32BufferAttribute(this.positions, 3));
     geometry.setAttribute("normal", new THREE.Float32BufferAttribute(this.normals, 3));
     geometry.setAttribute("color", new THREE.Float32BufferAttribute(this.colors, 3));
+    geometry.setAttribute("element", new THREE.Float32BufferAttribute(this.owners, 1));
     geometry.setIndex(this.indices.length > 65535 ? new THREE.Uint32BufferAttribute(this.indices, 1) : new THREE.Uint16BufferAttribute(this.indices, 1));
     return geometry;
   }
@@ -355,7 +394,7 @@ class FaceBuffer {
 // The rim of a stud's top. Seen from above, a stud is lit exactly like the face it stands on, so
 // only its outline shows it.
 const RIM = Array.from({ length: 16 }, (_, i) => [Math.cos((i / 16) * 2 * Math.PI) * 2.4, Math.sin((i / 16) * 2 * Math.PI) * 2.4]);
-function pushRim(points, stud) {
+export function pushRim(points, stud) {
   const [x, y, z] = AXES[stud[3]];
   const axis = new THREE.Vector3(x, z, -y);
   const center = toThree(stud[0], stud[1], stud[2]).addScaledVector(axis, 1.7);
@@ -370,7 +409,7 @@ function pushRim(points, stud) {
   }
 }
 
-function pushEdges(points, box) {
+export function pushEdges(points, box) {
   const low = toThree(box[0], box[4], box[2]);
   const high = toThree(box[3], box[1], box[5]);
   const xs = [low.x, high.x], ys = [low.y, high.y], zs = [low.z, high.z];
@@ -380,7 +419,7 @@ function pushEdges(points, box) {
 }
 
 // The edges where a mesh's surface folds, as the scene lists them.
-function pushMeshEdges(points, mesh) {
+export function pushMeshEdges(points, mesh) {
   const vertices = mesh.vertices;
   for (let k = 0; k < mesh.edges.length; k += 2) {
     const a = 3 * mesh.edges[k], b = 3 * mesh.edges[k + 1];
@@ -388,7 +427,7 @@ function pushMeshEdges(points, mesh) {
   }
 }
 
-function clipPlane(clip) {
+export function clipPlane(clip) {
   // A three.js plane keeps the points where normal . p + constant >= 0.
   const value = clip.value * BASE_UNIT;
   const below = clip.keep === "below";
@@ -464,7 +503,7 @@ function perspectiveCamera(bounds, width, height, azimuthDegrees = 35, elevation
   return { camera, target, direction, pixelsPerStud };
 }
 
-function boxCorners(box) {
+export function boxCorners(box) {
   const corners = [];
   for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
   return corners;
@@ -791,94 +830,6 @@ function text(x, y, value, { anchor = "start", weight = 400, fill = INK.text } =
   const element = svgElement("text", { x, y, "text-anchor": anchor, "font-weight": weight, fill, style: `font: ${weight} ${FONT}`, "paint-order": "stroke", stroke: "#ffffff", "stroke-width": 3, "stroke-linejoin": "round" });
   element.textContent = value;
   return element;
-}
-
-// ---------------------------------------------------------------------------------------------
-// The standalone viewer: orbit the scene in a browser
-
-export async function mount(element, scene) {
-  const { OrbitControls } = await import("three/addons/controls/OrbitControls.js");
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.localClippingEnabled = true;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
-  renderer.toneMapping = THREE.NeutralToneMapping;
-  renderer.setClearColor(PAPER, 1);
-  element.append(renderer.domElement);
-  const three = new THREE.Scene();
-  const hemisphere = new THREE.HemisphereLight(0xffffff, 0x8d949e, 1.45);
-  const sun = new THREE.DirectionalLight(0xffffff, 2.1);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.bias = -0.0004;
-  sun.shadow.normalBias = 0.6;
-  three.add(hemisphere, sun, sun.target);
-  let model = buildModel(scene);
-  three.add(model.root);
-  const size = model.bounds.getSize(new THREE.Vector3());
-  const center = model.bounds.getCenter(new THREE.Vector3());
-  const radius = size.length();
-  sun.position.copy(center).addScaledVector(new THREE.Vector3(-0.55, 1.1, 0.75).normalize(), radius * 1.5);
-  sun.target.position.copy(center);
-  Object.assign(sun.shadow.camera, { left: -radius, right: radius, top: radius, bottom: -radius, near: radius * 0.1, far: radius * 4 });
-  sun.shadow.camera.updateProjectionMatrix();
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(radius * 6, radius * 6), new THREE.ShadowMaterial({ opacity: 0.16 }));
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.set(center.x, model.bounds.min.y - 0.02, center.z);
-  ground.receiveShadow = true;
-  three.add(ground);
-
-  const camera = new THREE.PerspectiveCamera(30, 1, 1, radius * 40);
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = !matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const render = () => renderer.render(three, camera);
-  controls.addEventListener("change", render);
-
-  const look = (view) => {
-    const width = element.clientWidth, height = element.clientHeight;
-    camera.aspect = width / height;
-    if (VIEWS[view].azimuth !== undefined) {
-      const perspective = perspectiveCamera(model.bounds, width, height, VIEWS[view].azimuth);
-      camera.position.copy(perspective.camera.position);
-      controls.target.copy(perspective.target);
-    } else {
-      const layout = VIEWS[view];
-      const fit = radius / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 0.55;
-      camera.position.copy(center).addScaledVector(vector(layout.direction), fit);
-      camera.up.copy(vector(layout.up));
-      controls.target.copy(center);
-    }
-    camera.updateProjectionMatrix();
-    controls.update();
-    render();
-  };
-  const resize = () => {
-    renderer.setSize(element.clientWidth, element.clientHeight);
-    camera.aspect = element.clientWidth / element.clientHeight;
-    camera.updateProjectionMatrix();
-    render();
-  };
-  new ResizeObserver(resize).observe(element);
-  resize();
-  look("perspective");
-  const loop = () => {
-    if (controls.update()) render();
-    requestAnimationFrame(loop);
-  };
-  loop();
-
-  // Clip the model at a height, plate by plate, to look inside; at the top, clip nothing.
-  const topPlates = Math.ceil(scene.bounds[5] / PLATE);
-  const clip = (plates) => {
-    const planes = [...model.planes];
-    if (plates < topPlates) planes.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), plates * PLATE * BASE_UNIT + CLIP_SLACK));
-    model.root.traverse((object) => {
-      if (object.material) object.material.clippingPlanes = planes;
-    });
-    render();
-  };
-  return { look, clip, topPlates };
 }
 
 // Headless pages call these through window.bricky.

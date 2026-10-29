@@ -85,6 +85,16 @@ class RenderCommand(service.RenderRequest, _Output):
         self.emit(result, result.describe())
 
 
+class ExportCommand(service.ExportRequest, _Output):
+    """Export a model file for another tool, such as a BrickLink Wanted List."""
+
+    async def cli_cmd(self) -> None:
+        """Run the command."""
+        async with service.Session() as session:
+            result = await service.export(self, session)
+        self.emit(result, result.describe())
+
+
 class PartsCommand(service.PartsRequest, _Output):
     """Search the parts catalog."""
 
@@ -224,6 +234,9 @@ class Bricky(BaseSettings):
     check: CliSubCommand[CheckCommand] = Field(description="Check a model file.")
     render: CliSubCommand[RenderCommand] = Field(
         description="Render images of a model file."
+    )
+    export: CliSubCommand[ExportCommand] = Field(
+        description="Export a model file for another tool."
     )
     parts: CliSubCommand[PartsCommand] = Field(description="Search the parts catalog.")
     colors: CliSubCommand[ColorsCommand] = Field(
