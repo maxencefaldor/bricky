@@ -926,8 +926,8 @@ async def screenshot(shot: Screenshot, settings: Settings, folder: Path) -> Path
     return path
 
 
+async def settle(page: Page) -> None:
     """Wait until nothing moves and the viewer draws no new frame for two seconds."""
-    """Wait until nothing moves and the viewer has drawn no new frame for two seconds."""
     await page.wait_for_function("() => !window.bricky.engine.moving")
     frames, still = -1, 0
     while still < 2:
