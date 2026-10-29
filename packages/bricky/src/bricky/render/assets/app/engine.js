@@ -214,8 +214,10 @@ flat varying float vElement;`)
   controls.rotateSpeed = 0.9;
   controls.minDistance = radius * 0.02;
   controls.maxDistance = radius * 40;
-  controls.minZoom = 0.02;
-  controls.maxZoom = 400;
+  // The orthographic frustum spans the model's radius at zoom 1, so these limits mean the same
+  // for every model: from 20 times the model's size down to a 200th of it.
+  controls.minZoom = 0.05;
+  controls.maxZoom = 200;
   controls.target.copy(center);
 
   let view = "perspective";
@@ -240,13 +242,16 @@ flat varying float vElement;`)
 
   let stageSize = { width: 1, height: 1 };
   const size = () => stageSize;
+  // The orthographic camera shows radius / zoom above and below its center: zoom 1 frames the
+  // whole model, whatever its size, which keeps OrbitControls' zoom limits meaningful.
   const updateOrthographic = (halfHeight) => {
     const { width, height } = size();
     const aspect = width / height;
-    Object.assign(orthographic, { left: -aspect, right: aspect, top: 1, bottom: -1 });
-    if (halfHeight !== undefined) orthographic.zoom = 1 / halfHeight;
+    Object.assign(orthographic, { left: -aspect * radius, right: aspect * radius, top: radius, bottom: -radius });
+    if (halfHeight !== undefined) orthographic.zoom = radius / halfHeight;
     orthographic.updateProjectionMatrix();
   };
+  const orthographicHalfHeight = () => radius / orthographic.zoom;
   const halfHeightAt = (distance) => distance * Math.tan(THREE.MathUtils.degToRad(FIELD_OF_VIEW / 2));
 
   // Find the target and distance that frame a box from a direction in the free part of the stage:
@@ -336,7 +341,7 @@ flat varying float vElement;`)
       target: controls.target.clone(),
       along: currentDirection(),
       distance: currentDistance(),
-      halfHeight: camera === orthographic ? 1 / orthographic.zoom : halfHeightAt(currentDistance()),
+      halfHeight: camera === orthographic ? orthographicHalfHeight() : halfHeightAt(currentDistance()),
     };
     if (!animate || reducedMotion.matches) {
       tween = null;
@@ -412,14 +417,17 @@ flat varying float vElement;`)
     setView(null);
   };
 
-  // Switch projection, and keep the choice for every view after.
+  // Switch projection, and keep the choice for every view after. On a named view the model is
+  // framed again, since perspective enlarges what is near; after the reader's own zoom, the
+  // picture keeps its scale at the target.
   const setProjection = (projection) => {
     preferred = projection;
     if ((projection === "orthographic") === (camera === orthographic)) return;
+    if (view !== null) return look(view);
     tween = null;
     stopMomentum();
     const along = currentDirection();
-    const halfHeight = camera === orthographic ? 1 / orthographic.zoom : halfHeightAt(currentDistance());
+    const halfHeight = camera === orthographic ? orthographicHalfHeight() : halfHeightAt(currentDistance());
     const distance = projection === "perspective" ? halfHeight / Math.tan(THREE.MathUtils.degToRad(FIELD_OF_VIEW / 2)) : radius * 4;
     place(projection, controls.target.clone(), along, distance, halfHeight);
   };

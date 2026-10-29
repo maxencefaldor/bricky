@@ -260,6 +260,93 @@ def test_the_viewer_shows_the_model_and_names_what_is_clicked(tmp_path: Path) ->
     }
 
 
+def test_every_view_frames_the_whole_model(tmp_path: Path) -> None:
+    # A big baseplate: views must frame big models as well as small ones.
+    builder = ModelBuilder("square")
+    builder.place("3811", at=(0, 0, 0), color="Green")
+    for level in range(8):
+        builder.place("3001", at=(14, 14, 0.5 + 3 * level), color="Red")
+    scene = build_scene(builder.build(), default_catalog(), cull=False)
+    path = write_html(scene, tmp_path / "square.html")
+    three = files("bricky.render").joinpath("assets", "three")
+    cdn = f"https://cdn.jsdelivr.net/npm/three@{THREE_VERSION}/"
+
+    async def serve(route: Route) -> None:
+        name = route.request.url.removeprefix(cdn).removeprefix("build/")
+        await route.fulfill(
+            body=three.joinpath(*name.split("/")).read_bytes(),
+            content_type="text/javascript",
+        )
+
+    async def frame_every_view() -> dict[str, list[float]]:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(
+                executable_path=Settings().render_browser,
+                args=["--enable-unsafe-swiftshader"],
+            )
+            page = await browser.new_page(viewport={"width": 640, "height": 480})
+            # Reduced motion moves the camera at once: views measure where they land.
+            await page.emulate_media(reduced_motion="reduce")
+            await page.route(cdn + "**", serve)
+            await page.goto(path.as_uri())
+            await page.wait_for_function(
+                "() => document.getElementById('app').dataset.state === 'ready'"
+            )
+            boxes: dict[str, list[float]] = {}
+            for name, keys in VIEW_KEYS.items():
+                for key in keys:
+                    await page.keyboard.press(key)
+                boxes[name] = cast("list[float]", await page.evaluate(MEASURE))
+            await browser.close()
+            return boxes
+
+    for name, (left, top, right, bottom) in asyncio.run(frame_every_view()).items():
+        # The model touches no edge of the stage, and spans a good part of it.
+        assert left > 0.01, name
+        assert top > 0.01, name
+        assert right < 0.99, name
+        assert bottom < 0.99, name
+        assert max(right - left, bottom - top) > 0.35, name
+
+
+VIEW_KEYS = {
+    "3D": ["0"],
+    "front": ["1"],
+    "back": ["2"],
+    "left": ["3"],
+    "right": ["4"],
+    "top": ["5"],
+    "3D orthographic": ["0", "o"],
+    "front perspective": ["1", "o"],
+}
+"""Keys that bring the viewer to each view, from the view before."""
+
+MEASURE = """async () => {
+  const image = await createImageBitmap(await window.bricky.engine.screenshot());
+  const { width, height } = image;
+  const context = new OffscreenCanvas(width, height).getContext("2d");
+  context.drawImage(image, 0, 0);
+  const pixels = context.getImageData(0, 0, width, height).data;
+  const [r, g, b] = pixels;
+  let left = width, top = height, right = -1, bottom = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = 4 * (y * width + x);
+      const red = Math.abs(pixels[i] - r), green = Math.abs(pixels[i + 1] - g);
+      const away = red + green + Math.abs(pixels[i + 2] - b);
+      if (away < 90) continue;
+      left = Math.min(left, x); right = Math.max(right, x);
+      top = Math.min(top, y); bottom = Math.max(bottom, y);
+    }
+  }
+  return [left / width, top / height, (right + 1) / width, (bottom + 1) / height];
+}"""
+"""The box around the model in the viewer's canvas, as fractions of its size.
+
+Pixels far from the background's color count, so shadows on the ground do not.
+"""
+
+
 COUNT_COLORS = """async (png) => {
   const image = new Image();
   image.src = "data:image/png;base64," + png;
