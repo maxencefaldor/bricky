@@ -28,7 +28,7 @@ Each module imports only from the modules listed before it:
 1. `catalog`: parts and colors keyed by BrickLink ids, imported from BrickLink's catalog downloads; each part's shape is read from its official name, or converted from LDraw, and its geometry generated per family, with curves built as exact facets.
 1. `model`, `provenance`, `fill`, `builder`, `files`: the canonical model format, the script lines that placed each element, the bricks and plates that fill voxels, how to write models, and their files and source maps.
 1. `exports`: a model's lots, written in formats other tools read, such as BrickLink's Wanted List; one module per format.
-1. `analysis`: derived data (world geometry, spatial index, connections, voxels), cached in `Context`, the differences between two builds, and stability: the forces that hold a model still, as a linear program.
+1. `analysis`: derived data (world geometry, spatial index, connections, voxels), cached in `Context`, the differences between two builds, contacts (where faces press and studs sit, exactly), and stability: the forces that hold a model still, as a linear program.
 1. `passes`, `diagnostics`, `check`: plugin passes, the rules they check, and the reports a check produces at each rule's level.
 1. `instructions`: the steps to build a model, in an order that straight moves can follow, swept exactly.
 1. `render`: scenes resolved from a model, rendered with three.js in headless Chromium, and the standalone viewer.

@@ -11,12 +11,12 @@ from hypothesis import strategies as st
 from bricky import Level, ModelBuilder, Settings, check_model, default_catalog
 from bricky.analysis import Context
 from bricky.analysis import stability as stability_module
+from bricky.analysis.contacts import _overlap
 from bricky.analysis.stability import (
     GRAVITY,
     Material,
     Stability,
     _mass,
-    _overlap,
     analyze_stability,
 )
 from bricky.geometry import Box, Convex, Vector

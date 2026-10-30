@@ -26,18 +26,19 @@ still. When a push is needed, the program's dual is a motion of the groups that 
 The second program holds the falling groups and keeps the most loaded stud at the least
 share of its clutch. Clarabel, an interior point solver, finds near-optimal forces in a
 few seconds; when they keep every stud within the threshold, they settle the question.
-Otherwise HiGHS starts from them and finds the exact share with the simplex method. The
-studs that set the share form sites, one for each motion of the dual that pulls them
-out. The next round lets those studs hold without limit, and the rounds go on until the
-share falls within the threshold.
+Otherwise HiGHS turns them into an exact vertex by crossover, and the simplex method
+takes the rounds from there. The studs that set the share form sites, one for each
+motion of the dual that pulls them out. The next round lets those studs hold without
+limit, and the rounds go on until the share falls within the threshold.
+
+Where elements touch and where studs sit comes from :mod:`bricky.analysis.contacts`.
 """
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
-from collections.abc import Iterable, Iterator, Sequence
+from collections import Counter
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from fractions import Fraction
 from typing import Final
 
 import highspy
@@ -51,15 +52,24 @@ from clarabel import (
 )
 from scipy.sparse import csc_array, eye_array, hstack, vstack
 
-from bricky.analysis.connections import AntiStudIndex
+from bricky.analysis.contacts import (
+    Contact,
+    Faces,
+    Joint,
+    adjacency,
+    face_contacts,
+    ground_contacts,
+    reach,
+    stud_clusters,
+    stud_joints,
+    touching_groups,
+)
 from bricky.analysis.context import Context
-from bricky.analysis.spatial import SpatialHash
 from bricky.analysis.world import PlacedElement
-from bricky.catalog import ConnectorKind
 from bricky.errors import BrickyError
-from bricky.geometry import DOWN, UP, Box, Vector
+from bricky.geometry import Box, Vector
 from bricky.settings import Settings
-from bricky.units import MM_PER_UNIT, STUD, STUD_DIAMETER, STUD_HEIGHT
+from bricky.units import MM_PER_UNIT, STUD, STUD_DIAMETER
 
 GRAVITY: Final = 9.80665
 """Standard gravity, in meters per second squared."""
@@ -69,9 +79,6 @@ _CUBIC_CENTIMETERS: Final = (MM_PER_UNIT / 10) ** 3
 
 _RADIUS: Final = STUD_DIAMETER / 2 / STUD
 """A stud's radius in studs, the length unit of the programs."""
-
-_GENERATORS: Final = 4
-"""Directions that span the friction at a point of contact, along the two grid axes."""
 
 _HELD: Final = 1e-6
 """Share of the weight below which a push, or a miss of the balance, counts as none."""
@@ -88,8 +95,6 @@ _MAX_SITES: Final = 16
 
 _BINDING: Final = 1e-7
 """Dual value, as a share of all, below which a stud's limit sets no load."""
-
-_ONE: Final = Vector(1, 1, 1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,31 +116,6 @@ class Material:
         return cls(
             clutch=settings.clutch, friction=settings.friction, density=settings.density
         )
-
-
-@dataclass(frozen=True, slots=True)
-class Joint:
-    """One stud of an element in an anti-stud of another."""
-
-    stud: int
-    """Index into :attr:`World.elements` of the element with the stud."""
-
-    anti_stud: int
-    """Index into :attr:`World.elements` of the element with the anti-stud."""
-
-    position: Vector
-    """The stud's center, on its face."""
-
-    normal: Vector
-    """The stud's outward axis."""
-
-    @property
-    def bounds(self) -> Box:
-        """The box the stud occupies as it stands out of its face."""
-        radius = STUD_DIAMETER // 2
-        side = Vector(*(0 if component else radius for component in self.normal))
-        tip = self.position + self.normal * STUD_HEIGHT
-        return Box.spanning(self.position - side, tip + side)
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,18 +161,21 @@ def analyze_stability(
         BrickyError: If HiGHS finds no optimal forces.
     """
     elements = context.world.elements
-    faces = [_Faces.of(element) for element in elements]
-    contacts = [*_grounds(faces), *_contacts(elements, faces, context.solid_index)]
-    joints = list(_joints(elements, context.anti_studs))
-    links = _links(len(elements), contacts, joints)
+    faces = [Faces.of(element) for element in elements]
+    contacts = [
+        *ground_contacts(faces),
+        *face_contacts(elements, faces, context.solid_index),
+    ]
+    joints = list(stud_joints(elements, context.anti_studs))
+    links = adjacency(len(elements), contacts, joints)
     grounded = {contact.second for contact in contacts if contact.first is None}
-    standing = sorted(_reach(grounded, links, set(range(len(elements)))))
+    standing = sorted(reach(grounded, links, set(range(len(elements)))))
     if not standing:
         return Stability(falls=(), sites=())
-    clusters = _clusters(standing, joints)
+    clusters = stud_clusters(standing, joints)
     rigid = _Statics(elements, clusters, contacts, joints, material, held=None)
     moving = {i for k in rigid.moving() for i in clusters[k]}
-    falls = _groups(moving, links)
+    falls = touching_groups(moving, links)
     if threshold is None:
         return Stability(falls=falls, sites=())
     held = [k for k, i in enumerate(standing) if i in moving]
@@ -201,264 +184,11 @@ def analyze_stability(
     return Stability(falls=falls, sites=statics.sites(threshold))
 
 
-type _Corners = tuple[tuple[int, int, int], ...]
-type _Plane = tuple[Vector, int]
-type _Point = tuple[Fraction, Fraction, Fraction]
 type _Seat = tuple[int, int, Vector]
 """Where two bodies meet: the two, in order, and the axis of their faces' normal."""
 
 type _Entries = tuple[np.ndarray, np.ndarray, np.ndarray]
 """Entries of a sparse matrix: values, rows and columns."""
-
-
-@dataclass(frozen=True, slots=True)
-class _Faces:
-    """The faces of an element's solids that can press on other elements' faces."""
-
-    faces: dict[_Plane, list[tuple[_Corners, bool]]]
-    """Each face by plane, counter-clockwise seen from outside, and whether it bears:
-    whether it is the top or bottom of its part, or holds the part's studs or
-    anti-studs. Faces that neither bear nor face up or down never press."""
-
-    lowest: tuple[tuple[int, int, int], ...]
-    """The corners at the element's lowest height, when that reaches the ground."""
-
-    @classmethod
-    def of(cls, element: PlacedElement) -> _Faces:
-        """Return the faces of an element, and where it reaches the ground."""
-        axis = element.pose.rotation.apply(UP)
-        holders = {
-            (connector.normal, connector.normal.dot(connector.position))
-            for connector in element.connectors
-        }
-        faces: defaultdict[_Plane, list[tuple[_Corners, bool]]] = defaultdict(list)
-        corners: set[tuple[int, int, int]] = set()
-        for solid in element.solids:
-            vertices = [vertex.as_tuple() for vertex in solid.vertices]
-            corners.update(vertices)
-            for face, plane in zip(solid.faces, solid.planes, strict=True):
-                bears = plane[0] in (axis, -axis) or plane in holders
-                if bears or plane[0] in (UP, DOWN):
-                    faces[plane].append((tuple(vertices[k] for k in face), bears))
-        low = element.bounds.min.z
-        lowest = tuple(sorted(c for c in corners if c[2] == low)) if low <= 0 else ()
-        return cls(dict(faces), lowest)
-
-
-@dataclass(frozen=True, slots=True)
-class _Contact:
-    """Faces that press together over a polygon: ``first`` pushes ``second``."""
-
-    first: int | None
-    """The element on the far side of the normal, or ``None`` for the ground."""
-
-    second: int
-    normal: Vector
-    """The normal of ``first``'s face, pointing into ``second``."""
-
-    points: tuple[tuple[int | Fraction, ...], ...]
-    """The corners of the polygon where the faces touch, in base units."""
-
-
-def _grounds(faces: Sequence[_Faces]) -> Iterator[_Contact]:
-    """Yield where elements reach the ground, at their lowest corners."""
-    for i, element in enumerate(faces):
-        if element.lowest:
-            yield _Contact(None, i, UP, element.lowest)
-
-
-def _contacts(
-    elements: Sequence[PlacedElement],
-    faces: Sequence[_Faces],
-    index: SpatialHash[int],
-) -> Iterator[_Contact]:
-    """Yield where faces of two elements press together over some area.
-
-    Faces press when they face up or down, since weight closes any gap between them,
-    or when both bear: the sides of parts stand 0.1 mm in from the grid, so neighbors'
-    sides never touch.
-    """
-    for i, element in enumerate(elements):
-        grown = Box(element.bounds.min - _ONE, element.bounds.max + _ONE)
-        for j in sorted(index.query(grown)):
-            if j <= i:
-                continue
-            for (normal, offset), mine in faces[i].faces.items():
-                level = normal in (UP, DOWN)
-                for first, bears in mine:
-                    for second, too in faces[j].faces.get((-normal, -offset), ()):
-                        if level or (bears and too):
-                            points = _overlap(first, second, normal)
-                            if points:
-                                yield _Contact(i, j, normal, points)
-
-
-def _overlap(
-    first: _Corners, second: _Corners, normal: Vector
-) -> tuple[tuple[int | Fraction, ...], ...]:
-    """Return the corners of the area two faces share, or nothing when they share none.
-
-    The faces lie in one plane, ``first`` counter-clockwise seen from where ``normal``
-    points and ``second`` the other way round. The face with fewer corners clips the
-    other.
-    """
-    first_low, first_high = _span(first)
-    second_low, second_high = _span(second)
-    low = tuple(map(max, first_low, second_low))
-    high = tuple(map(min, first_high, second_high))
-    if any(
-        a > b or (a == b and not component)
-        for a, b, component in zip(low, high, normal, strict=True)
-    ):
-        return ()
-    if _rectangle(first, normal) and _rectangle(second, normal):
-        return tuple(
-            dict.fromkeys(
-                tuple(high[k] if (corner >> k) & 1 else low[k] for k in range(3))
-                for corner in range(8)
-            )
-        )
-    subject, clipper = first, tuple(reversed(second))
-    if len(clipper) > len(subject):
-        subject, clipper = clipper, subject
-    polygon: list[_Point] = [_exact(corner) for corner in subject]
-    edges = [Vector(*corner) for corner in clipper]
-    for start, end in zip(edges, [*edges[1:], edges[0]], strict=True):
-        polygon = _clip(polygon, normal.cross(end - start), start)
-        if not polygon:
-            return ()
-    if sum(a * b for a, b in zip(_newell(polygon), normal, strict=True)) <= 0:
-        return ()
-    return tuple(dict.fromkeys(polygon))
-
-
-def _span(corners: _Corners) -> tuple[tuple[int, ...], tuple[int, ...]]:
-    """Return the lowest and highest coordinates of some corners on each axis."""
-    low = tuple(min(corner[k] for corner in corners) for k in range(3))
-    high = tuple(max(corner[k] for corner in corners) for k in range(3))
-    return low, high
-
-
-def _rectangle(corners: _Corners, normal: Vector) -> bool:
-    """Return whether a face is a rectangle along grid axes."""
-    if len(corners) != 4 or sum(map(abs, normal)) != 1:  # noqa: PLR2004 - four corners
-        return False
-    low, high = _span(corners)
-    return len(set(corners)) == 4 and all(  # noqa: PLR2004 - four corners
-        value in (low[k], high[k])
-        for corner in corners
-        for k, value in enumerate(corner)
-    )
-
-
-def _clip(polygon: list[_Point], inward: Vector, start: Vector) -> list[_Point]:
-    """Keep the part of a polygon on the side of a line that ``inward`` points to."""
-    limit = inward.dot(start)
-
-    def side(point: _Point) -> Fraction:
-        return inward.x * point[0] + inward.y * point[1] + inward.z * point[2] - limit
-
-    kept: list[_Point] = []
-    for current, following in zip(polygon, [*polygon[1:], polygon[0]], strict=True):
-        here, there = side(current), side(following)
-        if here >= 0:
-            kept.append(current)
-        if (here > 0 > there) or (here < 0 < there):
-            share = here / (here - there)
-            kept.append(
-                (
-                    current[0] + share * (following[0] - current[0]),
-                    current[1] + share * (following[1] - current[1]),
-                    current[2] + share * (following[2] - current[2]),
-                )
-            )
-    return kept
-
-
-def _newell(polygon: Sequence[_Point]) -> _Point:
-    """Return twice the area vector of a polygon, normal to it."""
-    x = y = z = Fraction(0)
-    for point, following in zip(polygon, [*polygon[1:], polygon[0]], strict=True):
-        x += (point[1] - following[1]) * (point[2] + following[2])
-        y += (point[2] - following[2]) * (point[0] + following[0])
-        z += (point[0] - following[0]) * (point[1] + following[1])
-    return x, y, z
-
-
-def _exact(corner: tuple[int, int, int]) -> _Point:
-    return Fraction(corner[0]), Fraction(corner[1]), Fraction(corner[2])
-
-
-def _joints(
-    elements: Sequence[PlacedElement], anti_studs: AntiStudIndex
-) -> Iterator[Joint]:
-    """Yield every stud that sits in another element's anti-stud."""
-    for i, element in enumerate(elements):
-        for connector in element.connectors:
-            if connector.kind is not ConnectorKind.STUD:
-                continue
-            for j in anti_studs.get((connector.position, -connector.normal), ()):
-                if j != i:
-                    yield Joint(i, j, connector.position, connector.normal)
-
-
-def _links(
-    count: int, contacts: Iterable[_Contact], joints: Iterable[Joint]
-) -> list[set[int]]:
-    """Return the elements that each element touches or joins by studs."""
-    links: list[set[int]] = [set() for _ in range(count)]
-    pairs = [(c.first, c.second) for c in contacts if c.first is not None]
-    pairs += [(joint.stud, joint.anti_stud) for joint in joints]
-    for a, b in pairs:
-        links[a].add(b)
-        links[b].add(a)
-    return links
-
-
-def _reach(start: set[int], links: Sequence[set[int]], within: set[int]) -> set[int]:
-    """Return ``start`` and the elements of ``within`` that links join to it."""
-    reached = set(start)
-    stack = list(start)
-    while stack:
-        for j in (links[stack.pop()] & within) - reached:
-            reached.add(j)
-            stack.append(j)
-    return reached
-
-
-def _clusters(
-    elements: Sequence[int], joints: Sequence[Joint]
-) -> list[tuple[int, ...]]:
-    """Group elements that studs join, directly or through other elements."""
-    links: dict[int, set[int]] = {i: set() for i in elements}
-    for joint in joints:
-        if joint.stud in links and joint.anti_stud in links:
-            links[joint.stud].add(joint.anti_stud)
-            links[joint.anti_stud].add(joint.stud)
-    left = set(elements)
-    clusters: list[tuple[int, ...]] = []
-    for start in elements:
-        if start in left:
-            cluster, stack = {start}, [start]
-            while stack:
-                for j in links[stack.pop()] - cluster:
-                    cluster.add(j)
-                    stack.append(j)
-            left -= cluster
-            clusters.append(tuple(sorted(cluster)))
-    return clusters
-
-
-def _groups(moving: set[int], links: Sequence[set[int]]) -> tuple[tuple[int, ...], ...]:
-    """Split moving elements into groups that touch or join one another."""
-    groups: list[tuple[int, ...]] = []
-    left = set(moving)
-    for start in sorted(moving):
-        if start in left:
-            group = _reach({start}, links, moving)
-            left -= group
-            groups.append(tuple(sorted(group)))
-    return tuple(groups)
 
 
 def _mass(element: PlacedElement) -> tuple[float, tuple[float, float, float]]:
@@ -518,7 +248,7 @@ class _Statics:
         self,
         elements: Sequence[PlacedElement],
         bodies: Sequence[Sequence[int]],
-        contacts: Sequence[_Contact],
+        contacts: Sequence[Contact],
         joints: Sequence[Joint],
         material: Material,
         *,
@@ -629,10 +359,13 @@ class _Statics:
             return ()
         highs = self._highs(cost, limits)
         if start is not None:
-            guess = highspy.HighsSolution()
-            guess.col_value = start
-            guess.value_valid = True
-            highs.setSolution(guess)
+            # Crossover moves Clarabel's forces to a vertex, an optimal basis that the
+            # simplex method starts each round from. Should it fail, the first round
+            # solves from scratch.
+            near = highspy.HighsSolution()
+            near.col_value = start
+            near.value_valid = True
+            highs.crossover(near)
         equations = 6 * len(self._members)
         found: list[Site] = []
         while len(found) < _MAX_SITES:
@@ -740,15 +473,15 @@ class _Statics:
         self._columns.append(np.repeat(columns, 3))
 
     def _press(
-        self, contacts: Sequence[_Contact], seats: Counter[_Seat], friction: float
+        self, contacts: Sequence[Contact], seats: Counter[_Seat], friction: float
     ) -> None:
         """Add the forces with which faces press on faces, and on the ground.
 
         Faces that studs join press along their normal, since the studs bear any
         sideways force; other faces rub, with friction.
         """
-        rubbing: list[_Contact] = []
-        pressing: list[_Contact] = []
+        rubbing: list[Contact] = []
+        pressing: list[Contact] = []
         for contact in contacts:
             second = self._body[contact.second]
             if second < 0:
@@ -763,7 +496,7 @@ class _Statics:
         if rubbing:
             self._corners(rubbing, friction)
 
-    def _corners(self, contacts: Sequence[_Contact], friction: float) -> None:
+    def _corners(self, contacts: Sequence[Contact], friction: float) -> None:
         """Add forces at the corners of contacts, along their normals.
 
         With friction, four forces at each corner span it along two axes across the
