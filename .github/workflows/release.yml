@@ -30,7 +30,7 @@ jobs:
       - name: Check the tag names the packages' version
         run: |
           for package in bricky bricky-mcp; do
-            test "v$(uv version --short --package "$package")" = "$GITHUB_REF_NAME"
+            test "v$(uv version --short --color never --package "$package")" = "$GITHUB_REF_NAME"
           done
       - name: Build sdists and wheels
         run: |
