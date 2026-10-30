@@ -8,8 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from bricky import ModelBuilder, __version__, save_model, service
+from bricky import ModelBuilder, __version__, save_model
 from bricky.cli import main
+from bricky.service import catalog
 
 TOWER = """
 from bricky import ModelBuilder
@@ -329,7 +330,7 @@ def test_shapes_come_from_ldraw_for_parts_no_name_describes(
 def test_show_maps_a_sloped_top_and_renders_the_part_outside_the_workspace(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(service, "PART_IMAGES", tmp_path / "parts")
+    monkeypatch.setattr(catalog, "PART_IMAGES", tmp_path / "parts")
     monkeypatch.chdir(tmp_path)
     assert run("catalog", "show", "3039", "--render") == 0  # Slope 45 2 x 2
     out = capsys.readouterr().out
