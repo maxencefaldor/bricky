@@ -119,7 +119,7 @@ svg.icon { width: 16px; height: 16px; flex: none; stroke-width: 1.75; }
 .region.bottom-left[data-raised], .region.bottom-right[data-raised] {
   bottom: calc(max(var(--gap), env(safe-area-inset-bottom)) + var(--sheet) + var(--rise));
 }
-/* On a narrow stage, the card spans the stage's width. */
+/* On a narrow stage, the region lets the card grow past 400px, to the width beside the toolbar. */
 @container stage (max-width: 720px) {
   .region.bottom-left { max-width: calc(100% - 2 * var(--gap)); }
 }

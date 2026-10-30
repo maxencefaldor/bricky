@@ -35,9 +35,9 @@ export async function start(root, scene, { heading, downloads = [], components =
 
   for (const component of components) component(viewer);
 
-  engine.setMarkColor(getComputedStyle(root).getPropertyValue("--accent").trim() || "#0969da");
+  engine.setAccentColor(getComputedStyle(root).getPropertyValue("--accent").trim() || "#0969da");
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-    engine.setMarkColor(getComputedStyle(root).getPropertyValue("--accent").trim());
+    engine.setAccentColor(getComputedStyle(root).getPropertyValue("--accent").trim());
   });
   // The browser can take the graphics context back, on a phone short of memory for instance.
   engine.on("lost", () => {

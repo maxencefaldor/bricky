@@ -28,7 +28,7 @@ export default function title({ scene, heading, shell, format, h }) {
       : "No errors";
     const badge = h(
       "button",
-      { type: "button", class: `badge ${kind}`, "data-tip": "Show the check's findings", onclick: () => shell.panel.open("checks") },
+      { type: "button", class: `badge ${kind}`, "data-tip": "Show the check's diagnostics", onclick: () => shell.panel.open("checks") },
       shell.icon(errors ? "circle-x" : warnings ? "triangle-alert" : "circle-check"),
       text,
     );

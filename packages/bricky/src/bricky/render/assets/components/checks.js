@@ -37,37 +37,37 @@ export default function checks({ scene, engine, shell, format, h }) {
   const summary = scene.summary;
   if (summary.errors === null) return;
   shell.style(STYLE);
-  const findings = scene.diagnostics;
+  const diagnostics = scene.diagnostics;
   const { errors, warnings } = summary;
 
   let chosen = null;
   const choose = (index) => {
     chosen = chosen === index ? null : index;
-    const finding = chosen === null ? null : findings[chosen];
-    engine.select(finding ? finding.elements : []);
-    if (finding?.elements.length) engine.focus(finding.elements);
+    const diagnostic = chosen === null ? null : diagnostics[chosen];
+    engine.select(diagnostic ? diagnostic.elements : []);
+    if (diagnostic?.elements.length) engine.focus(diagnostic.elements);
     rows.forEach((row, i) => row.setAttribute("aria-pressed", String(i === chosen)));
   };
   engine.on("selection", () => {
     if (chosen === null) return;
-    const finding = findings[chosen];
-    const same = engine.selection.size === finding.elements.length && finding.elements.every((i) => engine.selection.has(i));
+    const diagnostic = diagnostics[chosen];
+    const same = engine.selection.size === diagnostic.elements.length && diagnostic.elements.every((i) => engine.selection.has(i));
     if (!same) {
       chosen = null;
       rows.forEach((row) => row.setAttribute("aria-pressed", "false"));
     }
   });
 
-  const rows = findings.map((finding, i) => {
-    const uids = finding.elements.slice(0, 3).map((element) => scene.uids[element]);
-    const rest = finding.elements.length - uids.length;
+  const rows = diagnostics.map((diagnostic, i) => {
+    const uids = diagnostic.elements.slice(0, 3).map((element) => scene.uids[element]);
+    const rest = diagnostic.elements.length - uids.length;
     return h(
       "button",
       { type: "button", "aria-pressed": "false", onclick: () => choose(i) },
-      h("span", { class: `number ${finding.kind}` }, String(i + 1)),
+      h("span", { class: `number ${diagnostic.kind}` }, String(i + 1)),
       h("span", {},
-        h("span", { class: `rule ${finding.kind}` }, finding.rule),
-        h("span", { class: "message" }, finding.message),
+        h("span", { class: `rule ${diagnostic.kind}` }, diagnostic.rule),
+        h("span", { class: "message" }, diagnostic.message),
         uids.length ? h("span", { class: "who" }, uids.join(", ") + (rest > 0 ? `, and ${format.count(rest, "more element")}` : "")) : null,
       ),
     );
@@ -81,26 +81,26 @@ export default function checks({ scene, engine, shell, format, h }) {
     "div",
     { class: "checks" },
     result ? h("div", { class: "result" }, result) : null,
-    findings.length
-      ? h("ol", { "aria-label": "Findings" }, ...rows.map((row) => h("li", {}, row)))
+    diagnostics.length
+      ? h("ol", { "aria-label": "Diagnostics" }, ...rows.map((row) => h("li", {}, row)))
       : h("div", { class: "empty" }, shell.icon("circle-check"), h("p", {}, "The check found no errors or warnings.")),
-    summary.omitted ? h("p", { class: "more" }, `${format.count(summary.omitted, "more finding")} not listed: the report's cap left them out.`) : null,
+    summary.omitted ? h("p", { class: "more" }, `${format.count(summary.omitted, "more diagnostic")} not listed: the report's cap left them out.`) : null,
   );
   shell.panel.add({ id: "checks", label: "Checks", icon: "list-checks", shortcut: "C", order: 20, view });
 
-  // Pins: each finding's number, on top of its first element.
-  const pins = findings.map((finding, i) => {
-    if (!finding.elements.length) return null;
-    const pin = h("button", { type: "button", class: `pin ${finding.kind}`, "aria-label": `Finding ${i + 1}: ${finding.rule}`, "data-tip": `${finding.rule}: ${finding.message}` }, String(i + 1));
+  // Pins: each diagnostic's number, on top of its first element.
+  const pins = diagnostics.map((diagnostic, i) => {
+    if (!diagnostic.elements.length) return null;
+    const pin = h("button", { type: "button", class: `pin ${diagnostic.kind}`, "aria-label": `Diagnostic ${i + 1}: ${diagnostic.rule}`, "data-tip": `${diagnostic.rule}: ${diagnostic.message}` }, String(i + 1));
     pin.addEventListener("click", () => {
       shell.panel.open("checks");
       if (chosen !== i) choose(i);
     });
     shell.overlay.append(pin);
-    const box = engine.elementBox(finding.elements[0]);
+    const box = engine.elementBox(diagnostic.elements[0]);
     const middle = box.getCenter(box.min.clone());
     const anchor = middle.clone().setY(box.max.y);
-    return { pin, anchor, middle, element: finding.elements[0], index: i };
+    return { pin, anchor, middle, element: diagnostic.elements[0], index: i };
   });
   // Pins that would land on one another line up side by side instead.
   const place = () => {

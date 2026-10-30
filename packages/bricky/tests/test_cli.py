@@ -10,7 +10,7 @@ import pytest
 
 from bricky import ModelBuilder, __version__, save_model
 from bricky.cli import main
-from bricky.service import catalog
+from bricky.service import Changes, LineCount, catalog
 
 TOWER = """
 from bricky import ModelBuilder
@@ -455,3 +455,24 @@ def test_explain_rejects_unknown_rules(capsys: pytest.CaptureFixture[str]) -> No
 def test_json_schema(capsys: pytest.CaptureFixture[str]) -> None:
     assert run("json-schema") == 0
     assert json.loads(capsys.readouterr().out)["title"] == "Model"
+
+
+def test_changes_count_lines_past_the_list_in_the_singular() -> None:
+    lines = tuple(
+        LineCount(line=f"m.py:{line} in build()", elements=1) for line in range(1, 12)
+    )
+    changes = Changes(
+        added=11,
+        removed=0,
+        changed=0,
+        unchanged=1,
+        voxels_filled=11,
+        voxels_emptied=0,
+        voxels_recolored=0,
+        added_at=lines,
+        changed_at=(),
+        removed_at=(),
+    )
+    text = changes.describe()
+    assert "    m.py:1 in build(): 1 element\n" in text
+    assert text.endswith("\n    ... and 1 more line")

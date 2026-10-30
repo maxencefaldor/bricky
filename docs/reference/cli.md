@@ -20,8 +20,8 @@ Run a build script, then save, check and render its model.
 | `--render`, `--no-render` | `True` | Render the model after checking it. |
 | `--views` | `sheet` | Views to render: sheet (perspective, front, right and top on one image), perspective (from the south-east), perspective-south-west, perspective-north-west, perspective-north-east, front, back, left, right or top. |
 | `--error` |  | Rules to report as errors, such as 'overloaded-studs', or 'all' for every rule; overrides the configured levels. |
-| `--warn` |  | Rules to report as warnings, or 'all' for every rule; overrides the configured levels. |
-| `--ignore` |  | Rules to leave out, such as 'strained-studs', or 'all' for every rule; overrides the configured levels. |
+| `--warn` |  | Rules to report as warnings, such as 'strained-studs', or 'all' for every rule; overrides the configured levels. |
+| `--ignore` |  | Rules to leave out, such as 'unbalanced-group', or 'all' for every rule; overrides the configured levels. |
 | `--max-diagnostics` |  | Maximum diagnostics to return; defaults to the configured cap. |
 
 ## `bricky check`
@@ -33,8 +33,8 @@ Check a model file.
 | `--output-format` | `text` | 'text' for people and agents, 'json' for programs. |
 | `MODEL` | required | Path to a .bricky.json model file. |
 | `--error` |  | Rules to report as errors, such as 'overloaded-studs', or 'all' for every rule; overrides the configured levels. |
-| `--warn` |  | Rules to report as warnings, or 'all' for every rule; overrides the configured levels. |
-| `--ignore` |  | Rules to leave out, such as 'strained-studs', or 'all' for every rule; overrides the configured levels. |
+| `--warn` |  | Rules to report as warnings, such as 'strained-studs', or 'all' for every rule; overrides the configured levels. |
+| `--ignore` |  | Rules to leave out, such as 'unbalanced-group', or 'all' for every rule; overrides the configured levels. |
 | `--max-diagnostics` |  | Maximum diagnostics to return; defaults to the configured cap. |
 
 ## `bricky render`
@@ -50,8 +50,8 @@ Render images of a model file.
 | `--clip` |  | Clip the model to look inside: 'z&lt;130' keeps what lies below 130 plates; x and y are in studs. |
 | `--check`, `--no-check` | `True` | Mark the elements that diagnostics name. |
 | `--error` |  | Rules to report as errors, such as 'overloaded-studs', or 'all' for every rule; overrides the configured levels. |
-| `--warn` |  | Rules to report as warnings, or 'all' for every rule; overrides the configured levels. |
-| `--ignore` |  | Rules to leave out, such as 'strained-studs', or 'all' for every rule; overrides the configured levels. |
+| `--warn` |  | Rules to report as warnings, such as 'strained-studs', or 'all' for every rule; overrides the configured levels. |
+| `--ignore` |  | Rules to leave out, such as 'unbalanced-group', or 'all' for every rule; overrides the configured levels. |
 | `--width` | `1600` | Image width in pixels. |
 | `--height` | `1200` | Image height in pixels. |
 | `--output` |  | Image file to write; with several views, each file name gets the view's name added. Defaults to &lt;model&gt;.&lt;view&gt;.png beside the model, so renders keep the sheet a build rendered. |

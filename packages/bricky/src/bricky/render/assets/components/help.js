@@ -43,12 +43,12 @@ export default function help({ shell, h }) {
   };
   const content = h("div", { class: "help" });
   const dialog = shell.dialog({ title: "Controls", content });
+  const mouse = () => h("div", {}, h("h3", {}, "Mouse"), list(POINTER));
+  const touch = () => h("div", {}, h("h3", {}, "Touch"), list(TOUCH));
   const open = () => {
     content.replaceChildren(
-      h("div", { class: "columns" },
-        h("div", {}, h("h3", {}, "Mouse"), list(POINTER)),
-        h("div", {}, h("h3", {}, "Touch"), list(TOUCH)),
-      ),
+      // A touch screen lists its own controls first.
+      h("div", { class: "columns" }, ...(matchMedia("(pointer: coarse)").matches ? [touch(), mouse()] : [mouse(), touch()])),
       ...keys(),
     );
     dialog.open();

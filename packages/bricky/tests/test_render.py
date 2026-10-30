@@ -301,6 +301,65 @@ def test_the_viewer_shows_the_model_and_names_what_is_clicked(tmp_path: Path) ->
     }
 
 
+def test_the_viewer_keeps_its_controls_apart_on_a_phone(tmp_path: Path) -> None:
+    model = stack().build()
+    scene = build_scene(model, default_catalog(), cull=False)
+    path = write_html(scene, tmp_path / "stack.html")
+
+    async def measure() -> dict[str, float]:
+        async with async_playwright() as playwright:
+            browser = await playwright.chromium.launch(
+                executable_path=Settings().render_browser,
+                args=["--enable-unsafe-swiftshader"],
+            )
+            page = await browser.new_page(
+                viewport={"width": 360, "height": 560}, is_mobile=True, has_touch=True
+            )
+            await page.route(CDN + "**", serve_three)
+            await page.goto(path.as_uri())
+            await page.wait_for_function(
+                "() => document.getElementById('app').dataset.state !== 'loading'"
+            )
+            # Framing in the task that selects an element leaves room for its card.
+            inset = await page.evaluate(
+                "() => { window.bricky.engine.select([0]);"
+                " return window.bricky.shell.insets().bottom; }"
+            )
+            await page.wait_for_function(
+                "() => document.querySelector('.region.bottom-left[data-raised]')"
+            )
+            boxes = {
+                name: await page.locator(selector).bounding_box()
+                for name, selector in (
+                    ("card", ".info-card"),
+                    ("bar", ".view-bar"),
+                    ("toolbar", ".toolbar"),
+                )
+            }
+            await page.evaluate("() => window.bricky.engine.select([])")
+            await page.keyboard.press("?")
+            boxes["help"] = await page.locator("dialog[open]").bounding_box()
+            await browser.close()
+        found: dict[str, float] = {}
+        for name, box in boxes.items():
+            assert box is not None, name
+            found[f"{name} top"] = box["y"]
+            found[f"{name} bottom"] = box["y"] + box["height"]
+            found[f"{name} left"] = box["x"]
+            found[f"{name} right"] = box["x"] + box["width"]
+        found["inset"] = inset
+        return found
+
+    found = asyncio.run(measure())
+    # The card rises above the view bar, keeps beside the toolbar's column, and framing
+    # keeps clear of it.
+    assert found["inset"] >= 560 - found["card top"]
+    assert found["card bottom"] <= found["bar top"]
+    assert found["card right"] <= found["toolbar left"]
+    # Help fits the screen, its body scrolling what the screen cannot hold.
+    assert 0 <= found["help top"] < found["help bottom"] <= 560
+
+
 def test_scenes_carry_steps_and_the_studs_they_reveal() -> None:
     model = stack().build()
     plain = build_scene(model, default_catalog())
@@ -349,6 +408,11 @@ def test_instructions_show_the_model_one_step_at_a_time(tmp_path: Path) -> None:
             await page.keyboard.press("ArrowRight")
             await page.wait_for_function("() => location.hash === '#step-2'")
             seen.append(await look())
+            # A link followed on the open page goes to its step.
+            await page.evaluate("() => { location.hash = '#step-1'; }")
+            await page.wait_for_function(
+                "() => document.querySelector('.step-card .number').textContent === '1'"
+            )
             await page.keyboard.press("Escape")
             after: dict[str, object] = {
                 "card": await page.locator(".step-card").count(),

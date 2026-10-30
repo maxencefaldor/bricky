@@ -370,7 +370,10 @@ export function createShell(root, { heading }) {
 
   // The space the floating controls cover at each side of the stage, so framing leaves it free. A
   // corner region beside the bottom one covers only its corner, and a raised one covers the bottom.
+  // Framing can follow a change in the same task, such as a selection that shows its card, before
+  // the observer runs: the regions settle first.
   const insets = () => {
+    settle();
     const height = (element) => (element.childElementCount ? element.offsetHeight + FRAME_GAP : 0);
     const vertical = regions.topRight.offsetHeight > regions.topRight.offsetWidth * 1.5;
     const raised = [regions.bottomLeft, regions.bottomRight].filter((region) => region.hasAttribute("data-raised"));

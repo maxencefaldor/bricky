@@ -13,8 +13,9 @@ from bricky import (
     default_catalog,
     format_report,
 )
-from bricky.diagnostics import Diagnostic
+from bricky.diagnostics import Diagnostic, ElementInfo, Report
 from bricky.passes import installed_passes, installed_rules
+from bricky.provenance import Frame, Source
 
 
 def wall(builder: ModelBuilder, x: int, z: int) -> None:
@@ -120,6 +121,35 @@ def test_the_summary_names_ignored_rules_or_counts_many() -> None:
     assert format_report(most).endswith(
         "against 1 rule (9 ignored): 0 errors, 0 warnings"
     )
+
+
+def test_the_summary_counts_one_element_and_one_more_line_in_the_singular() -> None:
+    elements = {
+        f"e{line}": ElementInfo(
+            part="3001",
+            part_name="Brick 2 x 4",
+            color=5,
+            color_name="Red",
+            source=Source(frames=(Frame(file="m.py", line=line, function="build"),)),
+        )
+        for line in range(1, 12)
+    }
+    report = Report(
+        model="m",
+        rules={"floating-group": Level.ERROR},
+        element_count=1,
+        errors=11,
+        warnings=0,
+        counts={"floating-group": 11},
+        diagnostics=tuple(
+            Diagnostic(rule="floating-group", message="floats", elements=(uid,))
+            for uid in elements
+        ),
+        elements=elements,
+    )
+    text = format_report(report)
+    assert "\n  ... and 1 more line\n" in text
+    assert text.endswith("checked 1 element against 1 rule: 11 errors, 0 warnings")
 
 
 def test_reports_count_every_diagnostic_by_rule_beyond_the_cap() -> None:

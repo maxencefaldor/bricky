@@ -2,7 +2,7 @@
 // views, element states for selection, isolation and hiding, picking, clipping and screenshots.
 //
 // Element states live in a texture with one texel per element, read by every material's shader:
-// red holds the visibility (0 shown, 1 ghosted, 2 hidden), green the mark (1 hovered, 2 selected)
+// red holds the visibility (0 shown, 1 ghosted, 2 hidden), green the accent (1 hovered, 2 selected)
 // plus the diagnostics shown (4 an error, 8 a warning), and blue and alpha an element arriving in
 // place: the axis it moves along, and how far it still has to go. Changing a state rewrites one
 // texel, so restyling elements costs nothing per frame, however large the model.
@@ -21,7 +21,7 @@ import { BASE_UNIT, CLIP_SLACK, PLATE, STUD, TINT, buildModel, clipPlane, orderI
 const COLUMNS = 1024; // texels per row of the element state texture
 const VISIBLE = 0, GHOSTED = 1, HIDDEN = 2;
 const HOVERED = 1, SELECTED = 2;
-const SHOWS_ERROR = 4, SHOWS_WARNING = 8; // the diagnostics an element shows, added to its mark
+const SHOWS_ERROR = 4, SHOWS_WARNING = 8; // the diagnostics an element shows, added to its accent
 const FIELD_OF_VIEW = 30; // degrees, vertically
 const DURATION = 480; // milliseconds a view change takes
 const FILL = 0.86; // the share of the free area a framed model fills
@@ -126,7 +126,7 @@ export function createEngine(stage, scene, { insets = () => ({ top: 0, right: 0,
   const accent = new THREE.Color();
   const uniforms = {
     elementStates: { value: stateTexture },
-    markColor: { value: accent },
+    accentColor: { value: accent },
     errorTint: { value: new THREE.Color(TINT.error.color) },
     warningTint: { value: new THREE.Color(TINT.warning.color) },
   };
@@ -134,8 +134,8 @@ export function createEngine(stage, scene, { insets = () => ({ top: 0, right: 0,
   // Patch a material to read each element's state. A pass of "normal" discards ghosted and hidden
   // elements; "ghost" draws only ghosted ones; "pick" writes element indices instead of colors.
   // Surfaces in their elements' colors take the tint of the diagnostics they show, as images bake
-  // it into those colors. An outline drawn for a kind of diagnostic shows while its element shows
-  // one of that kind, and an element's own outline while it shows none.
+  // it into those colors. An outline rendered for a kind of diagnostic shows while its element
+  // shows one of that kind, and an element's own outline while it shows none.
   const patch = (material, pass, { outline } = {}) => {
     material.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
@@ -164,28 +164,28 @@ if (elementTexel.b > 0.0) {
       const keep = pass === "ghost" ? "vElementState.x == 1.0" : `vElementState.x == 0.0${outlines[outline] ?? ""}`;
       let fragment = shader.fragmentShader
         .replace("#include <common>", `#include <common>
-uniform vec3 markColor;
+uniform vec3 accentColor;
 uniform vec3 errorTint;
 uniform vec3 warningTint;
 flat varying vec2 vElementState;
 flat varying float vElement;`)
         .replace("void main() {", `void main() {
-  float mark = mod(vElementState.y, 4.0);
+  float accented = mod(vElementState.y, 4.0);
   bool error = mod(floor(vElementState.y / 4.0), 2.0) == 1.0;
   bool warning = vElementState.y >= 8.0;
   if (!(${keep})) discard;`);
       // An override material still takes instance colors from instanced studs: the ghost pass
       // drops them, so every ghosted surface takes the ghost's one color.
       if (pass === "ghost") fragment = fragment.replace("#include <color_fragment>", "");
-      // Vertex or instance colors, which three.js marks with USE_COLOR, hold elements' own colors.
+      // Vertex or instance colors, which three.js flags with USE_COLOR, hold elements' own colors.
       if (pass === "normal") {
         fragment = fragment.replace("#include <color_fragment>", `#include <color_fragment>
 #ifdef USE_COLOR
   if (error) diffuseColor.rgb = mix(diffuseColor.rgb, diffuse * errorTint, ${TINT.error.share.toFixed(2)});
   else if (warning) diffuseColor.rgb = mix(diffuseColor.rgb, diffuse * warningTint, ${TINT.warning.share.toFixed(2)});
 #endif
-  if (mark == 2.0) diffuseColor.rgb = mix(diffuseColor.rgb, markColor, 0.18);
-  else if (mark == 1.0) diffuseColor.rgb = mix(diffuseColor.rgb, markColor, 0.1);`);
+  if (accented == 2.0) diffuseColor.rgb = mix(diffuseColor.rgb, accentColor, 0.18);
+  else if (accented == 1.0) diffuseColor.rgb = mix(diffuseColor.rgb, accentColor, 0.1);`);
       }
       if (pass === "pick") {
         fragment = fragment.replace("#include <dithering_fragment>", `#include <dithering_fragment>
@@ -229,12 +229,12 @@ flat varying float vElement;`)
 
   const visibility = new Uint8Array(count); // what the reader hides or isolates
   const beyond = new Uint8Array(count); // past the build's progress, so hidden whatever the reader does
-  const marks = new Uint8Array(count);
+  const accented = new Uint8Array(count); // 1 hovered, 2 selected
   const diagnosed = new Uint8Array(count); // the kinds of diagnostic each element shows
   const shown = (i) => (beyond[i] ? HIDDEN : visibility[i]);
   const writeState = (i) => {
     states[i * 4] = shown(i);
-    states[i * 4 + 1] = marks[i] | diagnosed[i];
+    states[i * 4 + 1] = accented[i] | diagnosed[i];
   };
   // Show each diagnostic whose elements are all built: on its elements, and as its region's box.
   let showing = [];
@@ -572,17 +572,17 @@ flat varying float vElement;`)
 
   const hover = (index) => {
     if (index === hovered) return;
-    if (hovered !== null && !selection.has(hovered)) { marks[hovered] = 0; writeState(hovered); }
+    if (hovered !== null && !selection.has(hovered)) { accented[hovered] = 0; writeState(hovered); }
     hovered = index;
-    if (index !== null && !selection.has(index)) { marks[index] = HOVERED; writeState(index); }
+    if (index !== null && !selection.has(index)) { accented[index] = HOVERED; writeState(index); }
     commitStates();
     emit("hover", index);
   };
 
   const select = (indices) => {
-    for (const i of selection) { marks[i] = i === hovered ? HOVERED : 0; writeState(i); }
+    for (const i of selection) { accented[i] = i === hovered ? HOVERED : 0; writeState(i); }
     selection = new Set(indices ?? []);
-    for (const i of selection) { marks[i] = SELECTED; writeState(i); }
+    for (const i of selection) { accented[i] = SELECTED; writeState(i); }
     commitStates();
     updateOutline();
     emit("selection", selection);
@@ -620,7 +620,7 @@ flat varying float vElement;`)
     showDiagnostics();
     refreshVisibility();
   };
-  // Outline elements in the mark color, keeping their own colors, such as the ones a step adds.
+  // Outline elements in the accent color, keeping their own colors, such as the ones a step adds.
   const emphasize = (indices) => {
     emphasis = new Set(indices ?? []);
     updateOutline();
@@ -954,7 +954,7 @@ flat varying float vElement;`)
     stop() { running = false; },
     look, fit, focus, frameBox, setProjection, orbit, zoom, setSection,
     hover, select, isolate, hide, showAll, limit, emphasize, arrive, coverage, portrait, pick, project, inSection, azimuth, screenshot, invalidate,
-    setMarkColor(color) {
+    setAccentColor(color) {
       accent.set(color);
       for (const material of [...outlineMaterials, emphasisMaterial]) material.color.set(color);
       invalidate();

@@ -42,7 +42,8 @@ A model stands when some set of these forces balances every element: the forces 
 Finding such forces is a linear program, the lower bound of limit analysis that studies of masonry and of LEGO® structures use ([Whiting et al., 2009](https://doi.org/10.1145/1618452.1618458); [Liu et al., 2024](https://arxiv.org/abs/2402.10711)).
 The interior point solver [Clarabel](https://clarabel.org) settles most models in a few seconds.
 When some stud grips hard, [HiGHS](https://highs.dev) moves those forces to a vertex by crossover, and its simplex method finds the exact loads.
-That search takes seconds to a minute for thousands of elements, and a check skips it unless a rule of studs is on.
+That search takes about 20 seconds for a few thousand elements, and minutes for the largest models.
+A check skips it unless a stud rule is on.
 The module `bricky.analysis.stability` gives the same analysis to Python: here a 1 x 8 plate reaches 6 studs past the brick it stands on.
 
 ```python

@@ -651,10 +651,11 @@ class _Statics:
         Clarabel's interior point method finds near-optimal forces much faster than the
         simplex method. Its last column is set to the largest share of clutch that any
         stud uses, so the forces settle whether every stud keeps within a threshold, and
-        they give the simplex method a start. Each free column splits into two that
-        cannot go negative, and every column costs a little, so the forces stay bounded
-        where the cost leaves them free. Return ``None`` when Clarabel finds no forces
-        or when they miss a balance by more than a millionth of the heaviest weight.
+        crossover turns them into the simplex method's start. Each free column splits
+        into two that cannot go negative, and every column costs a little, so the forces
+        stay bounded where the cost leaves them free. Return ``None`` when Clarabel
+        finds no forces or when they miss a balance by more than a millionth of the
+        heaviest weight.
         """
         width = len(cost)
         starts, index, value, count = self._equations(width, limits)

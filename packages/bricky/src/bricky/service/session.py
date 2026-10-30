@@ -28,12 +28,12 @@ ERROR_HELP: Final = (
     "overrides the configured levels."
 )
 WARN_HELP: Final = (
-    "Rules to report as warnings, or 'all' for every rule; overrides the configured "
-    "levels."
+    "Rules to report as warnings, such as 'strained-studs', or 'all' for every rule; "
+    "overrides the configured levels."
 )
 IGNORE_HELP: Final = (
-    "Rules to leave out, such as 'strained-studs', or 'all' for every rule; overrides "
-    "the configured levels."
+    "Rules to leave out, such as 'unbalanced-group', or 'all' for every rule; "
+    "overrides the configured levels."
 )
 MAX_DIAGNOSTICS_HELP: Final = (
     "Maximum diagnostics to return; defaults to the configured cap."

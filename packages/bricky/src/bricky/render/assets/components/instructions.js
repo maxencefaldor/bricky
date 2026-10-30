@@ -271,7 +271,18 @@ export default function instructions({ scene, engine, shell, format, h, mode }) 
     return true;
   });
 
-  // A link to a step opens the instructions there, and so does a page made for them.
-  const linked = /^#step-(\d+)$/.exec(location.hash);
-  if (linked || mode === "instructions") queueMicrotask(() => enter(linked ? Number(linked[1]) - 1 : 0));
+  // A link to a step opens the instructions there, also when the page is already open, and a page
+  // made for the instructions opens on its first step.
+  const follow = () => {
+    const linked = /^#step-(\d+)$/.exec(location.hash);
+    if (!linked) return false;
+    const k = Number(linked[1]) - 1;
+    if (active) go(k);
+    else enter(k);
+    return true;
+  };
+  window.addEventListener("hashchange", follow);
+  queueMicrotask(() => {
+    if (!follow() && mode === "instructions") enter(0);
+  });
 }
