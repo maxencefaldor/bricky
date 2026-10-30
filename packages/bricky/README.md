@@ -9,6 +9,7 @@ Each build places every part in exact geometry, reports each mistake with the sc
 
 ## Install
 
+Installing bricky on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
 A [uv](https://docs.astral.sh/uv/) project holds your build scripts, and uv installs Python 3.12 or newer if needed:
 
 ```sh

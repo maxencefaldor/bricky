@@ -64,7 +64,10 @@ jobs:
         with:
           name: release
           path: dist/
+      # The job only uploads, so it leaves no cache, which setup-uv would report as a failure.
       - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
       - name: Publish with trusted publishing
         run: uv publish --trusted-publishing always dist/bricky-*
 
@@ -85,6 +88,8 @@ jobs:
           name: release
           path: dist/
       - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
       - name: Publish with trusted publishing
         run: uv publish --trusted-publishing always dist/bricky_mcp-*
 

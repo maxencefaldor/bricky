@@ -41,6 +41,8 @@ The guide [Connect an agent](https://maxencefaldor.github.io/bricky/agents/conne
 | `build_model` | Runs a build script in its own process, then saves, checks and renders the model |
 | `render_model` | Renders a saved model again: other views, highlights, clips |
 | `check_model` | Checks a saved model |
+| `write_instructions` | Writes building instructions: a page that shows a model's steps in 3D |
+| `export_model` | Exports a saved model for another tool, such as a BrickLink Wanted List |
 | `search_parts` | Searches the catalog's parts |
 | `show_part` | Describes one part, and can render it |
 | `search_colors` | Searches the catalog's colors |
