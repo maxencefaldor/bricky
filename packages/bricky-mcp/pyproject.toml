@@ -6,7 +6,7 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Maxence Faldor" }]
-keywords = ["lego", "ai-agents", "llm", "compiler", "mcp", "mcp-server", "model-context-protocol"]
+keywords = ["lego", "ai-agents", "compiler", "mcp", "mcp-server", "model-context-protocol"]
 requires-python = ">=3.12"
 classifiers = [
   "Development Status :: 3 - Alpha",
