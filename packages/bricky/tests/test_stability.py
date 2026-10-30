@@ -303,10 +303,10 @@ def test_studs_of_groups_that_fall_need_no_clutch() -> None:
     ]
 
 
-STABILITY: dict[str, Level] = {"all": Level.IGNORE} | {
-    rule.name: rule.default_level for rule in StabilityPass.rules
-}
-"""Levels that check the stability rules alone, each at its default level."""
+STABILITY: dict[str, Level] = {"all": Level.IGNORE} | dict.fromkeys(
+    (rule.name for rule in StabilityPass.rules), Level.WARN
+)
+"""Levels that check the stability rules alone, each as a warning."""
 
 
 def found(builder: ModelBuilder, clutch: float = 2.94) -> list[tuple[str, str]]:
@@ -345,17 +345,20 @@ def test_the_stability_pass_passes_interlocking_bricks() -> None:
     assert found(builder) == []
 
 
-def test_checks_report_stability_as_warnings_by_default() -> None:
-    report = check_model(cantilever(1).build(), settings=Settings(clutch=0.0075))
-    assert [d.rule for d in report.diagnostics] == [
-        "overloaded-studs",
-        "strained-studs",
-    ]
-    assert (report.errors, report.warnings, report.ok) == (0, 2, True)
+def test_checks_warn_of_falls_and_leave_the_stud_rules_out_by_default() -> None:
+    builder = ModelBuilder("tipping")
+    builder.place("3005", at=(0, 0, 0), color="Red", id="post")
+    builder.place("3460", at=(0, 0, 3), color="Blue", rotation="R90", id="arm")
+    report = check_model(builder.build(), settings=Settings())
+    assert [d.rule for d in report.diagnostics] == ["unbalanced-group"]
+    assert (report.errors, report.warnings, report.ok) == (0, 1, True)
+    studs = check_model(cantilever(1).build(), settings=Settings(clutch=0.0075))
+    assert studs.diagnostics == ()
 
 
 def test_settings_can_make_stability_rules_errors() -> None:
-    settings = Settings(clutch=0.0075, rules={"overloaded-studs": Level.ERROR})
+    rules = {"overloaded-studs": Level.ERROR, "strained-studs": Level.WARN}
+    settings = Settings(clutch=0.0075, rules=rules)
     report = check_model(cantilever(1).build(), settings=settings)
     assert (report.errors, report.warnings, report.ok) == (1, 1, False)
     assert report.is_error(report.diagnostics[0])
@@ -374,17 +377,17 @@ def test_checks_skip_the_stability_pass_when_its_rules_are_ignored(
 
 
 @pytest.mark.parametrize(
-    ("ignored", "threshold"),
+    ("warned", "threshold"),
     [
-        ((), 0.5),
-        (("strained-studs",), 1.0),
-        (("overloaded-studs",), 0.5),
-        (("overloaded-studs", "strained-studs"), None),
+        ((), None),
+        (("overloaded-studs",), 1.0),
+        (("strained-studs",), 0.5),
+        (("overloaded-studs", "strained-studs"), 0.5),
     ],
 )
 def test_the_search_for_sites_goes_as_deep_as_the_rules_reported(
     monkeypatch: pytest.MonkeyPatch,
-    ignored: tuple[str, ...],
+    warned: tuple[str, ...],
     threshold: float | None,
 ) -> None:
     asked: list[float | None] = []
@@ -396,5 +399,5 @@ def test_the_search_for_sites_goes_as_deep_as_the_rules_reported(
         return analyze_stability(context, material, threshold=threshold)
 
     monkeypatch.setattr(stability_module, "analyze_stability", record)
-    check_model(cantilever(1).build(), rules=dict.fromkeys(ignored, Level.IGNORE))
+    check_model(cantilever(1).build(), rules=dict.fromkeys(warned, Level.WARN))
     assert asked == [threshold]

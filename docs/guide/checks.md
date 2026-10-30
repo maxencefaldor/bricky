@@ -47,7 +47,7 @@ by source line:
   examples/broken.py:16 in build(): 2 diagnostics
   examples/broken.py:18 in build(): 1 diagnostic
 
-checked 4 elements against 10 rules: 5 errors, 0 warnings
+checked 4 elements against 8 rules (overloaded-studs, strained-studs ignored): 5 errors, 0 warnings
 ```
 
 Each diagnostic has three parts:
@@ -69,7 +69,9 @@ Each diagnostic also labels its first element with its rule and marks its region
 Each diagnostic states the fact of one rule, and a check reports each rule at a level: `error`, `warn` or `ignore`.
 An error fails the check, a warning reports a fact without failing it, and `ignore` leaves the rule out.
 The rules whose facts surely make a model impossible to build, such as `overlap`, are errors by default.
-The [stability](stability.md) rules are warnings by default: they rest on measured clutch, friction and density, which real elements only approach.
+The [stability](stability.md) rule `unbalanced-group` is a warning by default: it rests on measured friction and density, which real elements only approach.
+The stud rules, `overloaded-studs` and `strained-studs`, are ignored by default.
+The stud rules also rest on measured clutch, and their search takes minutes on large models, so a check runs them only when asked.
 The command `bricky explain` prints a rule's level, the pass that checks it and its exact condition:
 
 ```text
@@ -83,15 +85,15 @@ A project sets the level of each rule in its configuration, and a command can se
 The table `[tool.bricky.rules]` of `pyproject.toml`, or `[rules]` in a `bricky.toml`, maps rule names to levels.
 The key `all` sets every rule, and a rule's own entry overrides it.
 The options `--error`, `--warn` and `--ignore` take rule names or `all`, and apply over the configuration.
-The option `--ignore strained-studs` leaves one rule out of one build.
+The option `--warn overloaded-studs` turns one rule on for one build.
 The variable `BRICKY_RULES` takes the same table as JSON (see [Configuration](../reference/configuration.md)).
-A project that builds its models for real might make two stability rules errors and leave one out:
+A project that builds its models for real might make two stability rules errors and turn the third on:
 
 ```toml title="pyproject.toml"
 [tool.bricky.rules]
 unbalanced-group = "error"
 overloaded-studs = "error"
-strained-studs = "ignore"
+strained-studs = "warn"
 ```
 
 ## Passes

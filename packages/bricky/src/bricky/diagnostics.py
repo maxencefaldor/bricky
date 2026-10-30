@@ -167,7 +167,8 @@ def format_report(report: Report) -> str:
             for site, count in sites.most_common(_LISTED_SITES)
         ]
         if len(sites) > _LISTED_SITES:
-            lines.append(f"  ... and {len(sites) - _LISTED_SITES} more lines")
+            more = _plural(len(sites) - _LISTED_SITES, "more line")
+            lines.append(f"  ... and {more}")
         blocks.append("\n".join(lines))
     ignored = [name for name, level in report.rules.items() if level is Level.IGNORE]
     rules = _plural(len(report.rules) - len(ignored), "rule")
@@ -176,7 +177,7 @@ def format_report(report: Report) -> str:
     elif ignored:
         rules += f" ({', '.join(ignored)} ignored)"
     blocks.append(
-        f"checked {report.element_count} elements against {rules}: "
+        f"checked {_plural(report.element_count, 'element')} against {rules}: "
         f"{_plural(report.errors, 'error')}, {_plural(report.warnings, 'warning')}"
     )
     return "\n\n".join(blocks)

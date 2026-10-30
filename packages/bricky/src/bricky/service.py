@@ -334,9 +334,8 @@ class Changes(BaseModel):
                     for count in counts[:_LISTED_LINES]
                 )
                 if len(counts) > _LISTED_LINES:
-                    lines.append(
-                        f"    ... and {len(counts) - _LISTED_LINES} more lines"
-                    )
+                    more = _count(len(counts) - _LISTED_LINES, "more line")
+                    lines.append(f"    ... and {more}")
         return "\n".join(lines)
 
 

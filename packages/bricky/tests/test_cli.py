@@ -439,11 +439,11 @@ def test_explain_gives_the_exact_condition(
 def test_explain_lists_every_rule_at_its_level(
     capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("BRICKY_RULES", '{"strained-studs": "ignore"}')
+    monkeypatch.setenv("BRICKY_RULES", '{"strained-studs": "warn"}')
     assert run("explain") == 0
     out = capsys.readouterr().out
     assert "unknown-part (error, pass schema)" in out
-    assert "strained-studs (ignore, by default warn, pass stability)" in out
+    assert "strained-studs (warn, by default ignore, pass stability)" in out
 
 
 def test_explain_rejects_unknown_rules(capsys: pytest.CaptureFixture[str]) -> None:

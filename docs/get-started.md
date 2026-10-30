@@ -80,7 +80,7 @@ error[floating-group]: 1 element floats: no chain of stud connections leads to t
 by source line:
   models/wall.py:15 in build(): 1 diagnostic
 
-checked 8 elements against 10 rules: 1 error, 0 warnings
+checked 8 elements against 8 rules (overloaded-studs, strained-studs ignored): 1 error, 0 warnings
 
 rendered (open the images to see the model):
   sheet: models/wall.png
@@ -116,7 +116,7 @@ since the last build: 0 added, 0 removed, 1 changed, 7 unchanged
   changed at:
     models/wall.py:15 in build(): 1 element
 
-checked 8 elements against 10 rules: 0 errors, 0 warnings
+checked 8 elements against 8 rules (overloaded-studs, strained-studs ignored): 0 errors, 0 warnings
 
 rendered (open the images to see the model):
   sheet: models/wall.png

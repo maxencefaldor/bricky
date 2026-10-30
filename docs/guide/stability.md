@@ -6,9 +6,11 @@ The page shows how bricky checks that a model stands under its own weight and th
 
 Every check tests whether the model stands under its own weight, as a real build on a table.
 Three rules report what fails: `unbalanced-group`, `overloaded-studs` and `strained-studs`.
-The three rules are warnings by default: they rest on measured clutch, friction and density, which real elements only approach.
-A project that builds its models for real can make them errors (see [Checks](checks.md#configuring-levels)).
-Here a crane's jib stands on a single stud of its mast:
+The rule `unbalanced-group` is a warning by default: it rests on measured friction and density, which real elements only approach.
+The two stud rules are ignored by default, since they rest on measured clutch too and their search takes minutes on large models.
+The options `--warn overloaded-studs --warn strained-studs` turn them on for one build.
+A project that builds its models for real can make all three errors (see [Checks](checks.md#configuring-levels)).
+Here a crane's jib stands on a single stud of its mast, built with `--warn overloaded-studs`:
 
 ```text
 warning[overloaded-studs]: 1 stud joining 2 elements needs 107% of its clutch to hold the model together
@@ -20,7 +22,7 @@ by source line:
   models/crane.py:8 in build(): 1 diagnostic
   models/crane.py:10 in build(): 1 diagnostic
 
-checked 11 elements against 10 rules: 0 errors, 1 warning
+checked 11 elements against 9 rules (strained-studs ignored): 0 errors, 1 warning
 ```
 
 ## Forces

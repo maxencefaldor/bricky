@@ -14,8 +14,8 @@ The default levels below hold until settings or options set others (see [Checks]
 | [`blocked-stud`](#blocked-stud) | `error` | collision |
 | [`floating-group`](#floating-group) | `error` | connectivity |
 | [`unbalanced-group`](#unbalanced-group) | `warn` | stability |
-| [`overloaded-studs`](#overloaded-studs) | `warn` | stability |
-| [`strained-studs`](#strained-studs) | `warn` | stability |
+| [`overloaded-studs`](#overloaded-studs) | `ignore` | stability |
+| [`strained-studs`](#strained-studs) | `ignore` | stability |
 
 ## unknown-part
 

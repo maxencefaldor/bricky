@@ -67,6 +67,9 @@ class Figure:
     check: bool = False
     """Mark what the checks find."""
 
+    warn: tuple[str, ...] = ()
+    """Rules to report as warnings, such as a stud rule that is off by default."""
+
     highlight: tuple[str, ...] = ()
     clips: tuple[str, ...] = ()
     before: Make | None = None
@@ -513,6 +516,7 @@ FIGURES: Final = (
         view=View.FRONT,
         size=(1000, 900),
         check=True,
+        warn=("overloaded-studs",),
     ),
     # Voxels
     Figure(
@@ -535,7 +539,7 @@ FIGURES: Final = (
     card("card-catalog", converted, imported=True),
     card("card-exports", inventory),
     card("card-instructions", EXAMPLES / "cottage.py", step=17),
-    card("card-stability", crane, check=True),
+    card("card-stability", crane, check=True, warn=("overloaded-studs",)),
     *(
         Figure(
             f"gallery-{name}", EXAMPLES / script, view=view, size=(1200, 900), bare=True
@@ -611,12 +615,9 @@ async def render(
         return None
     catalog = load_catalog(IMPORTED_CATALOG) if figure.imported else default_catalog()
     model, provenance = await model_of(figure, catalog, settings)
-    # A figure that shows no report only needs its errors: skip the slow search for
-    # sites of studs, which reports warnings.
-    quick = dict.fromkeys(("overloaded-studs", "strained-studs"), Level.IGNORE)
     report = check_model(
         model,
-        rules=None if figure.check else quick,
+        rules=dict.fromkeys(figure.warn, Level.WARN),
         provenance=provenance,
         catalog=catalog,
         settings=settings,

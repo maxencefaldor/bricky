@@ -66,7 +66,10 @@ def test_reports_describe_each_element_and_count_script_lines() -> None:
     assert "by source line:" in text
     assert "3 diagnostics" not in text
     assert ": 2 diagnostics" in text
-    assert text.endswith("checked 3 elements against 10 rules: 2 errors, 0 warnings")
+    assert text.endswith(
+        "checked 3 elements against 8 rules (overloaded-studs, strained-studs ignored):"
+        " 2 errors, 0 warnings"
+    )
 
 
 def test_reports_without_provenance_still_name_parts_and_colors() -> None:
@@ -109,7 +112,7 @@ def test_the_summary_names_ignored_rules_or_counts_many() -> None:
     builder = ModelBuilder("m")
     wall(builder, 0, 0)
     model = builder.build()
-    one = check_model(model, rules={"strained-studs": Level.IGNORE})
+    one = check_model(model, rules={"overloaded-studs": Level.WARN})
     assert format_report(one).endswith(
         "against 9 rules (strained-studs ignored): 0 errors, 0 warnings"
     )

@@ -47,7 +47,7 @@ class StabilityPass:
         ),
         Rule(
             name="overloaded-studs",
-            default_level=Level.WARN,
+            default_level=Level.IGNORE,
             condition=(
                 f"{_MODEL} A stud's clutch, 2.94 N by default, is the force that pulls "
                 "it out of its anti-stud. A stud alone where two elements meet face to "
@@ -67,7 +67,7 @@ class StabilityPass:
         ),
         Rule(
             name="strained-studs",
-            default_level=Level.WARN,
+            default_level=Level.IGNORE,
             condition=(
                 "The pass reports sites as for overloaded-studs. Each site's studs "
                 "need more than 1 over the safety factor setting of their clutch, half "
@@ -80,7 +80,8 @@ class StabilityPass:
         """Yield the groups that fall, then the sites whose studs grip hard.
 
         The search for sites, the slow part, runs only when the check reports
-        overloaded-studs or strained-studs, and only as deep as those rules need.
+        overloaded-studs or strained-studs, which are off by default, and only as deep
+        as those rules need.
         """
         from bricky.analysis.stability import (  # noqa: PLC0415 - the solvers load only when a check runs the pass
             Material,

@@ -13,13 +13,12 @@ def test_rules_come_from_pyproject(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     (tmp_path / "pyproject.toml").write_text(
-        "[tool.bricky]\nclutch = 2.0\n\n"
-        '[tool.bricky.rules]\nstrained-studs = "ignore"\n'
+        '[tool.bricky]\nclutch = 2.0\n\n[tool.bricky.rules]\nstrained-studs = "warn"\n'
     )
     monkeypatch.chdir(tmp_path)
     settings = Settings()
     assert settings.clutch == 2.0
-    assert settings.rules == {"strained-studs": Level.IGNORE}
+    assert settings.rules == {"strained-studs": Level.WARN}
 
 
 def test_bricky_toml_replaces_pyproject(

@@ -74,8 +74,7 @@ jobs:
   examples:
     name: Examples
     runs-on: ubuntu-latest
-    # Checking the largest examples for stability takes minutes.
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7

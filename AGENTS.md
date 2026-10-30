@@ -69,7 +69,9 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
   Each diagnostic it emits names one of those rules and gives a message, the elements involved and a region.
 - **Rules, as in ty:** people configure rules, never passes.
   A rule's name is lowercase words joined by hyphens, and its level is `error`, `warn` or `ignore`.
-  A rule whose fact surely makes a model impossible to build defaults to `error`, and any other rule to `warn`.
+  A rule whose fact surely makes a model impossible to build defaults to `error`.
+  A rule that is slow to check and rests on uncertain measurements defaults to `ignore`, so a check runs it only when asked.
+  Any other rule defaults to `warn`.
 - **Build scripts run in their own process** (`bricky.runner`), never in the command line or the MCP server: their output is captured, a timeout stops them, and a canceled command kills them.
 - **Images are first-class feedback:** every build renders its model by default.
   Renderer assets live in `bricky/render/assets`; three.js is vendored unmodified, so rendering works offline.

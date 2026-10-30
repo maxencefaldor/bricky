@@ -48,12 +48,13 @@ that placed its elements, and an image of the model: perspective, front, right a
 views, with rulers in studs and plates. From the second build on, the result also counts
 what changed since the last build, by script line, and the image outlines new and
 changed elements. Read everything, fix the script, and build again until the report has
-no errors and the images show the intended model. Weigh warnings too: the stability
-rules warn of groups that fall and studs near their limit, which matter for real builds.
-render_model looks closer: it highlights elements by uid or by script function, clips
-the model open, or renders other views. Once the model is done, write_instructions
-writes a page that shows people how to build it step by step, and export_model lists its
-parts to buy.
+no errors and the images show the intended model. Weigh warnings too: unbalanced-group
+warns of groups that fall, which matters for real builds. The stud rules
+overloaded-studs and strained-studs, off by default, find studs near their limit: for a
+model someone will build, build once with warn set to both. render_model looks closer:
+it highlights elements by uid or by script function, clips the model open, or renders
+other views. Once the model is done, write_instructions writes a page that shows people
+how to build it step by step, and export_model lists its parts to buy.
 
 Coordinates: x points east and y north, both in studs; z points up, in plates (a brick
 is 3 plates). `at` is the minimum corner of the rotated bounding box of what a script

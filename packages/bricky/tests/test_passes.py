@@ -41,7 +41,7 @@ def test_the_core_passes_are_installed_through_entry_points_and_run_first() -> N
     assert tuple(installed_passes())[: len(BUILT_IN)] == BUILT_IN
 
 
-def test_geometry_rules_are_errors_and_stability_rules_warnings_by_default() -> None:
+def test_sure_rules_are_errors_and_slow_uncertain_ones_off_by_default() -> None:
     levels = {name: rule.default_level for name, (_, rule) in installed_rules().items()}
     assert levels == {
         "unknown-part": Level.ERROR,
@@ -52,8 +52,8 @@ def test_geometry_rules_are_errors_and_stability_rules_warnings_by_default() -> 
         "blocked-stud": Level.ERROR,
         "floating-group": Level.ERROR,
         "unbalanced-group": Level.WARN,
-        "overloaded-studs": Level.WARN,
-        "strained-studs": Level.WARN,
+        "overloaded-studs": Level.IGNORE,
+        "strained-studs": Level.IGNORE,
     }
 
 
