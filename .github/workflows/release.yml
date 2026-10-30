@@ -1,7 +1,9 @@
 name: Release
 
-# Pushing a tag such as v0.1.0 publishes bricky and bricky-mcp to PyPI, then makes a GitHub
-# release. PyPI trusts this workflow, in the environment "pypi", as each project's publisher.
+# Pushing a tag such as v0.1.0 publishes bricky, then bricky-mcp, to PyPI, then makes a GitHub
+# release. PyPI trusts this workflow as each project's publisher, in the project's own
+# environment: "pypi" for bricky and "pypi-mcp" for bricky-mcp. PyPI accepts one pending
+# publisher per workflow and environment, so two new projects need two environments.
 on:
   push:
     tags: ["v*"]
@@ -48,7 +50,7 @@ jobs:
           if-no-files-found: error
 
   pypi:
-    name: Publish to PyPI
+    name: Publish bricky to PyPI
     needs: [ci, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -64,11 +66,31 @@ jobs:
           path: dist/
       - uses: astral-sh/setup-uv@v7
       - name: Publish with trusted publishing
-        run: uv publish
+        run: uv publish --trusted-publishing always dist/bricky-*
+
+  # The server goes out once the library it pins is on PyPI.
+  pypi-mcp:
+    name: Publish bricky-mcp to PyPI
+    needs: pypi
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi-mcp
+      url: https://pypi.org/project/bricky-mcp/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: release
+          path: dist/
+      - uses: astral-sh/setup-uv@v7
+      - name: Publish with trusted publishing
+        run: uv publish --trusted-publishing always dist/bricky_mcp-*
 
   github:
     name: Make the GitHub release
-    needs: pypi
+    needs: pypi-mcp
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
