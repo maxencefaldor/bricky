@@ -320,7 +320,7 @@ class Box:
 
     @property
     def faces(self) -> tuple[tuple[int, ...], ...]:
-        """The six faces as indices into :attr:`vertices`, counter-clockwise from outside."""
+        """Each face's indices into :attr:`vertices`, counter-clockwise from outside."""
         return _BOX_FACES
 
     @property
