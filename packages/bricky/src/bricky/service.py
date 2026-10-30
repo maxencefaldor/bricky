@@ -56,7 +56,7 @@ from bricky.files import (
     save_source_map,
     write_file,
 )
-from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Convex, Solid
+from bricky.geometry import AXES, DOWN, ORIGIN, UP, Box, Solid
 from bricky.instructions import ELEMENTS_PER_STEP, build_instructions
 from bricky.model import Element, Model
 from bricky.passes import installed_rules, resolve_levels
@@ -1565,9 +1565,7 @@ def _heights(part: Part) -> tuple[str, ...]:
 def _top(solid: Solid, x: int, y: int) -> Fraction | None:
     """The height of a solid's top over (x, y) in base units; ``None`` off the solid."""
     low, high = Fraction(-(10**9)), Fraction(10**9)
-    for normal, offset in (
-        solid if isinstance(solid, Convex) else solid.as_convex()
-    ).planes:
+    for normal, offset in solid.planes:
         rest = (
             offset - normal.x * x - normal.y * y
         )  # the plane holds normal.z * z <= rest

@@ -57,7 +57,7 @@ from bricky.analysis.spatial import SpatialHash
 from bricky.analysis.world import PlacedElement
 from bricky.catalog import ConnectorKind
 from bricky.errors import BrickyError
-from bricky.geometry import DOWN, UP, Box, Convex, Vector
+from bricky.geometry import DOWN, UP, Box, Vector
 from bricky.settings import Settings
 from bricky.units import MM_PER_UNIT, STUD, STUD_DIAMETER, STUD_HEIGHT
 
@@ -234,13 +234,12 @@ class _Faces:
         faces: defaultdict[_Plane, list[tuple[_Corners, bool]]] = defaultdict(list)
         corners: set[tuple[int, int, int]] = set()
         for solid in element.solids:
-            convex = solid if isinstance(solid, Convex) else solid.as_convex()
-            corners.update(vertex.as_tuple() for vertex in convex.vertices)
-            for face, plane in zip(convex.faces, convex.planes, strict=True):
+            vertices = [vertex.as_tuple() for vertex in solid.vertices]
+            corners.update(vertices)
+            for face, plane in zip(solid.faces, solid.planes, strict=True):
                 bears = plane[0] in (axis, -axis) or plane in holders
                 if bears or plane[0] in (UP, DOWN):
-                    polygon = tuple(convex.vertices[k].as_tuple() for k in face)
-                    faces[plane].append((polygon, bears))
+                    faces[plane].append((tuple(vertices[k] for k in face), bears))
         low = element.bounds.min.z
         lowest = tuple(sorted(c for c in corners if c[2] == low)) if low <= 0 else ()
         return cls(dict(faces), lowest)

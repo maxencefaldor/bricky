@@ -590,10 +590,8 @@ def _mesh(index: int, element: PlacedElement) -> Mesh:
     """Return an element's solids as one surface, without the faces two solids share."""
     faces: list[tuple[tuple[int, int, int], ...]] = []
     for solid in element.solids:
-        convex = solid if isinstance(solid, Convex) else solid.as_convex()
-        faces.extend(
-            tuple(convex.vertices[i].as_tuple() for i in face) for face in convex.faces
-        )
+        vertices = [vertex.as_tuple() for vertex in solid.vertices]
+        faces.extend(tuple(vertices[i] for i in face) for face in solid.faces)
     inside = Counter(frozenset(face) for face in faces)
     outer = [face for face in faces if inside[frozenset(face)] == 1]
     corners: dict[tuple[int, int, int], int] = {}

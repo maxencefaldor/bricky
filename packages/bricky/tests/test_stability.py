@@ -19,7 +19,7 @@ from bricky.analysis.stability import (
     _overlap,
     analyze_stability,
 )
-from bricky.geometry import Box, Vector
+from bricky.geometry import Box, Convex, Vector
 from bricky.passes.stability import StabilityPass
 
 MATERIAL = Material(clutch=2.94, friction=0.2, density=0.54)
@@ -190,7 +190,8 @@ def test_the_mass_of_a_convex_solid_matches_its_box(
     (element,) = Context(builder.build(), default_catalog()).world.elements
     box = Box(Vector(*low), Vector(*low) + Vector(*size))
     volume, center = _mass(replace(element, solids=(box,)))
-    convex_volume, convex_center = _mass(replace(element, solids=(box.as_convex(),)))
+    convex = Convex(box.vertices, box.faces)
+    convex_volume, convex_center = _mass(replace(element, solids=(convex,)))
     assert volume == convex_volume == size[0] * size[1] * size[2]
     assert center == pytest.approx(convex_center)
     assert center == pytest.approx([a + b / 2 for a, b in zip(low, size, strict=True)])

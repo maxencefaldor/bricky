@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
-from functools import cache
 from math import gcd
 from typing import Final, Literal, override
 
@@ -217,6 +216,30 @@ class Pose:
         return Pose(self.rotation @ inner.rotation, self.apply(inner.position))
 
 
+type Plane = tuple[Vector, int]
+"""An outward normal and an offset.
+
+Points ``p`` with ``normal.dot(p) <= offset`` are inside.
+"""
+
+_BOX_FACES: Final = (
+    (0, 4, 6, 2),
+    (1, 3, 7, 5),
+    (0, 1, 5, 4),
+    (2, 6, 7, 3),
+    (0, 2, 3, 1),
+    (4, 5, 7, 6),
+)
+"""Faces of a box by :attr:`Box.vertices` index, counter-clockwise seen from outside:
+the faces toward -x, +x, -y, +y, -z and +z."""
+
+_BOX_NORMALS: Final = tuple(AXES[name] for name in ("-x", "+x", "-y", "+y", "-z", "+z"))
+"""The outward normal of each face of a box, in the order of :data:`_BOX_FACES`."""
+
+_BOX_DIRECTIONS: Final = (AXES["+z"], AXES["+y"], AXES["+x"])
+"""The directions of a box's edges, in the order :class:`Convex` sorts them."""
+
+
 @dataclass(frozen=True, slots=True)
 class Box:
     """A half-open, axis-aligned box ``[min, max)`` with integer corners."""
@@ -279,8 +302,9 @@ class Box:
         """The box itself, so a box and a :class:`Convex` both answer ``bounds``."""
         return self
 
-    def corners(self) -> tuple[Vector, ...]:
-        """Return the eight corners.
+    @property
+    def vertices(self) -> tuple[Vector, ...]:
+        """The eight corners.
 
         Bit 1 of a corner's index picks high x, bit 2 high y and bit 4 high z.
         """
@@ -294,13 +318,30 @@ class Box:
             for i in range(8)
         )
 
-    def as_convex(self) -> Convex:
-        """Return the solid as a :class:`Convex`, for exact tests against convex solids.
+    @property
+    def faces(self) -> tuple[tuple[int, ...], ...]:
+        """The six faces as indices into :attr:`vertices`, counter-clockwise from outside."""
+        return _BOX_FACES
 
-        Raises:
-            ValueError: If the box has no volume.
-        """
-        return _box_convex(self)
+    @property
+    def planes(self) -> tuple[Plane, ...]:
+        """The plane of each face, in the order of :attr:`faces`."""
+        low, high = self.min, self.max
+        offsets = (-low.x, high.x, -low.y, high.y, -low.z, high.z)
+        return tuple(zip(_BOX_NORMALS, offsets, strict=True))
+
+    @property
+    def directions(self) -> tuple[Vector, ...]:
+        """The distinct directions of the edges: the three grid axes."""
+        return _BOX_DIRECTIONS
+
+    def extent(self, axis: Vector) -> tuple[int, int]:
+        """Return the minimum and maximum of ``axis.dot(vertex)`` over the vertices."""
+        low = high = 0
+        for component, least, most in zip(axis, self.min, self.max, strict=True):
+            low += component * (least if component > 0 else most)
+            high += component * (most if component > 0 else least)
+        return low, high
 
     @property
     def volume(self) -> int:
@@ -353,24 +394,6 @@ class Box:
     def transformed(self, pose: Pose) -> Box:
         """Return the box placed by a pose; grid rotations keep boxes axis-aligned."""
         return Box.spanning(pose.apply(self.min), pose.apply(self.max))
-
-
-_BOX_FACES: Final = (
-    (0, 4, 6, 2),
-    (1, 3, 7, 5),
-    (0, 1, 5, 4),
-    (2, 6, 7, 3),
-    (0, 2, 3, 1),
-    (4, 5, 7, 6),
-)
-"""Faces of a box by :meth:`Box.corners` index, counter-clockwise seen from outside."""
-
-
-type Plane = tuple[Vector, int]
-"""An outward normal and an offset.
-
-Points ``p`` with ``normal.dot(p) <= offset`` are inside.
-"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -494,7 +517,11 @@ class Convex:
 
 
 type Solid = Box | Convex
-"""One solid of a part's body: a box, or a convex solid where a box falls short."""
+"""One solid of a part's body: a box, or a convex solid where a box falls short.
+
+Both answer alike: their vertices, their faces as vertex indices, each face's plane,
+the directions of their edges, and their extent along an axis.
+"""
 
 
 def overlaps(a: Solid, b: Solid) -> bool:
@@ -509,25 +536,16 @@ def overlaps(a: Solid, b: Solid) -> bool:
         return False
     if isinstance(a, Box) and isinstance(b, Box):
         return True
-    first = a if isinstance(a, Convex) else a.as_convex()
-    second = b if isinstance(b, Convex) else b.as_convex()
-    axes = [normal for normal, _ in (*first.planes, *second.planes)]
-    axes += [
-        one.cross(other) for one in first.directions for other in second.directions
-    ]
+    axes = [normal for normal, _ in (*a.planes, *b.planes)]
+    axes += [one.cross(other) for one in a.directions for other in b.directions]
     for axis in axes:
         if axis == ORIGIN:
             continue
-        a_low, a_high = first.extent(axis)
-        b_low, b_high = second.extent(axis)
+        a_low, a_high = a.extent(axis)
+        b_low, b_high = b.extent(axis)
         if a_high <= b_low or b_high <= a_low:
             return False
     return True
-
-
-@cache
-def _box_convex(box: Box) -> Convex:
-    return Convex(box.corners(), _BOX_FACES)
 
 
 def _newell(points: Sequence[Vector]) -> Vector:

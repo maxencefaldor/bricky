@@ -14,7 +14,7 @@ from bricky.analysis import build_world
 from bricky.analysis.connections import anti_stud_index, find_connections
 from bricky.cli import main
 from bricky.files import save_model
-from bricky.geometry import AXES, DOWN, UP, Box, Vector
+from bricky.geometry import AXES, DOWN, UP, Box, Convex, Vector
 from bricky.instructions import (
     Instructions,
     Reason,
@@ -259,9 +259,9 @@ def test_convex_sweeps_agree_with_box_sweeps(
     leg = _Leg(Vector(*offset), direction, length)
     reach = Box(Vector(-20, -20, -20), Vector(20, 20, 20))
     exact = _Sweep(moving, leg, reach, _Solids()).crosses(fixed)
-    convex = _Sweep(moving.as_convex(), leg, reach, _Solids())
+    convex = _Sweep(Convex(moving.vertices, moving.faces), leg, reach, _Solids())
     assert convex.crosses(fixed) == exact
-    assert convex.crosses(fixed.as_convex()) == exact
+    assert convex.crosses(Convex(fixed.vertices, fixed.faces)) == exact
 
 
 def test_the_instructions_command_writes_a_page_and_states_what_breaks_the_order(

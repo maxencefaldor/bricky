@@ -115,15 +115,29 @@ SLOPE = Convex.prism([(0, 0), (40, 0), (40, 24), (20, 24), (0, 4)], "x", 0, 20)
 """Slope 45 2 x 1: its slanted face is the plane z = y + 4."""
 
 
+def convex(box: Box) -> Convex:
+    """The box as a convex solid, from its own vertices and faces."""
+    return Convex(box.vertices, box.faces)
+
+
+@given(solid_boxes, vectors)
+def test_boxes_answer_like_their_convex_form(box: Box, axis: Vector) -> None:
+    form = convex(box)
+    assert box.planes == form.planes
+    assert box.directions == form.directions
+    assert box.extent(axis) == form.extent(axis)
+    assert box.bounds == form.bounds
+
+
 @given(solid_boxes, solid_boxes)
 def test_convex_boxes_overlap_exactly_like_boxes(first: Box, second: Box) -> None:
-    assert overlaps(first.as_convex(), second.as_convex()) == first.overlaps(second)
-    assert overlaps(first.as_convex(), second) == first.overlaps(second)
+    assert overlaps(convex(first), convex(second)) == first.overlaps(second)
+    assert overlaps(convex(first), second) == first.overlaps(second)
 
 
 @given(solid_boxes, vectors)
 def test_convex_boxes_contain_points_like_boxes(box: Box, point: Vector) -> None:
-    assert box.as_convex().contains(point) == box.contains(point)
+    assert convex(box).contains(point) == box.contains(point)
 
 
 @given(solid_boxes, rotations, vectors)
@@ -131,7 +145,7 @@ def test_rotating_a_convex_box_rotates_its_bounds(
     box: Box, rotation: Rotation, shift: Vector
 ) -> None:
     pose = Pose(rotation, shift)
-    assert box.as_convex().transformed(pose).bounds == box.transformed(pose)
+    assert convex(box).transformed(pose).bounds == box.transformed(pose)
 
 
 @given(rotations, vectors, solid_boxes)
@@ -163,16 +177,10 @@ def test_points_on_shared_faces_belong_to_one_side() -> None:
 def test_convex_solids_must_be_convex_and_face_outward() -> None:
     box = Box(Vector(0, 0, 0), Vector(10, 10, 10))
     with pytest.raises(ValueError, match="faces inward"):
-        Convex(
-            box.corners(),
-            tuple(tuple(reversed(face)) for face in box.as_convex().faces),
-        )
+        Convex(box.vertices, tuple(tuple(reversed(face)) for face in box.faces))
     with pytest.raises(ValueError, match="faces inward"):
         Convex.prism(
             [(0, 0), (20, 0), (20, 10), (10, 10), (10, 20), (0, 20)], "z", 0, 5
         )  # an L
     with pytest.raises(ValueError, match="not flat"):
-        Convex(
-            (*box.corners()[:7], Vector(10, 10, 11)),
-            box.as_convex().faces,
-        )
+        Convex((*box.vertices[:7], Vector(10, 10, 11)), box.faces)

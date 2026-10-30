@@ -477,7 +477,7 @@ class _Solids:
         key = (id(solid), axis)
         extent = self._extents.get(key)
         if extent is None:
-            extent = _extent(solid, axis)
+            extent = solid.extent(axis)
             self._extents[key] = extent
         return extent
 
@@ -486,7 +486,7 @@ class _Solids:
         axes = self._axes.get(id(solid))
         if axes is None:
             crossed = (
-                axis.cross(edge) for axis in _GRID_AXES for edge in _edges(solid)
+                axis.cross(edge) for axis in _GRID_AXES for edge in solid.directions
             )
             axes = tuple({*_GRID_AXES, *_faces(solid), *crossed} - {ORIGIN})
             self._axes[id(solid)] = axes
@@ -528,7 +528,7 @@ class _Sweep:
             if isinstance(other, Box):
                 return True
             return not any(
-                self._apart(_extent(self.path, axis), other, axis)
+                self._apart(self.path.extent(axis), other, axis)
                 for axis in self.solids.axes(other)
             )
         return not any(
@@ -539,7 +539,7 @@ class _Sweep:
         yield from self.axes
         yield from _faces(other)
         for edge in self.edges:
-            for along in _edges(other):
+            for along in other.directions:
                 axis = edge.cross(along)
                 if axis != ORIGIN:
                     yield axis
@@ -549,7 +549,7 @@ class _Sweep:
         extent = self._extents.get(axis)
         if extent is not None:
             return extent
-        low, high = _extent(self.solid, axis)
+        low, high = self.solid.extent(axis)
         shift = axis.dot(self.leg.offset)
         start: float = low + shift
         end: float = high + shift
@@ -569,24 +569,10 @@ class _Sweep:
 
 
 def _faces(solid: Solid) -> Iterable[Vector]:
+    """The directions a solid's faces face: a box's three axes, each for two faces."""
     if isinstance(solid, Box):
-        return _GRID_AXES
+        return solid.directions
     return (normal for normal, _ in solid.planes)
-
-
-def _edges(solid: Solid) -> Sequence[Vector]:
-    return _GRID_AXES if isinstance(solid, Box) else solid.directions
-
-
-def _extent(solid: Solid, axis: Vector) -> tuple[int, int]:
-    """The least and greatest of ``axis.dot(point)`` over a solid's points."""
-    if isinstance(solid, Convex):
-        return solid.extent(axis)
-    low = high = 0
-    for a, lo, hi in zip(axis, solid.min, solid.max, strict=True):
-        low += a * (lo if a > 0 else hi)
-        high += a * (hi if a > 0 else lo)
-    return low, high
 
 
 def _path(box: Box, leg: _Leg, reach: Box) -> Box:
