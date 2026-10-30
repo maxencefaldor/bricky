@@ -1,6 +1,6 @@
 [project]
 site_name = "bricky"
-site_description = "A compiler-style toolkit that lets AI agents design buildable LEGO® models."
+site_description = "A compiler for LEGO® models, built for AI agents."
 site_author = "Maxence Faldor"
 site_url = "https://maxencefaldor.github.io/bricky/"
 repo_url = "https://github.com/maxencefaldor/bricky"
@@ -30,6 +30,7 @@ nav = [
   { "Agents" = [
     "agents/index.md",
     { "Connect an agent" = "agents/connect.md" },
+    { "Why a compiler" = "agents/why-a-compiler.md" },
     { "Benchmark" = "agents/benchmark.md" },
   ] },
   { "Gallery" = "gallery.md" },

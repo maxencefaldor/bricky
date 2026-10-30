@@ -1,6 +1,6 @@
 ---
 title: bricky
-description: A compiler-style toolkit that lets AI agents design buildable LEGO® models.
+description: A compiler for LEGO® models, built for AI agents.
 hide:
   - navigation
   - toc
@@ -10,7 +10,7 @@ hide:
 
 # bricky
 
-A compiler-style toolkit that lets AI agents design buildable LEGO® models.
+A compiler for LEGO® models, built for AI agents.
 { .bricky-tagline }
 
 An agent writes a model as a Python build script.
@@ -18,7 +18,7 @@ Each build places every part in exact geometry, reports each error with the scri
 
 [Get started](get-started.md){ .md-button .md-button--primary } [Gallery in 3D](gallery.md){ .md-button }
 
-![The Japanese garden example: a pagoda, a torii and cherry trees in bloom around a koi pond](images/hero.png){ .bricky-hero-image }
+![The Japanese garden example: a pagoda, a torii and cherry trees in bloom around a koi pond](images/hero.jpg){ .bricky-hero-image }
 
 </div>
 
@@ -57,12 +57,14 @@ flowchart LR
 
 ## Install
 
-A [uv](https://docs.astral.sh/uv/) project holds your build scripts, and uv installs Python 3.12 or newer if needed:
+A [uv](https://docs.astral.sh/uv/) project holds your build scripts, and uv installs Python if needed.
+The project pins Python 3.14, the version bricky recommends: on 3.15, installing compiles the solver HiGHS, which needs a C++ compiler.
 
 ```sh
-uv init --bare my-models && cd my-models  # a project for your build scripts
-uv add bricky                             # bricky and every dependency, from PyPI
-uv run playwright install chromium        # the browser bricky renders in, once per machine
+uv init --bare --pin-python --python 3.14 my-models  # a project for your build scripts
+cd my-models
+uv add bricky                                        # bricky and every dependency, from PyPI
+uv run playwright install chromium                   # the browser bricky renders in, once per machine
 ```
 
 The [Get started](get-started.md#install) page also covers pip, a tool install and a clone of the repository.

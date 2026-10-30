@@ -33,7 +33,7 @@ The command `uvx`, which comes with uv, runs the server straight from PyPI:
   "mcpServers": {
     "bricky": {
       "command": "uvx",
-      "args": ["bricky-mcp"]
+      "args": ["--python", "3.14", "bricky-mcp"]
     }
   }
 }
@@ -42,16 +42,15 @@ The command `uvx`, which comes with uv, runs the server straight from PyPI:
 With Claude Code, one command does the same:
 
 ```sh
-claude mcp add bricky -- uvx bricky-mcp
+claude mcp add bricky -- uvx --python 3.14 bricky-mcp
 ```
 
-Installing the server on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
-The command `uvx --python 3.14 bricky-mcp` avoids that.
+The option `--python 3.14` runs the server on the Python bricky recommends: on 3.15, installing compiles the solver HiGHS, which needs a C++ compiler.
 
 The server renders in Chromium, which Playwright installs once per machine:
 
 ```sh
-uvx --from bricky-mcp playwright install chromium
+uvx --python 3.14 --from bricky-mcp playwright install chromium
 ```
 
 From a clone of the repository, the server runs with the clone's code instead:

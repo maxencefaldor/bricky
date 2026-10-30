@@ -1,26 +1,27 @@
 # bricky
 
-A compiler-style toolkit that lets AI agents design buildable LEGO® models.
+A compiler for LEGO® models, built for AI agents.
 
-[![The Japanese garden example: a pagoda, a torii and cherry trees in bloom around a koi pond](https://raw.githubusercontent.com/maxencefaldor/bricky/main/docs/images/hero.png)](https://maxencefaldor.github.io/bricky/gallery/)
+[![The Japanese garden example: a pagoda, a torii and cherry trees in bloom around a koi pond](https://raw.githubusercontent.com/maxencefaldor/bricky/main/docs/images/hero.jpg)](https://maxencefaldor.github.io/bricky/gallery/)
 
-An AI agent writes a LEGO® model as a Python build script, and bricky builds it the way a compiler builds code.
+An AI agent writes a LEGO® model as a Python build script, and bricky builds it [the way a compiler builds code](https://maxencefaldor.github.io/bricky/agents/why-a-compiler/).
 Each build places every part in exact geometry, reports each mistake with the script line behind it, and renders four views with rulers.
 
 ## Install
 
-Installing bricky on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
-A [uv](https://docs.astral.sh/uv/) project holds your build scripts, and uv installs Python 3.12 or newer if needed:
+A [uv](https://docs.astral.sh/uv/) project holds your build scripts, and uv installs Python if needed.
+The project pins Python 3.14, the version bricky recommends: on 3.15, installing compiles the solver HiGHS, which needs a C++ compiler.
 
 ```sh
-uv init --bare my-models && cd my-models  # a project for your build scripts
-uv add bricky                             # bricky and every dependency, from PyPI
-uv run playwright install chromium        # the browser bricky renders in, once per machine
+uv init --bare --pin-python --python 3.14 my-models  # a project for your build scripts
+cd my-models
+uv add bricky                                        # bricky and every dependency, from PyPI
+uv run playwright install chromium                   # the browser bricky renders in, once per machine
 ```
 
-With pip, run `pip install bricky` and then `playwright install chromium`.
+With pip on Python 3.12 to 3.14, run `pip install bricky` and then `playwright install chromium`.
 On Linux, `playwright install --with-deps chromium` also installs the browser's system libraries.
-To install bricky as a tool, run `uv tool install bricky --with-executables-from playwright`, then `playwright install chromium`.
+To install bricky as a tool, run `uv tool install --python 3.14 bricky --with-executables-from playwright`, then `playwright install chromium`.
 The command is then `bricky`, without `uv run`.
 
 ## Build a model

@@ -87,6 +87,21 @@ class Figure:
     bare: bool = False
     """Render a perspective with no text on it: no title, caption, compass or labels."""
 
+    zoom: float = 1.0
+    """How much nearer than its fitted frame a bare perspective's camera stands.
+
+    Above 1, the model fills the frame and its edges leave it.
+    """
+
+    lift: float = 0.0
+    """How far a bare perspective's aim rises, as a share of the model's size.
+
+    A lift keeps the top of a tall model in a zoomed frame.
+    """
+
+    suffix: str = ".png"
+    """The file type: ".png", or ".jpg" to keep a large bare perspective light."""
+
     step: int | None = None
     """Render the model built up to this step of its instructions, outlining the step's
     elements as changed."""
@@ -527,8 +542,11 @@ FIGURES: Final = (
         "hero",
         EXAMPLES / "japanese_garden.py",
         view=View.PERSPECTIVE,
-        size=(1600, 1200),
+        size=(2048, 1536),
         bare=True,
+        zoom=1.25,
+        lift=0.015,
+        suffix=".jpg",
     ),
     card("card-coordinates", rotations, highlight=("R*",)),
     card("card-scripts", filled),
@@ -645,12 +663,12 @@ async def render(
     )
     width, height = figure.size
     if figure.bare:
-        image = await photograph(page, scene, figure.size, figure.view)
+        image = await photograph(page, scene, figure)
     else:
         (image,) = await renderer.render(
             scene, [figure.view], width=width, height=height
         )
-    path = IMAGES / f"{figure.name}.png"
+    path = IMAGES / f"{figure.name}{figure.suffix}"
     path.write_bytes(image)
     return path
 
@@ -663,7 +681,8 @@ STUDIO_ORIGIN: Final = "https://studio.invalid/"
 """The private origin the studio's page loads bricky's render assets from."""
 
 RENDER_ASSETS: Final = files("bricky.render").joinpath("assets")
-PNG_URL: Final = "data:image/png;base64,"
+TYPES: Final = {".png": "image/png", ".jpg": "image/jpeg"}
+"""The media type the studio writes for each file type."""
 SUPERSAMPLE: Final = 2
 """How many times larger the studio renders an image before shrinking it."""
 
@@ -688,6 +707,7 @@ const SOUTH_EAST = THREE.MathUtils.degToRad(35);
 const UP = new THREE.Vector3(0, 1, 0);
 const FILL = 0.92;
 const STUD = 8; // millimeters
+const JPEG_QUALITY = 0.88;
 
 function aim(camera, target, azimuth, distance) {
   const across = Math.cos(ELEVATION);
@@ -709,9 +729,10 @@ function corners(box) {
   return points;
 }
 
-// Render a scene from one azimuth, with no text, and return it as a PNG data URL.
+// Render a scene from one azimuth, with no text, and return it as a data URL.
 function photograph(scene, options) {
   const { width, height, supersample, azimuth: degrees, background } = options;
+  const { zoom = 1, lift = 0, type = "image/png" } = options;
   const azimuth = THREE.MathUtils.degToRad(degrees);
   const renderer = new THREE.WebGLRenderer({
     antialias: true, preserveDrawingBuffer: true,
@@ -789,6 +810,9 @@ function photograph(scene, options) {
     const tall = Math.max(all.high - level, level - all.low);
     distance *= 0.4 + 0.6 * (Math.max(across, tall) / FILL);
   }
+  // A zoom brings the camera nearer than the fit, and a lift raises its aim.
+  distance /= zoom;
+  target.y += lift * radius;
   aim(camera, target, azimuth, distance);
   // Edges fade when studs are small on screen, as in the renderer's images.
   const pixelsPerStud = (STUD / (2 * distance * half)) * height * supersample;
@@ -803,7 +827,7 @@ function photograph(scene, options) {
   context.drawImage(renderer.domElement, 0, 0, width, height);
   renderer.dispose();
   renderer.forceContextLoss();
-  return output.toDataURL("image/png");
+  return output.toDataURL(type, JPEG_QUALITY);
 }
 
 window.studio = { photograph };
@@ -857,33 +881,36 @@ async def studio(settings: Settings) -> AsyncGenerator[Page]:
         raise RuntimeError(message)
 
 
-async def photograph(
-    page: Page, scene: Scene, size: tuple[int, int], view: View
-) -> bytes:
-    """Render a scene in the studio with no text and return the image as PNG.
+async def photograph(page: Page, scene: Scene, figure: Figure) -> bytes:
+    """Render a scene in the studio with no text and return the figure's file.
 
     Raises:
-        RuntimeError: If the view is not a perspective, or the page returns no PNG.
+        RuntimeError: If the view is not a perspective, or the page returns no image.
     """
-    if view not in AZIMUTHS:
-        message = f"the studio renders perspectives only, not {view}"
+    if figure.view not in AZIMUTHS:
+        message = f"the studio renders perspectives only, not {figure.view}"
         raise RuntimeError(message)
-    width, height = size
+    width, height = figure.size
+    kind = TYPES[figure.suffix]
     options = {
         "width": width,
         "height": height,
         "supersample": SUPERSAMPLE,
-        "azimuth": AZIMUTHS[view],
+        "azimuth": AZIMUTHS[figure.view],
         "background": "#ffffff",
+        "zoom": figure.zoom,
+        "lift": figure.lift,
+        "type": kind,
     }
     url = await page.evaluate(
         "([scene, options]) => window.studio.photograph(scene, options)",
         [scene.model_dump(mode="json"), options],
     )
-    if not isinstance(url, str) or not url.startswith(PNG_URL):
-        message = "the studio returned no PNG"
+    prefix = f"data:{kind};base64,"
+    if not isinstance(url, str) or not url.startswith(prefix):
+        message = f"the studio returned no {kind} image"
         raise RuntimeError(message)
-    return base64.b64decode(url.removeprefix(PNG_URL))
+    return base64.b64decode(url.removeprefix(prefix))
 
 
 # --------------------------------------------------------------------------------------

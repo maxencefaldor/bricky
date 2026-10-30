@@ -1,24 +1,25 @@
 # bricky
 
-A compiler-style toolkit that lets AI agents design buildable LEGO® models.
+A compiler for LEGO® models, built for AI agents.
 
-[![The Japanese garden example: a pagoda, a torii and cherry trees in bloom around a koi pond](docs/images/hero.png)](https://maxencefaldor.github.io/bricky/gallery/)
+[![The Japanese garden example: a pagoda, a torii and cherry trees in bloom around a koi pond](docs/images/hero.jpg)](https://maxencefaldor.github.io/bricky/gallery/)
 
-An AI agent writes a LEGO® model as a Python build script, and bricky builds it the way a compiler builds code.
+An AI agent writes a LEGO® model as a Python build script, and bricky builds it [the way a compiler builds code](https://maxencefaldor.github.io/bricky/agents/why-a-compiler/).
 Each build places every part in exact geometry, reports each mistake with the script line behind it, and renders four views with rulers.
 
 The [documentation](https://maxencefaldor.github.io/bricky/) explains every concept and lists every command.
 
 ## 🚀 Quick start
 
-The quick start needs [uv](https://docs.astral.sh/uv/), which installs Python 3.12 or newer if needed.
-Installing bricky on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
-A uv project holds your build scripts, and `uv add` installs bricky into it from PyPI:
+The quick start needs [uv](https://docs.astral.sh/uv/), which installs Python if needed.
+A uv project holds your build scripts, and `uv add` installs bricky into it from PyPI.
+The project pins Python 3.14, the version bricky recommends: on 3.15, installing compiles the solver HiGHS, which needs a C++ compiler.
 
 ```sh
-uv init --bare my-models && cd my-models  # a project for your build scripts
-uv add bricky                             # bricky and every dependency, from PyPI
-uv run playwright install chromium        # the browser bricky renders in, once per machine
+uv init --bare --pin-python --python 3.14 my-models  # a project for your build scripts
+cd my-models
+uv add bricky                                        # bricky and every dependency, from PyPI
+uv run playwright install chromium                   # the browser bricky renders in, once per machine
 ```
 
 Download an example and build it, which checks the model and renders it beside the script:
@@ -28,9 +29,9 @@ curl -O https://raw.githubusercontent.com/maxencefaldor/bricky/main/examples/jap
 uv run bricky build japanese_garden.py
 ```
 
-With pip, run `pip install bricky` and then `playwright install chromium`.
+With pip on Python 3.12 to 3.14, run `pip install bricky` and then `playwright install chromium`.
 On Linux, `playwright install --with-deps chromium` also installs the browser's system libraries.
-To install bricky as a tool, run `uv tool install bricky --with-executables-from playwright`, then `playwright install chromium`.
+To install bricky as a tool, run `uv tool install --python 3.14 bricky --with-executables-from playwright`, then `playwright install chromium`.
 The command is then `bricky`, without `uv run`.
 A clone of the repository runs every example and the benchmark: [Get started](https://maxencefaldor.github.io/bricky/get-started/#install) shows how.
 
@@ -39,7 +40,7 @@ A clone of the repository runs every example and the benchmark: [Get started](ht
 An agent reaches bricky through one of three front ends:
 
 - **The command line**, for any harness that runs shell commands: the agent runs `uv run bricky build` and reads the report and the images.
-- **The MCP server**, for any harness that speaks the Model Context Protocol: `claude mcp add bricky -- uvx bricky-mcp` adds it to Claude Code.
+- **The MCP server**, for any harness that speaks the Model Context Protocol: `claude mcp add bricky -- uvx --python 3.14 bricky-mcp` adds it to Claude Code.
 - **The skill**, which teaches the agent the build loop: [Connect an agent](https://maxencefaldor.github.io/bricky/agents/connect/#skill) shows how to install it.
 
 ## 🧱 How it works

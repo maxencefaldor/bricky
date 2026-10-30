@@ -1,12 +1,12 @@
 # Working on bricky
 
-The repository holds bricky, a compiler-style toolkit that lets AI agents design buildable LEGO® models.
+The repository holds bricky, a compiler for LEGO® models, built for AI agents.
 The README and the docs say what bricky does; the rules below say how to change it.
 
 ## Commands
 
 ```sh
-uv sync                             # install Python 3.15 and every tool from uv.lock
+uv sync                             # install Python 3.14 and every tool from uv.lock
 uv run playwright install chromium  # the browser bricky renders in, once per machine
 uv run pytest                       # tests; warnings are errors
 uv run ruff format                  # format
@@ -46,7 +46,8 @@ Benchmark inputs are generated from each project's reference by `bricky-benchmar
   The file `.editorconfig` sets the editor to match, and `.rumdl.toml` holds the Markdown rules.
   A rule is switched off only in `pyproject.toml`, as narrowly as it can be, with its reason beside it.
   Types for a dependency that ships none live in `typings/`, for the parts bricky uses.
-- **Python:** 3.12 or newer; development runs on 3.15 (`.python-version`), and CI tests every version.
+- **Python:** 3.12 or newer; development runs on 3.14 (`.python-version`), and CI tests every version.
+  The docs recommend 3.14 until the solver HiGHS publishes a package for 3.15.
   Use modern syntax: PEP 695 generics and `type` aliases.
   Every module starts with `from __future__ import annotations`, which ruff adds, so annotations stay lazy: never write `TYPE_CHECKING` blocks.
 - **Concurrency:** asyncio only.

@@ -4,23 +4,23 @@ The tutorial builds a small wall with one mistake, then fixes it, and shows the 
 
 ## Install
 
-A [uv](https://docs.astral.sh/uv/) project holds the tutorial's build scripts, and uv installs Python 3.12 or newer if needed:
+A [uv](https://docs.astral.sh/uv/) project holds the tutorial's build scripts, and uv installs Python if needed.
+The project pins Python 3.14, the version bricky recommends: on 3.15, installing compiles the solver HiGHS, which needs a C++ compiler.
 
 ```sh
-uv init --bare my-models && cd my-models  # a project for your build scripts
-uv add bricky                             # bricky and every dependency, from PyPI
-uv run playwright install chromium        # the browser bricky renders in, once per machine
-uv run bricky --version                   # the installed version
+uv init --bare --pin-python --python 3.14 my-models  # a project for your build scripts
+cd my-models
+uv add bricky                                        # bricky and every dependency, from PyPI
+uv run playwright install chromium                   # the browser bricky renders in, once per machine
+uv run bricky --version                              # the installed version
 ```
 
 Playwright's Chromium renders the images.
 On Linux, `uv run playwright install --with-deps chromium` also installs the browser's system libraries.
 To render with a Chromium already on the machine, set `BRICKY_RENDER_BROWSER` to its executable instead (see [Configuration](reference/configuration.md)).
 
-Installing bricky on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
-
-With pip, run `pip install bricky` and then `playwright install chromium`.
-To install bricky as a tool, run `uv tool install bricky --with-executables-from playwright`, then `playwright install chromium`.
+With pip on Python 3.12 to 3.14, run `pip install bricky` and then `playwright install chromium`.
+To install bricky as a tool, run `uv tool install --python 3.14 bricky --with-executables-from playwright`, then `playwright install chromium`.
 The command is then `bricky`, without `uv run`, wherever the docs write `uv run bricky`.
 
 A clone of the repository runs every example and the benchmark, and is the way to work on bricky:

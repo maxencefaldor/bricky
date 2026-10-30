@@ -1,12 +1,12 @@
 [project]
 name = "bricky-mcp"
 version = "0.1.0"
-description = "MCP server exposing the bricky toolkit to any agent harness."
+description = "The MCP server for bricky, a compiler for LEGO® models, built for AI agents."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Maxence Faldor" }]
-keywords = ["lego", "ai agents", "mcp", "model context protocol", "llm"]
+keywords = ["lego", "ai-agents", "llm", "compiler", "mcp", "mcp-server", "model-context-protocol"]
 requires-python = ">=3.12"
 classifiers = [
   "Development Status :: 3 - Alpha",

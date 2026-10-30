@@ -7,6 +7,6 @@ updates:
     groups:
       actions:
         patterns: ["*"]
-  # Python dependencies return here once Dependabot runs Python 3.15, which development uses:
+  # Python dependencies return here once Dependabot runs Python 3.15:
   # https://github.com/dependabot/dependabot-core/issues/16524. Until then, `uv lock --upgrade`
   # updates them.

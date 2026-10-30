@@ -1,17 +1,16 @@
 # bricky-mcp
 
-The MCP server for [bricky](https://github.com/maxencefaldor/bricky), a compiler-style toolkit that lets AI agents design buildable LEGO® models.
+The MCP server for [bricky](https://github.com/maxencefaldor/bricky), a compiler for LEGO® models, built for AI agents.
 
 The server serves bricky to any agent harness over the Model Context Protocol, on stdio.
 The command `uvx`, which comes with [uv](https://docs.astral.sh/uv/), runs it straight from PyPI.
 With Claude Code, one command adds it:
 
 ```sh
-claude mcp add bricky -- uvx bricky-mcp
+claude mcp add bricky -- uvx --python 3.14 bricky-mcp
 ```
 
-Installing the server on Python 3.15 compiles the solver HiGHS, which needs a C++ compiler, until HiGHS publishes a package for 3.15.
-The command `uvx --python 3.14 bricky-mcp` avoids that.
+The option `--python 3.14` runs the server on the Python bricky recommends: on 3.15, installing compiles the solver HiGHS, which needs a C++ compiler.
 
 Other harnesses start it from a project's `.mcp.json`:
 
@@ -20,7 +19,7 @@ Other harnesses start it from a project's `.mcp.json`:
   "mcpServers": {
     "bricky": {
       "command": "uvx",
-      "args": ["bricky-mcp"]
+      "args": ["--python", "3.14", "bricky-mcp"]
     }
   }
 }
@@ -29,7 +28,7 @@ Other harnesses start it from a project's `.mcp.json`:
 The server renders in Chromium, which Playwright installs once per machine:
 
 ```sh
-uvx --from bricky-mcp playwright install chromium
+uvx --python 3.14 --from bricky-mcp playwright install chromium
 ```
 
 The guide [Connect an agent](https://maxencefaldor.github.io/bricky/agents/connect/) covers every front end, and the [documentation](https://maxencefaldor.github.io/bricky/) covers bricky itself.
